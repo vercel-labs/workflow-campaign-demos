@@ -1,0 +1,235 @@
+// getWritable + getStepMetadata are used here to stream demo UI events.
+// A production workflow wouldn't need these unless it has its own streaming UI.
+import { getStepMetadata, getWritable } from "workflow";
+
+export type NotificationChannel = "slack" | "email" | "sms" | "pagerduty";
+
+export type ChannelEvent =
+  | { type: "channel_sending"; channel: string }
+  | { type: "channel_sent"; channel: string; providerId: string }
+  | { type: "channel_failed"; channel: string; error: string; attempt: number }
+  | { type: "channel_retrying"; channel: string; attempt: number }
+  | { type: "aggregating" }
+  | { type: "done"; summary: { ok: number; failed: number } };
+
+type ChannelResult = {
+  channel: NotificationChannel;
+  status: "sent" | "failed";
+  providerId?: string;
+  error?: string;
+};
+
+type IncidentReport = {
+  incidentId: string;
+  message: string;
+  status: "done";
+  deliveries: ChannelResult[];
+  summary: {
+    ok: number;
+    failed: number;
+  };
+};
+
+const CHANNEL_ERROR_MESSAGES: Record<NotificationChannel, string> = {
+  slack: "Slack API rate limit exceeded",
+  email: "Email provider returned 503",
+  sms: "SMS delivery failed: invalid number",
+  pagerduty: "PagerDuty integration is not configured",
+};
+
+// Demo: simulate real-world network latency so the UI can show progress.
+// In production, these delays would be replaced by actual API calls.
+const CHANNEL_DELAY_MS: Record<NotificationChannel, number> = {
+  slack: 650,
+  pagerduty: 750,
+  email: 900,
+  sms: 1150,
+};
+
+const AGGREGATE_DELAY_MS = 500;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function incidentFanOut(
+  incidentId: string,
+  message: string,
+  failChannels: NotificationChannel[] = []
+): Promise<IncidentReport> {
+  "use workflow";
+
+  const fanOutTargets = [
+    {
+      channel: "slack" as const,
+      send: () => sendSlackAlert(incidentId, message, failChannels),
+    },
+    {
+      channel: "email" as const,
+      send: () => sendEmailAlert(incidentId, message, failChannels),
+    },
+    {
+      channel: "sms" as const,
+      send: () => sendSmsAlert(incidentId, message, failChannels),
+    },
+    {
+      channel: "pagerduty" as const,
+      send: () => sendPagerDutyAlert(incidentId, message, failChannels),
+    },
+  ];
+
+  const settled = await Promise.allSettled(
+    fanOutTargets.map((target) => target.send())
+  );
+
+  const deliveries: ChannelResult[] = settled.map((result, index) => {
+    const channel = fanOutTargets[index].channel;
+
+    if (result.status === "fulfilled") {
+      return {
+        channel,
+        status: "sent",
+        providerId: result.value.providerId,
+      };
+    }
+
+    return {
+      channel,
+      status: "failed",
+      error: formatChannelError(channel, result.reason),
+    };
+  });
+
+  return aggregateResults(incidentId, message, deliveries);
+}
+
+function formatChannelError(
+  channel: NotificationChannel,
+  reason: unknown
+): string {
+  let message = "Unknown delivery failure";
+
+  if (reason instanceof Error) {
+    message = reason.message;
+  } else if (typeof reason === "string") {
+    message = reason;
+  }
+
+  return `${channel}: ${message}`;
+}
+
+function toChannelErrorMessage(reason: unknown): string {
+  if (reason instanceof Error) {
+    return reason.message;
+  }
+
+  if (typeof reason === "string") {
+    return reason;
+  }
+
+  return "Unknown delivery failure";
+}
+
+
+async function sendChannelAlert(
+  channel: NotificationChannel,
+  incidentId: string,
+  message: string,
+  failChannels: NotificationChannel[]
+): Promise<{ providerId: string }> {
+  // Demo: stream progress events to the UI via getWritable()
+  const writer = getWritable<ChannelEvent>().getWriter();
+  const { attempt } = getStepMetadata();
+
+  try {
+    if (attempt > 1) {
+      await writer.write({ type: "channel_retrying", channel, attempt }); // Demo: notify UI of retry
+    }
+
+    await writer.write({ type: "channel_sending", channel }); // Demo: notify UI that this channel started
+    await delay(CHANNEL_DELAY_MS[channel]); // Demo: simulate network latency for visualization
+
+    if (attempt === 1 && failChannels.includes(channel)) {
+      throw new Error(CHANNEL_ERROR_MESSAGES[channel]);
+    }
+
+    const providerId = `${channel}_${incidentId}_${message.length}_${attempt}`;
+    await writer.write({ type: "channel_sent", channel, providerId }); // Demo: notify UI of success
+
+    return { providerId };
+  } catch (reason: unknown) {
+    const error = toChannelErrorMessage(reason);
+    await writer.write({ type: "channel_failed", channel, error, attempt }); // Demo: notify UI of failure
+
+    throw reason instanceof Error ? reason : new Error(error);
+  } finally {
+    writer.releaseLock();
+  }
+}
+
+async function sendSlackAlert(
+  incidentId: string,
+  message: string,
+  failChannels: NotificationChannel[]
+): Promise<{ providerId: string }> {
+  "use step";
+  return sendChannelAlert("slack", incidentId, message, failChannels);
+}
+
+async function sendEmailAlert(
+  incidentId: string,
+  message: string,
+  failChannels: NotificationChannel[]
+): Promise<{ providerId: string }> {
+  "use step";
+  return sendChannelAlert("email", incidentId, message, failChannels);
+}
+
+async function sendSmsAlert(
+  incidentId: string,
+  message: string,
+  failChannels: NotificationChannel[]
+): Promise<{ providerId: string }> {
+  "use step";
+  return sendChannelAlert("sms", incidentId, message, failChannels);
+}
+
+async function sendPagerDutyAlert(
+  incidentId: string,
+  message: string,
+  failChannels: NotificationChannel[]
+): Promise<{ providerId: string }> {
+  "use step";
+  return sendChannelAlert("pagerduty", incidentId, message, failChannels);
+}
+
+async function aggregateResults(
+  incidentId: string,
+  message: string,
+  deliveries: ChannelResult[]
+): Promise<IncidentReport> {
+  "use step";
+  // Demo: stream aggregation progress to the UI
+  const writer = getWritable<ChannelEvent>().getWriter();
+
+  try {
+    await writer.write({ type: "aggregating" }); // Demo: notify UI that aggregation started
+    await delay(AGGREGATE_DELAY_MS); // Demo: simulate processing time for visualization
+
+    const ok = deliveries.filter((delivery) => delivery.status === "sent").length;
+    const failed = deliveries.length - ok;
+    const report: IncidentReport = {
+      incidentId,
+      message,
+      status: "done",
+      deliveries,
+      summary: { ok, failed },
+    };
+
+    await writer.write({ type: "done", summary: report.summary }); // Demo: notify UI of completion
+
+    return report;
+  } finally {
+    writer.releaseLock();
+  }
+}
