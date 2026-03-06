@@ -3,7 +3,8 @@ import { sleep, getWritable, FatalError } from "workflow";
 export type RetryEvent =
   | { type: "attempt_start"; attempt: number; contactId: string }
   | { type: "attempt_fail"; attempt: number; error: string; sleepMs: number }
-  | { type: "attempt_success"; attempt: number; contactId: string };
+  | { type: "attempt_success"; attempt: number; contactId: string }
+  | { type: "done"; status: "completed" | "failed"; attempts: number };
 
 export interface ContactSyncResult {
   contactId: string;
@@ -53,12 +54,14 @@ export async function retryBackoffContactSync(
         failuresBeforeSuccess,
         nextSleepMs
       );
+      await emitDone("completed", attempt);
       return { contactId, status: "completed", attempts: attempt };
     } catch (error) {
       const lastError =
         error instanceof Error ? error.message : String(error);
 
       if (attempt >= maxAttempts) {
+        await emitDone("failed", attempt);
         return {
           contactId,
           status: "failed",
@@ -71,7 +74,22 @@ export async function retryBackoffContactSync(
     }
   }
 
+  await emitDone("failed", maxAttempts);
   return { contactId, status: "failed", attempts: maxAttempts };
+}
+
+async function emitDone(
+  status: "completed" | "failed",
+  attempts: number
+): Promise<void> {
+  "use step";
+
+  const writer = getWritable<RetryEvent>().getWriter();
+  try {
+    await safeWrite(writer, { type: "done", status, attempts });
+  } finally {
+    writer.releaseLock();
+  }
 }
 
 async function syncContactToCrm(
