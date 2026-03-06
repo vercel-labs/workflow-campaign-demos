@@ -8,7 +8,8 @@ import { RetryCodeWorkbench } from "./retry-code-workbench";
 type RetryEvent =
   | { type: "attempt_start"; attempt: number; contactId: string }
   | { type: "attempt_fail"; attempt: number; error: string; sleepMs: number }
-  | { type: "attempt_success"; attempt: number; contactId: string };
+  | { type: "attempt_success"; attempt: number; contactId: string }
+  | { type: "done"; status: "completed" | "failed"; attempts: number };
 
 type TimestampedEvent = RetryEvent & { receivedAtMs: number };
 
@@ -152,6 +153,17 @@ function buildSnapshotFromEvents(
           kind: "success",
           message: `Attempt ${event.attempt} succeeded`,
         });
+        break;
+      }
+
+      case "done": {
+        status = event.status === "completed" ? "completed" : "failed";
+        if (!result) {
+          result = {
+            attempt: event.attempts,
+            outcome: event.status === "completed" ? "success" : "failed",
+          };
+        }
         break;
       }
     }
