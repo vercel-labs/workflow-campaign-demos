@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background-100: #0a0a0a;
+  --color-background-200: #171717;
+  --color-gray-100: #1a1a1a;
+  --color-gray-200: #1f1f1f;
+  --color-gray-300: #292929;
+  --color-gray-400: #737373;
+  --color-gray-500: #525252;
+  --color-gray-600: #404040;
+  --color-gray-700: #262626;
+  --color-gray-800: #171717;
+  --color-gray-900: #a1a1a1;
+  --color-gray-1000: #ededed;
+  --color-blue-700: #0070f3;
+  --color-red-700: #e5484d;
+  --color-amber-700: #ffb224;
+  --color-green-700: #46a758;
+  --color-violet-700: #8b5cf6;
+  --color-cyan-700: #06b6d4;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: #0a0a0a;
+  color: #ededed;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* sugar-high syntax tokens */
+:root,
+.dark {
+  --sh-class: #52a8ff;
+  --sh-identifier: #ededed;
+  --sh-sign: #a1a1a1;
+  --sh-property: #ff6166;
+  --sh-entity: #62c073;
+  --sh-jsxliterals: #ededed;
+  --sh-string: #62c073;
+  --sh-keyword: #f75f8f;
+  --sh-comment: #a1a1a1;
+}
