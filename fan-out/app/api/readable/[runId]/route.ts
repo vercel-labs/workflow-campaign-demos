@@ -7,7 +7,17 @@ type ReadableRouteContext = {
 
 export async function GET(_request: NextRequest, { params }: ReadableRouteContext) {
   const { runId } = await params;
-  const run = await getRun(runId);
+
+  let run;
+  try {
+    run = await getRun(runId);
+  } catch {
+    return Response.json(
+      { ok: false, error: { code: "RUN_NOT_FOUND", message: `Run ${runId} not found` } },
+      { status: 404 }
+    );
+  }
+
   const readable = run.getReadable();
 
   const encoder = new TextEncoder();

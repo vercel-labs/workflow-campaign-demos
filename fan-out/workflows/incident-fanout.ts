@@ -159,7 +159,13 @@ async function sendChannelAlert(
     return { providerId };
   } catch (reason: unknown) {
     const error = toChannelErrorMessage(reason);
-    await writer.write({ type: "channel_failed", channel, error, attempt }); // Demo: notify UI of failure
+
+    // Only emit channel_failed on retries (final failure).
+    // On attempt 1, the platform will retry automatically — emitting
+    // channel_failed here would be premature.
+    if (attempt > 1) {
+      await writer.write({ type: "channel_failed", channel, error, attempt });
+    }
 
     throw reason instanceof Error ? reason : new Error(error);
   } finally {

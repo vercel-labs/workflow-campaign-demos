@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-const encoder = new TextEncoder();
-
 const getReadableMock = mock(() => {
   return new ReadableStream({
     start(controller) {
-      controller.enqueue(encoder.encode('data: {"chunk":"ok"}\n\n'));
+      // Enqueue raw data — the route wraps it in SSE framing via TransformStream
+      controller.enqueue({"chunk":"ok"});
       controller.close();
     },
   });

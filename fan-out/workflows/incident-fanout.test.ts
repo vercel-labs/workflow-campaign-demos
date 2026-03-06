@@ -72,13 +72,15 @@ describe("incident fan-out workflow", () => {
     );
     expect(report.summary).toEqual({ ok: 3, failed: 1 });
 
-    const pagerDutyFailure = writtenEvents.find(
+    // On attempt 1, channel_failed is NOT emitted (the platform will retry).
+    // Verify no premature channel_failed event was written for pagerduty.
+    const pagerDutyFailureOnAttempt1 = writtenEvents.find(
       (event) =>
         event.type === "channel_failed" &&
         event.channel === "pagerduty" &&
         event.attempt === 1
     );
-    expect(pagerDutyFailure).toBeTruthy();
+    expect(pagerDutyFailureOnAttempt1).toBeFalsy();
   });
 
   test("test_incidentFanOut_writes_retrying_event_when_step_attempt_is_greater_than_one", async () => {

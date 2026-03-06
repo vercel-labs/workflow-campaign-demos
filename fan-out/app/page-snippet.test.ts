@@ -1,24 +1,28 @@
 import { describe, expect, test } from "bun:test";
 
-const pageSource = await Bun.file(new URL("./page.tsx", import.meta.url)).text();
+// page.tsx reads the workflow source at runtime via readFileSync,
+// so snippet-parity checks must run against the workflow file directly.
+const workflowSource = await Bun.file(
+  new URL("../workflows/incident-fanout.ts", import.meta.url)
+).text();
 
 describe("fan-out page workflow snippet parity", () => {
   test("test_workflowSnippet_includes_channel_aware_formatChannelError_helper_when_displayed", () => {
-    expect(pageSource).toContain("function formatChannelError(");
-    expect(pageSource).toContain("channel: NotificationChannel");
-    expect(pageSource).toContain("error: formatChannelError(channel, result.reason)");
-    expect(pageSource).toContain("return \\`\\${channel}: \\${message}\\`;");
+    expect(workflowSource).toContain("function formatChannelError(");
+    expect(workflowSource).toContain("channel: NotificationChannel");
+    expect(workflowSource).toContain("error: formatChannelError(channel, result.reason)");
+    expect(workflowSource).toContain("return `${channel}: ${message}`;");
   });
 
   test("test_workflowSnippet_uses_deliveries_and_alert_step_function_names_for_workflow_parity", () => {
-    expect(pageSource).toContain(
+    expect(workflowSource).toContain(
       "const deliveries: ChannelResult[] = settled.map((result, index) => {"
     );
-    expect(pageSource).toContain("sendSlackAlert(");
-    expect(pageSource).toContain("sendEmailAlert(");
-    expect(pageSource).toContain("sendSmsAlert(");
-    expect(pageSource).toContain("sendPagerDutyAlert(");
-    expect(pageSource).toContain(
+    expect(workflowSource).toContain("sendSlackAlert(");
+    expect(workflowSource).toContain("sendEmailAlert(");
+    expect(workflowSource).toContain("sendSmsAlert(");
+    expect(workflowSource).toContain("sendPagerDutyAlert(");
+    expect(workflowSource).toContain(
       "return aggregateResults(incidentId, message, deliveries);"
     );
   });
