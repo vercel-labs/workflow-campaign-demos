@@ -17,6 +17,11 @@ type Props = {
   stepGutterMarks: Record<number, GutterMarkKind>;
 };
 
+const GUTTER_LINE_STYLES: Record<GutterMarkKind, { line: string; gutter: string }> = {
+  success: { line: "border-green-700 bg-green-700/10", gutter: "text-green-700" },
+  fail: { line: "border-red-700 bg-red-700/10", gutter: "text-red-700" },
+};
+
 function toneClasses(tone: HighlightTone) {
   switch (tone) {
     case "cyan":
@@ -128,21 +133,28 @@ function CodePane({
           {htmlLines.map((lineHtml, index) => {
             const lineNo = index + 1;
             const isActive = activeLines.has(lineNo);
-            const mark = gutterMarks[lineNo] ?? prevMarkRef.current[lineNo];
-            const markVisible = Boolean(gutterMarks[lineNo]);
+            const currentMark = gutterMarks[lineNo];
+            const mark = currentMark ?? prevMarkRef.current[lineNo];
+            const markVisible = Boolean(currentMark);
             const tone = lineTones[lineNo];
+            const gutterStyle = currentMark ? GUTTER_LINE_STYLES[currentMark] : null;
 
             return (
               <div
                 key={lineNo}
                 className={[
                   "flex items-start gap-2 border-l-2 px-2 py-0.5 transition-colors duration-500",
-                  isActive && tone
-                    ? toneClasses(tone)
-                    : "border-transparent text-gray-900",
+                  gutterStyle
+                    ? `${gutterStyle.line} ${gutterStyle.gutter}`
+                    : isActive && tone
+                      ? toneClasses(tone)
+                      : "border-transparent text-gray-900",
                 ].join(" ")}
               >
-                <span className="w-8 shrink-0 select-none text-right font-mono tabular-nums text-gray-900">
+                <span className={[
+                  "w-8 shrink-0 select-none text-right font-mono tabular-nums",
+                  gutterStyle ? gutterStyle.gutter : "text-gray-900",
+                ].join(" ")}>
                   {lineNo}
                 </span>
                 <span className="w-5 shrink-0 select-none">

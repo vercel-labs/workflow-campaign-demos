@@ -62,13 +62,15 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const NO_FAILURES: DemoFailures = { transient: [], permanent: [] };
+
 // Demo entry point. The `failures` parameter is only used by the interactive
 // UI to let users toggle simulated failures — strip it out when adapting
 // this workflow for production use.
 export async function incidentFanOut(
   incidentId: string,
   message: string,
-  failures: DemoFailures = { transient: [], permanent: [] }
+  failures: DemoFailures = NO_FAILURES
 ): Promise<IncidentReport> {
   "use workflow";
 

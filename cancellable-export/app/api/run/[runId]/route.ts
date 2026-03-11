@@ -10,7 +10,7 @@ export async function GET(_request: Request, { params }: RunRouteContext) {
 
   let run;
   try {
-    run = await getRun(runId);
+    run = getRun(runId);
   } catch {
     return NextResponse.json(
       { ok: false, error: { code: "RUN_NOT_FOUND", message: `Run ${runId} not found` } },
@@ -42,7 +42,7 @@ export async function DELETE(_request: Request, { params }: RunRouteContext) {
 
   let run;
   try {
-    run = await getRun(runId);
+    run = getRun(runId);
   } catch {
     return NextResponse.json(
       { ok: false, error: { code: "RUN_NOT_FOUND", message: `Run ${runId} not found` } },

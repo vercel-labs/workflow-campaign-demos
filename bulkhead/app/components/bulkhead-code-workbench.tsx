@@ -18,6 +18,11 @@ const HIGHLIGHT_STYLES: Record<HighlightTone, HighlightStyle> = {
   red: { border: "border-red-700", bg: "bg-red-700/15", text: "text-red-700" },
 };
 
+const GUTTER_LINE_STYLES: Record<GutterMarkKind, { border: string; bg: string; text: string }> = {
+  success: { border: "border-green-700", bg: "bg-green-700/15", text: "text-green-700" },
+  fail: { border: "border-red-700", bg: "bg-red-700/15", text: "text-red-700" },
+};
+
 type CodeWorkbenchProps = {
   workflowCode: string;
   workflowLinesHtml: string[];
@@ -96,15 +101,18 @@ function CodePane({
             const lineNumber = i + 1;
             const isActive = activeSet.has(lineNumber);
             const markKind = gutterMarks[lineNumber];
+            const gutterStyle = markKind ? GUTTER_LINE_STYLES[markKind] : null;
 
             return (
               <div
                 key={i}
                 className={`flex px-3 ${
-                  isActive ? `border-l-2 ${style.border} ${style.bg}` : "border-l-2 border-transparent"
+                  gutterStyle
+                    ? `border-l-2 ${gutterStyle.border} ${gutterStyle.bg}`
+                    : isActive ? `border-l-2 ${style.border} ${style.bg}` : "border-l-2 border-transparent"
                 }`}
               >
-                <span className="mr-3 inline-block w-6 text-right text-xs text-gray-900 tabular-nums select-none">
+                <span className={`mr-3 inline-block w-6 text-right text-xs tabular-nums select-none ${gutterStyle ? gutterStyle.text : "text-gray-900"}`}>
                   {markKind ? (
                     <GutterMark kind={markKind} />
                   ) : (
