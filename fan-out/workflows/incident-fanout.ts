@@ -1,6 +1,6 @@
-// getWritable + getStepMetadata are used here to stream demo UI events.
-// A production workflow wouldn't need these unless it has its own streaming UI.
-import { getStepMetadata, getWritable } from "workflow";
+// getWritable is used here to stream demo UI events.
+// A production workflow wouldn't need this unless it has its own streaming UI.
+import { FatalError, getWritable } from "workflow";
 
 export type NotificationChannel = "slack" | "email" | "sms" | "pagerduty";
 
@@ -48,6 +48,8 @@ const CHANNEL_DELAY_MS: Record<NotificationChannel, number> = {
 
 const AGGREGATE_DELAY_MS = 500;
 
+// setTimeout is available here because delay() is only called from
+// "use step" functions, which have full Node.js runtime access.
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -96,40 +98,18 @@ export async function incidentFanOut(
     return {
       channel,
       status: "failed",
-      error: formatChannelError(channel, result.reason),
+      error: `${channel}: ${errorMessage(result.reason)}`,
     };
   });
 
   return aggregateResults(incidentId, message, deliveries);
 }
 
-function formatChannelError(
-  channel: NotificationChannel,
-  reason: unknown
-): string {
-  let message = "Unknown delivery failure";
-
-  if (reason instanceof Error) {
-    message = reason.message;
-  } else if (typeof reason === "string") {
-    message = reason;
-  }
-
-  return `${channel}: ${message}`;
-}
-
-function toChannelErrorMessage(reason: unknown): string {
-  if (reason instanceof Error) {
-    return reason.message;
-  }
-
-  if (typeof reason === "string") {
-    return reason;
-  }
-
+function errorMessage(reason: unknown): string {
+  if (reason instanceof Error) return reason.message;
+  if (typeof reason === "string") return reason;
   return "Unknown delivery failure";
 }
-
 
 async function sendChannelAlert(
   channel: NotificationChannel,
@@ -139,35 +119,23 @@ async function sendChannelAlert(
 ): Promise<{ providerId: string }> {
   // Demo: stream progress events to the UI via getWritable()
   const writer = getWritable<ChannelEvent>().getWriter();
-  const { attempt } = getStepMetadata();
 
   try {
-    if (attempt > 1) {
-      await writer.write({ type: "channel_retrying", channel, attempt }); // Demo: notify UI of retry
-    }
-
     await writer.write({ type: "channel_sending", channel }); // Demo: notify UI that this channel started
     await delay(CHANNEL_DELAY_MS[channel]); // Demo: simulate network latency for visualization
 
-    if (attempt === 1 && failChannels.includes(channel)) {
-      throw new Error(CHANNEL_ERROR_MESSAGES[channel]);
+    if (failChannels.includes(channel)) {
+      const error = CHANNEL_ERROR_MESSAGES[channel];
+      await writer.write({ type: "channel_failed", channel, error, attempt: 1 });
+      // FatalError prevents the SDK's automatic retry so the failure is
+      // permanent — exactly what Promise.allSettled() is designed to handle.
+      throw new FatalError(error);
     }
 
-    const providerId = `${channel}_${incidentId}_${message.length}_${attempt}`;
+    const providerId = `${channel}_${incidentId}_${message.length}`;
     await writer.write({ type: "channel_sent", channel, providerId }); // Demo: notify UI of success
 
     return { providerId };
-  } catch (reason: unknown) {
-    const error = toChannelErrorMessage(reason);
-
-    // Only emit channel_failed on retries (final failure).
-    // On attempt 1, the platform will retry automatically — emitting
-    // channel_failed here would be premature.
-    if (attempt > 1) {
-      await writer.write({ type: "channel_failed", channel, error, attempt });
-    }
-
-    throw reason instanceof Error ? reason : new Error(error);
   } finally {
     writer.releaseLock();
   }

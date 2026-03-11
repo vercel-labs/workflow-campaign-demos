@@ -1321,7 +1321,7 @@ function StatusBadge({ status }: { status: ChannelStatus }) {
   if (status === "failed") {
     return (
       <span className="rounded-full bg-red-700/10 px-2 py-0.5 text-xs font-medium text-red-700">
-        failed (brief)
+        failed
       </span>
     );
   }

@@ -8,20 +8,11 @@ type ReadableRouteContext = {
 export async function GET(_request: NextRequest, { params }: ReadableRouteContext) {
   const { runId } = await params;
 
-  let run;
-  try {
-    run = await getRun(runId);
-  } catch {
-    return Response.json(
-      { ok: false, error: { code: "RUN_NOT_FOUND", message: `Run ${runId} not found` } },
-      { status: 404 }
-    );
-  }
-
+  const run = getRun(runId);
   const readable = run.getReadable();
 
   const encoder = new TextEncoder();
-  const sseStream = (readable as unknown as ReadableStream).pipeThrough(
+  const sseStream = (readable as ReadableStream).pipeThrough(
     new TransformStream({
       transform(chunk, controller) {
         const data = typeof chunk === "string" ? chunk : JSON.stringify(chunk);
