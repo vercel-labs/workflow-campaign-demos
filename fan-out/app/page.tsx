@@ -152,8 +152,9 @@ function findErrorLine(lines: string[], marker: string): number[] {
 
 function buildStepErrorLineMap(code: string): StepErrorLineMap {
   const lines = code.split("\n");
-  // All channels share sendChannelAlert — the throw line is the same for all
-  const errorLine = findErrorLine(lines, "throw new Error(CHANNEL_ERROR_MESSAGES[channel])");
+  // Permanent failures (the only ones that end up with "failed" status in the
+  // UI) throw FatalError — point the gutter mark at that line.
+  const errorLine = findErrorLine(lines, "throw new FatalError(");
 
   return {
     slack: errorLine,
