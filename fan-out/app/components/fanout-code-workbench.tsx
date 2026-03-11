@@ -12,6 +12,12 @@ type HighlightStyle = {
   text: string;
 };
 
+const GUTTER_LINE_STYLES: Record<GutterMarkKind, { border: string; bg: string; text: string }> = {
+  success: { border: "border-green-700", bg: "bg-green-700/15", text: "text-green-700" },
+  retry: { border: "border-amber-700", bg: "bg-amber-700/15", text: "text-amber-700" },
+  fail: { border: "border-red-700", bg: "bg-red-700/15", text: "text-red-700" },
+};
+
 const HIGHLIGHT_STYLES: Record<HighlightTone, HighlightStyle> = {
   amber: {
     border: "border-amber-700",
@@ -162,14 +168,17 @@ function CodePane({
               const isActive = activeLineSet.has(lineNumber);
               const markKind = gutterMarkMap.get(lineNumber);
               const displayKind = markKind ?? prevMarkRef.current.get(lineNumber);
+              const gutterStyle = markKind ? GUTTER_LINE_STYLES[markKind] : null;
 
               return (
                 <div
                   key={lineNumber}
                   className={`flex min-w-max border-l-2 transition-colors duration-300 ${
-                    isActive
-                      ? `${highlightStyle.border} ${highlightStyle.bg}`
-                      : "border-transparent"
+                    gutterStyle
+                      ? `${gutterStyle.border} ${gutterStyle.bg}`
+                      : isActive
+                        ? `${highlightStyle.border} ${highlightStyle.bg}`
+                        : "border-transparent"
                   }`}
                   data-line={lineNumber}
                 >
@@ -209,7 +218,7 @@ function CodePane({
                   </span>
                   <span
                     className={`w-8 shrink-0 select-none border-r border-gray-300/80 py-0.5 pr-2 text-right text-xs tabular-nums ${
-                      isActive ? highlightStyle.text : "text-gray-900"
+                      gutterStyle ? gutterStyle.text : isActive ? highlightStyle.text : "text-gray-900"
                     }`}
                     aria-hidden="true"
                   >
