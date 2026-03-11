@@ -565,76 +565,42 @@ function buildHighlightState(
   };
 }
 
-function buildExecutionLog(
-  snapshot: FanOutSnapshot | null,
-  channels: DisplayChannelSnapshot[],
-  incidentId: string,
-  message: string
-): string[] {
-  if (!snapshot) {
-    return [
-      "Idle: click Dispatch Alert to start the run.",
-      "Promise.allSettled() will fan out to all channels in parallel.",
-    ];
+type LogTone = "default" | "green" | "amber" | "red" | "cyan";
+type LogEntry = { text: string; tone: LogTone };
+
+function eventToLogEntry(event: ChannelEvent, elapsedMs: number): LogEntry {
+  const ts = formatElapsedMs(elapsedMs);
+
+  switch (event.type) {
+    case "channel_sending":
+      return { text: `[${ts}] ${event.channel} sending...`, tone: "default" };
+    case "channel_retrying":
+      return { text: `[${ts}] ${event.channel} retrying (attempt ${event.attempt})...`, tone: "amber" };
+    case "channel_sent":
+      return { text: `[${ts}] ${event.channel} sent`, tone: "green" };
+    case "channel_failed":
+      return { text: `[${ts}] ${event.channel} failed: ${event.error}`, tone: "red" };
+    case "aggregating":
+      return { text: `[${ts}] aggregating deliveries and summary`, tone: "cyan" };
+    case "done": {
+      const tone: LogTone = event.summary.failed > 0 ? "red" : "green";
+      return { text: `[${ts}] done — ok=${event.summary.ok}, failed=${event.summary.failed}`, tone };
+    }
   }
-
-  const entries: string[] = [
-    `[0.00s] incident ${incidentId} queued`,
-    "[0.00s] Promise.allSettled() launched 4 channel sends",
-  ];
-
-  for (const channel of channels) {
-    if (channel.status === "pending") {
-      continue;
-    }
-
-    if (channel.status === "sending") {
-      entries.push(
-        `[${formatElapsedMs(Math.min(snapshot.elapsedMs, channel.durationMs))}] ${channel.id} sending...`
-      );
-      continue;
-    }
-
-    if (channel.status === "failed") {
-      entries.push(
-        `[${formatElapsedMs(channel.durationMs)}] ${channel.id} failed: ${channel.error}`
-      );
-      continue;
-    }
-
-    if (channel.status === "retrying") {
-      entries.push(
-        `[${formatElapsedMs(snapshot.elapsedMs)}] retrying ${channel.id}...`
-      );
-      continue;
-    }
-
-    if (channel.retryCount && channel.retryCount > 0) {
-      entries.push(
-        `[${formatElapsedMs(channel.durationMs)}] ${channel.id} sent (retry succeeded)`
-      );
-      continue;
-    }
-
-    entries.push(`[${formatElapsedMs(channel.durationMs)}] ${channel.id} sent`);
-  }
-
-  if (snapshot.status === "aggregating") {
-    entries.push(
-      `[${formatElapsedMs(snapshot.elapsedMs)}] aggregating deliveries and summary`
-    );
-  }
-
-  if (snapshot.status === "done" && snapshot.summary) {
-    entries.push(
-      `[${formatElapsedMs(snapshot.elapsedMs)}] summary recorded: ok=${snapshot.summary.ok}, failed=${snapshot.summary.failed}`
-    );
-  }
-
-  entries.push(`[${formatElapsedMs(snapshot.elapsedMs)}] message: ${message}`);
-
-  return entries;
 }
+
+const IDLE_LOG: LogEntry[] = [
+  { text: "Idle: click Dispatch Alert to start the run.", tone: "default" },
+  { text: "Promise.allSettled() will fan out to all channels in parallel.", tone: "default" },
+];
+
+const LOG_TONE_CLASS: Record<LogTone, string> = {
+  default: "text-gray-900",
+  green: "text-green-700",
+  amber: "text-amber-700",
+  red: "text-red-700",
+  cyan: "text-cyan-700",
+};
 
 function statusExplanation(
   status: RunStatus | "idle",
@@ -729,6 +695,7 @@ export function FanOutDemo({
   const [runId, setRunId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<FanOutSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [eventLog, setEventLog] = useState<LogEntry[]>(IDLE_LOG);
 
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -832,10 +799,12 @@ export function FanOutDemo({
             return;
           }
 
+          const elapsedMs = Math.max(0, Date.now() - startedAtRef.current);
           const nextAccumulator = applyChannelEvent(accumulatorRef.current, event);
           accumulatorRef.current = nextAccumulator;
 
           setSnapshot(toSnapshot(nextAccumulator, startedAtRef.current));
+          setEventLog((prev) => [...prev, eventToLogEntry(event, elapsedMs)]);
 
           if (nextAccumulator.status === "done") {
             stopElapsedTicker();
@@ -899,6 +868,7 @@ export function FanOutDemo({
     setError(null);
     setSnapshot(null);
     setRunId(null);
+    setEventLog([]);
 
     stopElapsedTicker();
     abortRef.current?.abort();
@@ -929,6 +899,10 @@ export function FanOutDemo({
       accumulatorRef.current = nextAccumulator;
       setRunId(payload.runId);
       setSnapshot(toSnapshot(nextAccumulator, startedAt));
+      setEventLog([
+        { text: `[0.00s] incident ${FAN_OUT_DEMO_DEFAULTS.incidentId} queued`, tone: "default" },
+        { text: "[0.00s] Promise.allSettled() launched 4 channel sends", tone: "default" },
+      ]);
 
       if (controller.signal.aborted) {
         return;
@@ -955,6 +929,7 @@ export function FanOutDemo({
     setRunId(null);
     setSnapshot(null);
     setError(null);
+    setEventLog(IDLE_LOG);
     setTimeout(() => {
       startButtonRef.current?.focus();
     }, 0);
@@ -968,17 +943,6 @@ export function FanOutDemo({
   );
   const isRunning = runId !== null && snapshot?.status !== "done";
   const canSelectFailChannels = !isRunning;
-
-  const executionLog = useMemo(
-    () =>
-      buildExecutionLog(
-        snapshot,
-        channels,
-        FAN_OUT_DEMO_DEFAULTS.incidentId,
-        FAN_OUT_DEMO_DEFAULTS.message
-      ),
-    [snapshot, channels]
-  );
 
   const highlights = useMemo(
     () => buildHighlightState(snapshot, workflowLineMap, stepLineMap, stepErrorLineMap, stepSuccessLineMap),
@@ -1082,6 +1046,21 @@ export function FanOutDemo({
                 })}
               </div>
             </div>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-gray-900">
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-2.5 w-2.5 rounded bg-background-200 border border-gray-400/70" />
+                Pass
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-2.5 w-2.5 rounded bg-amber-700/20 border border-amber-700/40" />
+                Transient <span className="text-gray-700">(retry succeeds)</span>
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-2.5 w-2.5 rounded bg-red-700/20 border border-red-700/40" />
+                Permanent <span className="text-gray-700">(FatalError)</span>
+              </span>
+            </div>
           </div>
 
           <div
@@ -1142,9 +1121,9 @@ export function FanOutDemo({
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-900">
           Execution Log
         </p>
-        <ol className="space-y-1 font-mono text-xs text-gray-900">
-          {executionLog.map((entry, index) => (
-            <li key={`${entry}-${index}`}>{entry}</li>
+        <ol className="space-y-1 font-mono text-xs">
+          {eventLog.map((entry, index) => (
+            <li key={`${entry.text}-${index}`} className={LOG_TONE_CLASS[entry.tone]}>{entry.text}</li>
           ))}
         </ol>
       </div>
