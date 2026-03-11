@@ -8,7 +8,7 @@ type ChannelFailureMode = "none" | "transient" | "permanent";
 type RunStatus = "fan_out" | "aggregating" | "done";
 type ChannelStatus = "pending" | "sending" | "sent" | "failed" | "retrying";
 type HighlightTone = "amber" | "cyan" | "green" | "red";
-type GutterMarkKind = "success" | "fail";
+type GutterMarkKind = "success" | "fail" | "retry";
 
 type ChannelSnapshot = {
   id: ChannelId;
@@ -85,6 +85,7 @@ type WorkflowLineMap = {
 
 type StepLineMap = Record<ChannelId, number[]>;
 type StepErrorLineMap = Record<ChannelId, number[]>;
+type StepRetryLineMap = Record<ChannelId, number[]>;
 type StepSuccessLineMap = Record<ChannelId, number[]>;
 
 type DemoProps = {
@@ -95,6 +96,7 @@ type DemoProps = {
   workflowLineMap: WorkflowLineMap;
   stepLineMap: StepLineMap;
   stepErrorLineMap: StepErrorLineMap;
+  stepRetryLineMap: StepRetryLineMap;
   stepSuccessLineMap: StepSuccessLineMap;
 };
 
@@ -474,11 +476,18 @@ function pickActiveChannel(snapshot: FanOutSnapshot): ChannelId | null {
   }).id;
 }
 
+function gutterKindForChannel(channel: ChannelSnapshot): GutterMarkKind {
+  if (channel.status === "failed") return "fail";
+  if (channel.retryCount && channel.retryCount > 0) return "retry";
+  return "success";
+}
+
 function buildHighlightState(
   snapshot: FanOutSnapshot | null,
   workflowLineMap: WorkflowLineMap,
   stepLineMap: StepLineMap,
   stepErrorLineMap: StepErrorLineMap,
+  stepRetryLineMap: StepRetryLineMap,
   stepSuccessLineMap: StepSuccessLineMap
 ): HighlightState {
   if (!snapshot) {
@@ -488,18 +497,22 @@ function buildHighlightState(
   const workflowGutterMarks: Record<number, GutterMarkKind> = {};
   const stepGutterMarks: Record<number, GutterMarkKind> = {};
 
+  const gutterLinesForChannel = (channel: ChannelSnapshot): number[] => {
+    const kind = gutterKindForChannel(channel);
+    if (kind === "fail") return stepErrorLineMap[channel.id] ?? [];
+    if (kind === "retry") return stepRetryLineMap[channel.id] ?? [];
+    return stepSuccessLineMap[channel.id] ?? [];
+  };
+
   if (snapshot.status === "fan_out") {
     const activeChannel = pickActiveChannel(snapshot);
 
     for (const channel of snapshot.channels) {
       if (channel.status !== "sending" && channel.status !== "retrying") {
-        const isFailed = channel.status === "failed";
         addGutterMarks(
           stepGutterMarks,
-          isFailed
-            ? (stepErrorLineMap[channel.id] ?? [])
-            : (stepSuccessLineMap[channel.id] ?? []),
-          isFailed ? "fail" : "success"
+          gutterLinesForChannel(channel),
+          gutterKindForChannel(channel)
         );
       }
     }
@@ -517,20 +530,15 @@ function buildHighlightState(
     snapshot.channels.map((channel) => [channel.id, channel] as const)
   );
 
-  for (const channel of CHANNEL_OPTIONS) {
-    const channelStatus = snapshotChannelById.get(channel.id)?.status;
-    if (channelStatus === "failed") {
-      addGutterMarks(stepGutterMarks, stepErrorLineMap[channel.id] ?? [], "fail");
-      continue;
-    }
-
-    if (channelStatus === "sent") {
-      addGutterMarks(
-        stepGutterMarks,
-        stepSuccessLineMap[channel.id] ?? [],
-        "success"
-      );
-    }
+  for (const opt of CHANNEL_OPTIONS) {
+    const channel = snapshotChannelById.get(opt.id);
+    if (!channel) continue;
+    if (channel.status === "sending" || channel.status === "retrying") continue;
+    addGutterMarks(
+      stepGutterMarks,
+      gutterLinesForChannel(channel),
+      gutterKindForChannel(channel)
+    );
   }
 
   if (snapshot.status === "aggregating") {
@@ -687,6 +695,7 @@ export function FanOutDemo({
   workflowLineMap,
   stepLineMap,
   stepErrorLineMap,
+  stepRetryLineMap,
   stepSuccessLineMap,
 }: DemoProps) {
   const [failureModes, setFailureModes] = useState<Record<ChannelId, ChannelFailureMode>>(
@@ -945,8 +954,8 @@ export function FanOutDemo({
   const canSelectFailChannels = !isRunning;
 
   const highlights = useMemo(
-    () => buildHighlightState(snapshot, workflowLineMap, stepLineMap, stepErrorLineMap, stepSuccessLineMap),
-    [snapshot, workflowLineMap, stepLineMap, stepErrorLineMap, stepSuccessLineMap]
+    () => buildHighlightState(snapshot, workflowLineMap, stepLineMap, stepErrorLineMap, stepRetryLineMap, stepSuccessLineMap),
+    [snapshot, workflowLineMap, stepLineMap, stepErrorLineMap, stepRetryLineMap, stepSuccessLineMap]
   );
   const isRetrying = useMemo(
     () => channels.some((channel) => channel.status === "retrying"),

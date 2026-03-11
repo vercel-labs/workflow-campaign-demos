@@ -14,6 +14,7 @@ type WorkflowLineMap = {
 
 type StepLineMap = Record<ChannelId, number[]>;
 type StepErrorLineMap = Record<ChannelId, number[]>;
+type StepRetryLineMap = Record<ChannelId, number[]>;
 type StepSuccessLineMap = Record<ChannelId, number[]>;
 
 // Read the actual workflow source file — displayed in the code workbench
@@ -164,6 +165,20 @@ function buildStepErrorLineMap(code: string): StepErrorLineMap {
   };
 }
 
+function buildStepRetryLineMap(code: string): StepRetryLineMap {
+  const lines = code.split("\n");
+  // Transient failures throw a regular Error — the SDK auto-retries and
+  // the channel eventually succeeds. Point the amber retry gutter at this line.
+  const retryLine = findErrorLine(lines, "throw new Error(CHANNEL_ERROR_MESSAGES[channel])");
+
+  return {
+    slack: retryLine,
+    email: retryLine,
+    sms: retryLine,
+    pagerduty: retryLine,
+  };
+}
+
 function findReturnLineInBlock(lines: string[], fnMarker: string): number[] {
   const start = lines.findIndex((line) => line.includes(fnMarker));
   if (start === -1) return [];
@@ -195,6 +210,7 @@ const stepLinesHtml = highlightCodeToHtmlLines(stepCode);
 const workflowLineMap = buildWorkflowLineMap(workflowCode);
 const stepLineMap = buildStepLineMap(stepCode);
 const stepErrorLineMap = buildStepErrorLineMap(stepCode);
+const stepRetryLineMap = buildStepRetryLineMap(stepCode);
 const stepSuccessLineMap = buildStepSuccessLineMap(stepCode);
 
 export default function Home() {
@@ -230,6 +246,7 @@ export default function Home() {
               workflowLineMap={workflowLineMap}
               stepLineMap={stepLineMap}
               stepErrorLineMap={stepErrorLineMap}
+              stepRetryLineMap={stepRetryLineMap}
               stepSuccessLineMap={stepSuccessLineMap}
             />
           </div>

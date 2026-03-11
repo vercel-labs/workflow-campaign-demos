@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type HighlightTone = "amber" | "cyan" | "green" | "red";
-type GutterMarkKind = "success" | "fail";
+type GutterMarkKind = "success" | "fail" | "retry";
 type CopyState = "idle" | "copied" | "failed";
 
 type HighlightStyle = {
@@ -175,7 +175,11 @@ function CodePane({
                 >
                   <span
                     className={`flex w-4 shrink-0 items-center justify-center py-0.5 transition-opacity duration-500 ${
-                      displayKind === "fail" ? "text-red-700" : "text-green-700"
+                      displayKind === "fail"
+                        ? "text-red-700"
+                        : displayKind === "retry"
+                          ? "text-amber-700"
+                          : "text-green-700"
                     } ${markKind ? "opacity-100" : "opacity-0"}`}
                     aria-hidden="true"
                   >
@@ -183,7 +187,7 @@ function CodePane({
                       viewBox="0 0 16 16"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="3"
+                      strokeWidth={displayKind === "retry" ? 2 : 3}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       className="h-3.5 w-3.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
@@ -192,6 +196,11 @@ function CodePane({
                         <>
                           <line x1="4" y1="4" x2="12" y2="12" />
                           <line x1="12" y1="4" x2="4" y2="12" />
+                        </>
+                      ) : displayKind === "retry" ? (
+                        <>
+                          <path d="M12 3 C6 1, 2 5, 4 9 C6 13, 12 13, 14 9" />
+                          <polyline points="11,1.5 13,3.5 10.5,4.5" />
                         </>
                       ) : (
                         <polyline points={CHECK_ICON_POINTS} />
