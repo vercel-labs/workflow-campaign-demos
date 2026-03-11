@@ -6,14 +6,11 @@ Broadcast an incident alert to Slack, Email, SMS, and PagerDuty in parallel usin
 
 ```
 POST /api/fan-out
-  → start(incidentFanOut, [incidentId, message, failChannels, permanentFailChannels])
+  → start(incidentFanOut, [incidentId, message, failures])
   → returns { runId }
 
 GET /api/readable/[runId]
   → getRun(runId).getReadable() → SSE stream of ChannelEvent objects
-
-GET /api/run/[runId]
-  → getRun(runId) → run metadata (status, timestamps)
 ```
 
 Steps stream progress events via `getWritable<ChannelEvent>()` from inside `"use step"` functions. The client connects to the SSE stream and appends each event to an execution log in real time.
@@ -25,7 +22,6 @@ Steps stream progress events via `getWritable<ChannelEvent>()` from inside `"use
 | `workflows/incident-fanout.ts` | Workflow (`"use workflow"`) + step functions (`"use step"`) |
 | `app/api/fan-out/route.ts` | `start()` from `workflow/api` — validates and enqueues |
 | `app/api/readable/[runId]/route.ts` | `run.getReadable()` piped through SSE transform |
-| `app/api/run/[runId]/route.ts` | `getRun()` — run status metadata |
 | `app/page.tsx` | Server component — reads workflow source, builds line maps, highlights code |
 | `app/components/demo.tsx` | Client — SSE connection, state accumulator, execution log, controls |
 | `app/components/fanout-code-workbench.tsx` | Two-pane code viewer with active line + gutter mark rendering |

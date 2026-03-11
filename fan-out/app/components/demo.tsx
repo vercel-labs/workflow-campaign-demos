@@ -41,12 +41,16 @@ type FanOutSnapshot = {
   };
 };
 
+type DemoFailures = {
+  transient: ChannelId[];
+  permanent: ChannelId[];
+};
+
 type StartResponse = {
   runId: string;
   incidentId: string;
   message: string;
-  failChannels: ChannelId[];
-  permanentFailChannels: ChannelId[];
+  failures: DemoFailures;
   status: "fan_out";
 };
 
@@ -674,17 +678,14 @@ export function cycleFailureMode(
   return { ...previous, [channelId]: FAILURE_MODE_CYCLE[previous[channelId]] };
 }
 
-function deriveFailArrays(modes: Record<ChannelId, ChannelFailureMode>): {
-  failChannels: ChannelId[];
-  permanentFailChannels: ChannelId[];
-} {
-  const failChannels: ChannelId[] = [];
-  const permanentFailChannels: ChannelId[] = [];
+function deriveFailures(modes: Record<ChannelId, ChannelFailureMode>): DemoFailures {
+  const transient: ChannelId[] = [];
+  const permanent: ChannelId[] = [];
   for (const [id, mode] of Object.entries(modes) as [ChannelId, ChannelFailureMode][]) {
-    if (mode === "transient") failChannels.push(id);
-    else if (mode === "permanent") permanentFailChannels.push(id);
+    if (mode === "transient") transient.push(id);
+    else if (mode === "permanent") permanent.push(id);
   }
-  return { failChannels, permanentFailChannels };
+  return { transient, permanent };
 }
 
 export function FanOutDemo({
@@ -887,14 +888,13 @@ export function FanOutDemo({
 
     try {
       const controller = ensureAbortController();
-      const { failChannels, permanentFailChannels } = deriveFailArrays(failureModes);
+      const failures = deriveFailures(failureModes);
       const payload = await postJson<StartResponse>(
         "/api/fan-out",
         {
           incidentId: FAN_OUT_DEMO_DEFAULTS.incidentId,
           message: FAN_OUT_DEMO_DEFAULTS.message,
-          failChannels,
-          permanentFailChannels,
+          failures,
         },
         controller.signal
       );

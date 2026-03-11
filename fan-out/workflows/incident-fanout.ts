@@ -4,6 +4,14 @@ import { FatalError, getStepMetadata, getWritable } from "workflow";
 
 export type NotificationChannel = "slack" | "email" | "sms" | "pagerduty";
 
+// Demo-only: configures which channels should fail (and how) in the
+// interactive UI. In a real workflow you'd remove this entirely — your
+// steps would call real APIs and failures would be organic.
+export type DemoFailures = {
+  transient: NotificationChannel[];
+  permanent: NotificationChannel[];
+};
+
 export type ChannelEvent =
   | { type: "channel_sending"; channel: string }
   | { type: "channel_sent"; channel: string; providerId: string }
@@ -54,30 +62,32 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Demo entry point. The `failures` parameter is only used by the interactive
+// UI to let users toggle simulated failures — strip it out when adapting
+// this workflow for production use.
 export async function incidentFanOut(
   incidentId: string,
   message: string,
-  failChannels: NotificationChannel[] = [],
-  permanentFailChannels: NotificationChannel[] = []
+  failures: DemoFailures = { transient: [], permanent: [] }
 ): Promise<IncidentReport> {
   "use workflow";
 
   const fanOutTargets = [
     {
       channel: "slack" as const,
-      send: () => sendSlackAlert(incidentId, message, failChannels, permanentFailChannels),
+      send: () => sendSlackAlert(incidentId, message, failures),
     },
     {
       channel: "email" as const,
-      send: () => sendEmailAlert(incidentId, message, failChannels, permanentFailChannels),
+      send: () => sendEmailAlert(incidentId, message, failures),
     },
     {
       channel: "sms" as const,
-      send: () => sendSmsAlert(incidentId, message, failChannels, permanentFailChannels),
+      send: () => sendSmsAlert(incidentId, message, failures),
     },
     {
       channel: "pagerduty" as const,
-      send: () => sendPagerDutyAlert(incidentId, message, failChannels, permanentFailChannels),
+      send: () => sendPagerDutyAlert(incidentId, message, failures),
     },
   ];
 
@@ -112,28 +122,30 @@ function errorMessage(reason: unknown): string {
   return "Unknown delivery failure";
 }
 
+// Demo: shared implementation for all channel steps. In production you'd
+// replace the delay + simulated failures with a real API call per channel.
+// The getWritable() streaming and getStepMetadata() calls are also demo-only
+// — they power the live execution log in the UI.
 async function sendChannelAlert(
   channel: NotificationChannel,
   incidentId: string,
   message: string,
-  failChannels: NotificationChannel[],
-  permanentFailChannels: NotificationChannel[]
+  failures: DemoFailures
 ): Promise<{ providerId: string }> {
-  // Demo: stream progress events to the UI via getWritable()
   const writer = getWritable<ChannelEvent>().getWriter();
   const { attempt } = getStepMetadata();
 
   try {
     if (attempt > 1) {
-      await writer.write({ type: "channel_retrying", channel, attempt }); // Demo: notify UI of retry
+      await writer.write({ type: "channel_retrying", channel, attempt });
     }
 
-    await writer.write({ type: "channel_sending", channel }); // Demo: notify UI that this channel started
-    await delay(CHANNEL_DELAY_MS[channel]); // Demo: simulate network latency for visualization
+    await writer.write({ type: "channel_sending", channel });
+    await delay(CHANNEL_DELAY_MS[channel]);
 
     // Permanent failure — FatalError prevents the SDK's automatic retry,
     // so the channel stays failed in Promise.allSettled().
-    if (permanentFailChannels.includes(channel)) {
+    if (failures.permanent.includes(channel)) {
       const error = CHANNEL_ERROR_MESSAGES[channel];
       await writer.write({ type: "channel_failed", channel, error, attempt });
       throw new FatalError(error);
@@ -141,12 +153,12 @@ async function sendChannelAlert(
 
     // Transient failure — throws a regular Error on attempt 1 so the SDK
     // auto-retries. The retry will succeed, showing the recovery path.
-    if (attempt === 1 && failChannels.includes(channel)) {
+    if (attempt === 1 && failures.transient.includes(channel)) {
       throw new Error(CHANNEL_ERROR_MESSAGES[channel]);
     }
 
     const providerId = `${channel}_${incidentId}_${message.length}_${attempt}`;
-    await writer.write({ type: "channel_sent", channel, providerId }); // Demo: notify UI of success
+    await writer.write({ type: "channel_sent", channel, providerId });
 
     return { providerId };
   } finally {
@@ -157,41 +169,37 @@ async function sendChannelAlert(
 async function sendSlackAlert(
   incidentId: string,
   message: string,
-  failChannels: NotificationChannel[],
-  permanentFailChannels: NotificationChannel[]
+  failures: DemoFailures
 ): Promise<{ providerId: string }> {
   "use step";
-  return sendChannelAlert("slack", incidentId, message, failChannels, permanentFailChannels);
+  return sendChannelAlert("slack", incidentId, message, failures);
 }
 
 async function sendEmailAlert(
   incidentId: string,
   message: string,
-  failChannels: NotificationChannel[],
-  permanentFailChannels: NotificationChannel[]
+  failures: DemoFailures
 ): Promise<{ providerId: string }> {
   "use step";
-  return sendChannelAlert("email", incidentId, message, failChannels, permanentFailChannels);
+  return sendChannelAlert("email", incidentId, message, failures);
 }
 
 async function sendSmsAlert(
   incidentId: string,
   message: string,
-  failChannels: NotificationChannel[],
-  permanentFailChannels: NotificationChannel[]
+  failures: DemoFailures
 ): Promise<{ providerId: string }> {
   "use step";
-  return sendChannelAlert("sms", incidentId, message, failChannels, permanentFailChannels);
+  return sendChannelAlert("sms", incidentId, message, failures);
 }
 
 async function sendPagerDutyAlert(
   incidentId: string,
   message: string,
-  failChannels: NotificationChannel[],
-  permanentFailChannels: NotificationChannel[]
+  failures: DemoFailures
 ): Promise<{ providerId: string }> {
   "use step";
-  return sendChannelAlert("pagerduty", incidentId, message, failChannels, permanentFailChannels);
+  return sendChannelAlert("pagerduty", incidentId, message, failures);
 }
 
 async function aggregateResults(
@@ -204,8 +212,8 @@ async function aggregateResults(
   const writer = getWritable<ChannelEvent>().getWriter();
 
   try {
-    await writer.write({ type: "aggregating" }); // Demo: notify UI that aggregation started
-    await delay(AGGREGATE_DELAY_MS); // Demo: simulate processing time for visualization
+    await writer.write({ type: "aggregating" });
+    await delay(AGGREGATE_DELAY_MS);
 
     const ok = deliveries.filter((delivery) => delivery.status === "sent").length;
     const failed = deliveries.length - ok;
@@ -217,7 +225,7 @@ async function aggregateResults(
       summary: { ok, failed },
     };
 
-    await writer.write({ type: "done", summary: report.summary }); // Demo: notify UI of completion
+    await writer.write({ type: "done", summary: report.summary });
 
     return report;
   } finally {
