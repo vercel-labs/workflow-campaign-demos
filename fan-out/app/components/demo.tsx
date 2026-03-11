@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FanOutCodeWorkbench } from "./fanout-code-workbench";
 
 type ChannelId = "slack" | "email" | "sms" | "pagerduty";
+type ChannelFailureMode = "none" | "transient" | "permanent";
 type RunStatus = "fan_out" | "aggregating" | "done";
 type ChannelStatus = "pending" | "sending" | "sent" | "failed" | "retrying";
 type HighlightTone = "amber" | "cyan" | "green" | "red";
@@ -45,6 +46,7 @@ type StartResponse = {
   incidentId: string;
   message: string;
   failChannels: ChannelId[];
+  permanentFailChannels: ChannelId[];
   status: "fan_out";
 };
 
@@ -110,7 +112,13 @@ const ELAPSED_TICK_MS = 120;
 export const FAN_OUT_DEMO_DEFAULTS = {
   incidentId: "INC-2041",
   message: "Database latency exceeded 1.5s threshold in us-east-1",
-  failChannels: [] as ChannelId[],
+};
+
+const INITIAL_FAILURE_MODES: Record<ChannelId, ChannelFailureMode> = {
+  slack: "none",
+  email: "none",
+  sms: "none",
+  pagerduty: "none",
 };
 
 const CHANNEL_OPTIONS: Array<{
@@ -679,20 +687,30 @@ async function postJson<TResponse>(
   return payload as TResponse;
 }
 
-export function toggleFailChannel(
-  previous: ChannelId[],
-  channelId: ChannelId,
-  shouldFail: boolean
-): ChannelId[] {
-  if (shouldFail) {
-    if (previous.includes(channelId)) {
-      return previous;
-    }
+const FAILURE_MODE_CYCLE: Record<ChannelFailureMode, ChannelFailureMode> = {
+  none: "transient",
+  transient: "permanent",
+  permanent: "none",
+};
 
-    return [...previous, channelId];
+export function cycleFailureMode(
+  previous: Record<ChannelId, ChannelFailureMode>,
+  channelId: ChannelId
+): Record<ChannelId, ChannelFailureMode> {
+  return { ...previous, [channelId]: FAILURE_MODE_CYCLE[previous[channelId]] };
+}
+
+function deriveFailArrays(modes: Record<ChannelId, ChannelFailureMode>): {
+  failChannels: ChannelId[];
+  permanentFailChannels: ChannelId[];
+} {
+  const failChannels: ChannelId[] = [];
+  const permanentFailChannels: ChannelId[] = [];
+  for (const [id, mode] of Object.entries(modes) as [ChannelId, ChannelFailureMode][]) {
+    if (mode === "transient") failChannels.push(id);
+    else if (mode === "permanent") permanentFailChannels.push(id);
   }
-
-  return previous.filter((value) => value !== channelId);
+  return { failChannels, permanentFailChannels };
 }
 
 export function FanOutDemo({
@@ -705,8 +723,8 @@ export function FanOutDemo({
   stepErrorLineMap,
   stepSuccessLineMap,
 }: DemoProps) {
-  const [failChannels, setFailChannels] = useState<ChannelId[]>(
-    FAN_OUT_DEMO_DEFAULTS.failChannels
+  const [failureModes, setFailureModes] = useState<Record<ChannelId, ChannelFailureMode>>(
+    INITIAL_FAILURE_MODES
   );
   const [runId, setRunId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<FanOutSnapshot | null>(null);
@@ -890,12 +908,14 @@ export function FanOutDemo({
 
     try {
       const controller = ensureAbortController();
+      const { failChannels, permanentFailChannels } = deriveFailArrays(failureModes);
       const payload = await postJson<StartResponse>(
         "/api/fan-out",
         {
           incidentId: FAN_OUT_DEMO_DEFAULTS.incidentId,
           message: FAN_OUT_DEMO_DEFAULTS.message,
           failChannels,
+          permanentFailChannels,
         },
         controller.signal
       );
@@ -1025,32 +1045,39 @@ export function FanOutDemo({
                 Reset Demo
               </button>
 
-              <div className="flex items-center gap-2 overflow-x-auto rounded-md border border-gray-400/70 bg-background-100 px-2 py-1 text-xs text-gray-900">
+              <div className="flex items-center gap-1.5 overflow-x-auto rounded-md border border-gray-400/70 bg-background-100 px-2 py-1 text-xs text-gray-900">
                 <span className="font-semibold uppercase tracking-wide text-gray-900">
                   Fail
                 </span>
                 {CHANNEL_OPTIONS.map((channel) => {
-                  const checked = failChannels.includes(channel.id);
+                  const mode = failureModes[channel.id];
 
                   return (
-                    <label
+                    <button
                       key={channel.id}
-                      className="inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-gray-1000"
+                      type="button"
+                      disabled={!canSelectFailChannels}
+                      aria-label={`${channel.label}: ${mode === "none" ? "no failure" : mode === "transient" ? "transient failure" : "permanent failure"} (click to cycle)`}
+                      onClick={() => {
+                        setFailureModes((previous) =>
+                          cycleFailureMode(previous, channel.id)
+                        );
+                      }}
+                      className={`cursor-pointer rounded px-2 py-0.5 font-mono transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        mode === "none"
+                          ? "bg-background-200 text-gray-900"
+                          : mode === "transient"
+                            ? "bg-amber-700/20 text-amber-700"
+                            : "bg-red-700/20 text-red-700"
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={!canSelectFailChannels}
-                        aria-label={`Fail ${channel.label}`}
-                        onChange={(event) => {
-                          setFailChannels((previous) =>
-                            toggleFailChannel(previous, channel.id, event.target.checked)
-                          );
-                        }}
-                        className="h-3.5 w-3.5 rounded border-gray-400 bg-background-100 text-blue-700 focus:ring-2 focus:ring-blue-700 focus:ring-offset-0 disabled:cursor-not-allowed"
-                      />
-                      <span>{channel.compactLabel}</span>
-                    </label>
+                      {channel.compactLabel}
+                      {mode !== "none" && (
+                        <span className="ml-0.5 text-[10px]">
+                          {mode === "transient" ? "T" : "P"}
+                        </span>
+                      )}
+                    </button>
                   );
                 })}
               </div>

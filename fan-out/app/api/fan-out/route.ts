@@ -9,6 +9,7 @@ type FanOutRequestBody = {
   incidentId?: unknown;
   message?: unknown;
   failChannels?: unknown;
+  permanentFailChannels?: unknown;
 };
 
 const VALID_CHANNELS = new Set<NotificationChannel>([
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
     typeof body.incidentId === "string" ? body.incidentId.trim() : "";
   const message = typeof body.message === "string" ? body.message.trim() : "";
   const failChannels = parseFailChannels(body.failChannels);
+  const permanentFailChannels = parseFailChannels(body.permanentFailChannels);
 
   if (!incidentId) {
     return NextResponse.json({ error: "incidentId is required" }, { status: 400 });
@@ -51,13 +53,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "message is required" }, { status: 400 });
   }
 
-  const run = await start(incidentFanOut, [incidentId, message, failChannels]);
+  const run = await start(incidentFanOut, [incidentId, message, failChannels, permanentFailChannels]);
 
   return NextResponse.json({
     runId: run.runId,
     incidentId,
     message,
     failChannels,
+    permanentFailChannels,
     status: "fan_out",
   });
 }
