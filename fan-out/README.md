@@ -1,143 +1,104 @@
 # Fan-Out Notifications Demo
 
-Broadcast an incident alert to Slack, Email, SMS, and PagerDuty in parallel using `Promise.allSettled()`.
+Broadcast an incident alert to Slack, Email, SMS, and PagerDuty in parallel using `Promise.allSettled()`. Each channel runs as a separate `"use step"` function with full retry semantics. The interactive UI lets you toggle channels between three failure modes to explore how the workflow handles partial failures.
 
-## Code Paths
-
-### Real Workflow Path (production)
+## How It Works
 
 ```
 POST /api/fan-out
-  → start(incidentFanOut, [incidentId, message, failChannels])
+  → start(incidentFanOut, [incidentId, message, failures])
   → returns { runId }
-
-GET /api/run/[runId]
-  → getRun(runId) → returns run metadata (status, timestamps)
 
 GET /api/readable/[runId]
-  → getRun(runId).getReadable() → SSE stream of workflow events
+  → getRun(runId).getReadable() → SSE stream of ChannelEvent objects
 ```
 
-**Files:**
+Steps stream progress events via `getWritable<ChannelEvent>()` from inside `"use step"` functions. The client connects to the SSE stream and appends each event to an execution log in real time.
+
+## Files
 
 | File | Role |
 |------|------|
-| `workflows/incident-fanout.ts` | Workflow orchestration (`"use workflow"`) + step functions (`"use step"`) |
-| `app/api/fan-out/route.ts` | `start()` from `workflow/api` |
-| `app/api/run/[runId]/route.ts` | `getRun()` from `workflow/api` |
-| `app/api/readable/[runId]/route.ts` | `run.getReadable()` SSE streaming |
+| `workflows/incident-fanout.ts` | Workflow (`"use workflow"`) + step functions (`"use step"`) |
+| `app/api/fan-out/route.ts` | `start()` from `workflow/api` — validates and enqueues |
+| `app/api/readable/[runId]/route.ts` | `run.getReadable()` piped through SSE transform |
+| `app/page.tsx` | Server component — reads workflow source, builds line maps, highlights code |
+| `app/components/demo.tsx` | Client — SSE connection, state accumulator, execution log, controls |
+| `app/components/fanout-code-workbench.tsx` | Two-pane code viewer with active line + gutter mark rendering |
 
-### Mock Demo Path (interactive UI)
+## Failure Modes
 
-```
-User clicks "Dispatch Alert"
-  → POST /api/mock/start { incidentId, message, failChannels }
-  → creates in-memory run with channel timings
-  → returns { runId }
+The UI provides per-channel cycling buttons with three states:
 
-Polling loop (every 150ms)
-  → GET /api/mock/status?runId=...
-  → calculates snapshot from elapsed time:
-      channels transition: "sending" → "sent" or "failed"
-      run transitions: "fan_out" → "aggregating" → "done"
-  → returns snapshot to client
+| Mode | Color | Backend Behavior |
+|------|-------|-----------------|
+| **Pass** | Gray | Channel succeeds normally |
+| **Transient** (T) | Amber | Throws `Error` on attempt 1 → SDK auto-retries → succeeds on attempt 2 |
+| **Permanent** (P) | Red | Throws `FatalError` → no retry → stays failed in `Promise.allSettled()` |
 
-Client updates:
-  → buildHighlightState(snapshot) → active lines + gutter marks
-  → FanOutCodeWorkbench re-renders with highlight changes
-  → polling stops when status === "done"
-```
+This lets you demo both the SDK's automatic retry path and the `Promise.allSettled()` partial failure path in one run.
 
-**Files:**
+## Channel Timing
 
-| File | Role |
-|------|------|
-| `app/components/demo.tsx` | Client state machine, polling, highlight computation |
-| `app/api/mock/start/route.ts` | Creates mock run |
-| `app/api/mock/status/route.ts` | Returns time-based snapshot |
-| `app/api/mock/store.ts` | In-memory store + `buildMockFanOutSnapshot()` |
-| `app/api/mock/api.ts` | Shared response helpers |
-
-### Mock Timing
-
-| Channel | Duration | Order |
-|---------|----------|-------|
-| Slack | 650ms | 1st to complete |
+| Channel | Simulated Latency | Typical Completion Order |
+|---------|------------------|--------------------------|
+| Slack | 650ms | 1st |
 | PagerDuty | 750ms | 2nd |
 | Email | 900ms | 3rd |
-| SMS | 1150ms | 4th (last) |
+| SMS | 1150ms | 4th |
 | Aggregate phase | +500ms after last channel | |
 
-### Code Highlighting Path
+## State Machine
 
 ```
-Server (page.tsx)
-  → define workflowCode + stepCode strings (with directive interpolation)
-  → highlightCodeToHtmlLines(code) — Prism tokenization → HTML string[]
-  → buildWorkflowLineMap(code) → { allSettled, deliveries, summary, returnResult }
-  → buildStepLineMap(code) → full function blocks per channel
-  → buildStepErrorLineMap(code) → throw line per channel
-  → buildStepSuccessLineMap(code) → return line per channel
-  → pass all as props to <FanOutDemo />
-
-Client (demo.tsx)
-  → buildHighlightState(snapshot, maps) → HighlightState
-  → pass to <FanOutCodeWorkbench />
-
-Render (fanout-code-workbench.tsx)
-  → two <CodePane /> side-by-side
-  → each line: active highlight (border + bg) + gutter mark (SVG ✓ or ✗)
-```
-
-### State Machine Phases
-
-```
-IDLE (snapshot = null)
+IDLE (no run)
   │ click "Dispatch Alert"
   ↓
-FAN_OUT (0 → ~1150ms)
-  │ tone: amber
-  │ workflow pane: allSettled lines glow
-  │ step pane: traces active channel, marks completed ones
-  │ channels transition sending → sent/failed as time passes
+FAN_OUT (tone: amber)
+  │ Promise.allSettled() running all 4 channels in parallel
+  │ Channels stream: channel_sending → channel_sent / channel_retrying / channel_failed
   ↓
-AGGREGATING (~1150ms → ~1650ms)
-  │ tone: cyan
-  │ workflow pane: deliveries + summary lines glow
-  │ step pane: all channels marked (✓ or ✗)
+AGGREGATING (tone: cyan)
+  │ aggregateResults() counting successes and failures
   ↓
-DONE (≥ ~1650ms)
-  │ tone: green (all ok) or red (any failed)
-  │ both panes: no active glow, all gutter marks shown
-  │ polling stops
+DONE (tone: green if all ok, red if any failed)
+  │ Summary recorded, execution log complete
   ↓
 IDLE (click "Reset Demo")
 ```
 
-### Highlight Tones
+## Execution Log
 
-| Phase | Tone | Border | Background |
-|-------|------|--------|------------|
-| Fan-out (sending) | amber | `border-amber-700` | `bg-amber-700/15` |
-| Aggregating | cyan | `border-cyan-700` | `bg-cyan-700/15` |
-| Done (all ok) | green | `border-green-700` | `bg-green-700/15` |
-| Done (any failed) | red | `border-red-700` | `bg-red-700/15` |
+The execution log is **append-only** — each `ChannelEvent` from the workflow stream is timestamped and appended as it arrives. Entries are colored by outcome:
+
+| Color | Meaning |
+|-------|---------|
+| Gray | Neutral (queued, sending, message) |
+| Green | Channel sent successfully |
+| Amber | Retrying / retry succeeded |
+| Red | Channel permanently failed |
+| Cyan | Aggregation phase |
+
+## Code Workbench Highlights
+
+### Active Line Highlighting
+
+The current workflow phase determines which lines glow in the two-pane code viewer:
+
+| Phase | Workflow Pane | Step Pane |
+|-------|--------------|-----------|
+| Fan-out | `Promise.allSettled()` block | Active channel's step function |
+| Aggregating | `deliveries` + `summary` lines | — |
+| Done | — | — |
 
 ### Gutter Marks
 
-- **Green ✓** on `return { providerId: ... }` line → channel sent successfully
-- **Red ✗** on `throw new Error(...)` line → channel failed
-- Marks fade in (`opacity-0 → opacity-1`, 500ms transition)
-- On removal, marks fade out preserving their last shape/color via `prevMarkRef`
+Lines get a full-width colored background + left border + icon based on outcome:
 
-## Shared Files
+| Mark | Color | Icon | Points At |
+|------|-------|------|-----------|
+| Success | Green | ✓ checkmark | `return { providerId }` |
+| Retry | Amber | ↻ circular arrow | `throw new Error(...)` (transient) |
+| Fail | Red | ✗ cross | `throw new FatalError(...)` (permanent) |
 
-These files come from `_shared/` at the project root:
-
-| File | Source | Method |
-|------|--------|--------|
-| `next.config.ts` | `_shared/next.config.ts` | symlink |
-| `tsconfig.json` | `_shared/tsconfig.json` | symlink |
-| `postcss.config.mjs` | `_shared/postcss.config.mjs` | symlink |
-| `app/globals.css` | `_shared/globals.css` | copy (has `@import`) |
-| `app/components/code-highlight-server.ts` | `_shared/code-highlight-server.ts` | copy (has npm imports) |
+Marks fade in/out with a 500ms opacity transition, preserving their last shape via `prevMarkRef`.

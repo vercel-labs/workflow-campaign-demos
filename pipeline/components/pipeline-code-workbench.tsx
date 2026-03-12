@@ -15,6 +15,11 @@ type ToneStyle = {
 
 const EMPTY_LINE_LIST: number[] = [];
 
+const GUTTER_LINE_STYLES: Record<MarkStatus, { border: string; bg: string; text: string }> = {
+  success: { border: "border-green-700", bg: "bg-green-700/15", text: "text-green-700" },
+  fail: { border: "border-red-700", bg: "bg-red-700/15", text: "text-red-700" },
+};
+
 const TONE_STYLES: Record<Tone, ToneStyle> = {
   active: {
     border: "border-amber-700",
@@ -153,15 +158,18 @@ function CodePane({
               }
               const stableMark = liveMark ?? prevMarkRef.current[lineNumber];
               const markVisible = liveMark !== undefined;
+              const gutterStyle = liveMark ? GUTTER_LINE_STYLES[liveMark] : null;
 
               return (
                 <div
                   key={lineNumber}
                   data-line={lineNumber}
                   className={`flex min-w-max border-l-2 transition-colors duration-300 ${
-                    isActive
-                      ? `${toneStyle.border} ${toneStyle.bg}`
-                      : "border-transparent"
+                    gutterStyle
+                      ? `${gutterStyle.border} ${gutterStyle.bg}`
+                      : isActive
+                        ? `${toneStyle.border} ${toneStyle.bg}`
+                        : "border-transparent"
                   }`}
                 >
                   <span
@@ -174,7 +182,7 @@ function CodePane({
                   </span>
                   <span
                     className={`w-8 shrink-0 select-none border-r border-gray-300/80 py-0.5 pr-2 text-right text-xs tabular-nums ${
-                      isActive ? toneStyle.text : "text-gray-900"
+                      gutterStyle ? gutterStyle.text : isActive ? toneStyle.text : "text-gray-900"
                     }`}
                     aria-hidden="true"
                   >

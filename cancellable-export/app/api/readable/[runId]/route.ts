@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest, { params }: ReadableRouteContex
   const encoder = new TextEncoder();
   let completedSections = 0;
 
-  const sseStream = (readable as unknown as ReadableStream).pipeThrough(
+  const sseStream = (readable as ReadableStream).pipeThrough(
     new TransformStream({
       transform(chunk, controller) {
         const data = typeof chunk === "string" ? chunk : JSON.stringify(chunk);

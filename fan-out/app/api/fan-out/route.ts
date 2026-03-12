@@ -3,12 +3,13 @@ import { start } from "workflow/api";
 import {
   incidentFanOut,
   type NotificationChannel,
+  type DemoFailures,
 } from "@/workflows/incident-fanout";
 
 type FanOutRequestBody = {
   incidentId?: unknown;
   message?: unknown;
-  failChannels?: unknown;
+  failures?: unknown;
 };
 
 const VALID_CHANNELS = new Set<NotificationChannel>([
@@ -18,7 +19,7 @@ const VALID_CHANNELS = new Set<NotificationChannel>([
   "pagerduty",
 ]);
 
-function parseFailChannels(value: unknown): NotificationChannel[] {
+function parseChannelArray(value: unknown): NotificationChannel[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -27,6 +28,18 @@ function parseFailChannels(value: unknown): NotificationChannel[] {
     (channel): channel is NotificationChannel =>
       typeof channel === "string" && VALID_CHANNELS.has(channel as NotificationChannel)
   );
+}
+
+function parseFailures(value: unknown): DemoFailures {
+  if (!value || typeof value !== "object") {
+    return { transient: [], permanent: [] };
+  }
+
+  const obj = value as Record<string, unknown>;
+  return {
+    transient: parseChannelArray(obj.transient),
+    permanent: parseChannelArray(obj.permanent),
+  };
 }
 
 export async function POST(request: Request) {
@@ -41,7 +54,7 @@ export async function POST(request: Request) {
   const incidentId =
     typeof body.incidentId === "string" ? body.incidentId.trim() : "";
   const message = typeof body.message === "string" ? body.message.trim() : "";
-  const failChannels = parseFailChannels(body.failChannels);
+  const failures = parseFailures(body.failures);
 
   if (!incidentId) {
     return NextResponse.json({ error: "incidentId is required" }, { status: 400 });
@@ -51,13 +64,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "message is required" }, { status: 400 });
   }
 
-  const run = await start(incidentFanOut, [incidentId, message, failChannels]);
+  const run = await start(incidentFanOut, [incidentId, message, failures]);
 
   return NextResponse.json({
     runId: run.runId,
     incidentId,
     message,
-    failChannels,
+    failures,
     status: "fan_out",
   });
 }

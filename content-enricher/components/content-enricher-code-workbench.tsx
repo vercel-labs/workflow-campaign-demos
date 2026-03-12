@@ -27,6 +27,11 @@ export type ContentEnricherCodeWorkbenchProps = {
   tone: HighlightTone;
 };
 
+const GUTTER_LINE_STYLES: Record<GutterMarkKind, { line: string; gutter: string }> = {
+  success: { line: "border-l-2 border-green-700 bg-green-700/15", gutter: "text-green-700" },
+  fail: { line: "border-l-2 border-red-700 bg-red-700/15", gutter: "text-red-700" },
+};
+
 function toneClasses(tone: HighlightTone): string {
   switch (tone) {
     case "green":
@@ -116,15 +121,22 @@ function CodePane({
             const markToRender = currentMark ?? previousMark;
             const visible = Boolean(currentMark);
 
+            const gutterStyle = currentMark ? GUTTER_LINE_STYLES[currentMark] : null;
+
             return (
               <div
                 key={lineNumber}
                 className={[
                   "flex items-start gap-2 px-2 py-0.5 transition-colors duration-500",
-                  isActive ? toneClasses(tone) : "border-l-2 border-transparent",
+                  gutterStyle
+                    ? gutterStyle.line
+                    : isActive ? toneClasses(tone) : "border-l-2 border-transparent",
                 ].join(" ")}
               >
-                <span className="w-10 shrink-0 select-none text-right font-mono tabular-nums text-gray-900">
+                <span className={[
+                  "w-10 shrink-0 select-none text-right font-mono tabular-nums",
+                  gutterStyle ? gutterStyle.gutter : "text-gray-900",
+                ].join(" ")}>
                   {lineNumber}
                 </span>
                 <span className="w-5 shrink-0 select-none">

@@ -3,13 +3,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type HighlightTone = "amber" | "cyan" | "green" | "red";
-type GutterMarkKind = "success" | "fail";
+type GutterMarkKind = "success" | "fail" | "retry";
 type CopyState = "idle" | "copied" | "failed";
 
 type HighlightStyle = {
   border: string;
   bg: string;
   text: string;
+};
+
+const GUTTER_LINE_STYLES: Record<GutterMarkKind, { border: string; bg: string; text: string }> = {
+  success: { border: "border-green-700", bg: "bg-green-700/15", text: "text-green-700" },
+  retry: { border: "border-amber-700", bg: "bg-amber-700/15", text: "text-amber-700" },
+  fail: { border: "border-red-700", bg: "bg-red-700/15", text: "text-red-700" },
 };
 
 const HIGHLIGHT_STYLES: Record<HighlightTone, HighlightStyle> = {
@@ -162,20 +168,27 @@ function CodePane({
               const isActive = activeLineSet.has(lineNumber);
               const markKind = gutterMarkMap.get(lineNumber);
               const displayKind = markKind ?? prevMarkRef.current.get(lineNumber);
+              const gutterStyle = markKind ? GUTTER_LINE_STYLES[markKind] : null;
 
               return (
                 <div
                   key={lineNumber}
                   className={`flex min-w-max border-l-2 transition-colors duration-300 ${
-                    isActive
-                      ? `${highlightStyle.border} ${highlightStyle.bg}`
-                      : "border-transparent"
+                    gutterStyle
+                      ? `${gutterStyle.border} ${gutterStyle.bg}`
+                      : isActive
+                        ? `${highlightStyle.border} ${highlightStyle.bg}`
+                        : "border-transparent"
                   }`}
                   data-line={lineNumber}
                 >
                   <span
                     className={`flex w-4 shrink-0 items-center justify-center py-0.5 transition-opacity duration-500 ${
-                      displayKind === "fail" ? "text-red-700" : "text-green-700"
+                      displayKind === "fail"
+                        ? "text-red-700"
+                        : displayKind === "retry"
+                          ? "text-amber-700"
+                          : "text-green-700"
                     } ${markKind ? "opacity-100" : "opacity-0"}`}
                     aria-hidden="true"
                   >
@@ -183,7 +196,7 @@ function CodePane({
                       viewBox="0 0 16 16"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="3"
+                      strokeWidth={displayKind === "retry" ? 2 : 3}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       className="h-3.5 w-3.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
@@ -193,6 +206,11 @@ function CodePane({
                           <line x1="4" y1="4" x2="12" y2="12" />
                           <line x1="12" y1="4" x2="4" y2="12" />
                         </>
+                      ) : displayKind === "retry" ? (
+                        <>
+                          <path d="M12 3 C6 1, 2 5, 4 9 C6 13, 12 13, 14 9" />
+                          <polyline points="11,1.5 13,3.5 10.5,4.5" />
+                        </>
                       ) : (
                         <polyline points={CHECK_ICON_POINTS} />
                       )}
@@ -200,7 +218,7 @@ function CodePane({
                   </span>
                   <span
                     className={`w-8 shrink-0 select-none border-r border-gray-300/80 py-0.5 pr-2 text-right text-xs tabular-nums ${
-                      isActive ? highlightStyle.text : "text-gray-900"
+                      gutterStyle ? gutterStyle.text : isActive ? highlightStyle.text : "text-gray-900"
                     }`}
                     aria-hidden="true"
                   >

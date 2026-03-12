@@ -14,6 +14,7 @@ type WorkflowLineMap = {
 
 type StepLineMap = Record<ChannelId, number[]>;
 type StepErrorLineMap = Record<ChannelId, number[]>;
+type StepRetryLineMap = Record<ChannelId, number[]>;
 type StepSuccessLineMap = Record<ChannelId, number[]>;
 
 // Read the actual workflow source file — displayed in the code workbench
@@ -152,14 +153,29 @@ function findErrorLine(lines: string[], marker: string): number[] {
 
 function buildStepErrorLineMap(code: string): StepErrorLineMap {
   const lines = code.split("\n");
-  // All channels share sendChannelAlert — the throw line is the same for all
-  const errorLine = findErrorLine(lines, "throw new Error(CHANNEL_ERROR_MESSAGES[channel])");
+  // Permanent failures (the only ones that end up with "failed" status in the
+  // UI) throw FatalError — point the gutter mark at that line.
+  const errorLine = findErrorLine(lines, "throw new FatalError(");
 
   return {
     slack: errorLine,
     email: errorLine,
     sms: errorLine,
     pagerduty: errorLine,
+  };
+}
+
+function buildStepRetryLineMap(code: string): StepRetryLineMap {
+  const lines = code.split("\n");
+  // Transient failures throw a regular Error — the SDK auto-retries and
+  // the channel eventually succeeds. Point the amber retry gutter at this line.
+  const retryLine = findErrorLine(lines, "throw new Error(CHANNEL_ERROR_MESSAGES[channel])");
+
+  return {
+    slack: retryLine,
+    email: retryLine,
+    sms: retryLine,
+    pagerduty: retryLine,
   };
 }
 
@@ -194,6 +210,7 @@ const stepLinesHtml = highlightCodeToHtmlLines(stepCode);
 const workflowLineMap = buildWorkflowLineMap(workflowCode);
 const stepLineMap = buildStepLineMap(stepCode);
 const stepErrorLineMap = buildStepErrorLineMap(stepCode);
+const stepRetryLineMap = buildStepRetryLineMap(stepCode);
 const stepSuccessLineMap = buildStepSuccessLineMap(stepCode);
 
 export default function Home() {
@@ -229,6 +246,7 @@ export default function Home() {
               workflowLineMap={workflowLineMap}
               stepLineMap={stepLineMap}
               stepErrorLineMap={stepErrorLineMap}
+              stepRetryLineMap={stepRetryLineMap}
               stepSuccessLineMap={stepSuccessLineMap}
             />
           </div>
