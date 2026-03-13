@@ -3,9 +3,9 @@
  * Publish demos to v0 via GitHub repo import with public shareable URLs.
  *
  * Usage:
- *   bun run v0-publish-public.ts                    # all demos
- *   bun run v0-publish-public.ts fan-out saga       # specific demos
- *   bun run v0-publish-public.ts --dry-run          # preview only
+ *   bun .scripts/v0-publish-public.ts                    # all demos
+ *   bun .scripts/v0-publish-public.ts fan-out saga       # specific demos
+ *   bun .scripts/v0-publish-public.ts --dry-run          # preview only
  *
  * Requires V0_API_KEY in environment.
  */
@@ -24,7 +24,7 @@ const { values, positionals } = parseArgs({
   allowPositionals: true,
 });
 
-const PROJECT_ROOT = import.meta.dir;
+const PROJECT_ROOT = join(import.meta.dir, "..");
 const REPO_ORG = "vercel-labs";
 
 // Discover demos: directories containing a package.json
@@ -97,7 +97,7 @@ if (!values.yes) {
 // Publish
 const apiKey = process.env.V0_API_KEY;
 if (!apiKey) {
-  console.error("V0_API_KEY not set. Export it or use: with_v0 bun run v0-publish-public.ts");
+  console.error("V0_API_KEY not set. Export it or use: with_v0 bun .scripts/v0-publish-public.ts");
   process.exit(1);
 }
 

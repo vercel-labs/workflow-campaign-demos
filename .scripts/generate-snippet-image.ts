@@ -1,13 +1,13 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Generate a ray.so code snippet image from a demo's README.
  *
  * Usage:
- *   node generate-snippet-image.mjs fan-out
- *   node generate-snippet-image.mjs fan-out saga bulkhead
- *   node generate-snippet-image.mjs --all
+ *   bun .scripts/generate-snippet-image.ts fan-out
+ *   bun .scripts/generate-snippet-image.ts fan-out saga bulkhead
+ *   bun .scripts/generate-snippet-image.ts --all
  *
- * Reads the first ```-fenced code block from each demo's README.md,
+ * Reads the first ```-fenced code block from each demo's post or README.md,
  * sends it to ray.so with the Vercel theme, and saves the PNG next to the README.
  *
  * Settings (matching screenshot):
@@ -19,14 +19,14 @@ import puppeteer from "puppeteer";
 import { readFileSync, readdirSync, statSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const PROJECT_ROOT = new URL(".", import.meta.url).pathname;
+const PROJECT_ROOT = join(import.meta.dir, "..");
 
 // --- Parse args ---
-const args = process.argv.slice(2);
+const args = Bun.argv.slice(2);
 const doAll = args.includes("--all");
 const slugs = args.filter((a) => !a.startsWith("-"));
 
-function discoverDemos() {
+function discoverDemos(): string[] {
   return readdirSync(PROJECT_ROOT)
     .filter((name) => {
       if (name.startsWith(".")) return false;
@@ -42,12 +42,12 @@ function discoverDemos() {
 
 const demos = doAll ? discoverDemos() : slugs;
 if (demos.length === 0) {
-  console.error("Usage: node generate-snippet-image.mjs <demo>... | --all");
+  console.error("Usage: bun .scripts/generate-snippet-image.ts <demo>... | --all");
   process.exit(1);
 }
 
 // --- Extract first ts/tsx code block from a markdown file ---
-function extractCodeBlock(mdPath) {
+function extractCodeBlock(mdPath: string): string | null {
   const content = readFileSync(mdPath, "utf-8");
   // Prefer ts/tsx fenced blocks, fall back to any fenced block
   const tsMatch = content.match(/```(?:ts|tsx|typescript)\n([\s\S]*?)```/);
@@ -58,14 +58,14 @@ function extractCodeBlock(mdPath) {
 }
 
 // --- Pretty title from slug ---
-function prettyTitle(slug) {
+function prettyTitle(slug: string): string {
   return slug
     .replace(/-/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // --- Build ray.so URL ---
-function buildRayUrl(code, title) {
+function buildRayUrl(code: string, title: string): string {
   const encoded = Buffer.from(code).toString("base64");
   const params = new URLSearchParams({
     title,
@@ -82,11 +82,11 @@ function buildRayUrl(code, title) {
 }
 
 // --- Generate image ---
-async function generateImage(slug) {
+async function generateImage(slug: string): Promise<string | null> {
   const postPath = join(PROJECT_ROOT, "posts", `${slug}.md`);
   const readmePath = join(PROJECT_ROOT, slug, "README.md");
   // Prefer the post file (has curated TS snippets), fall back to README
-  let mdPath;
+  let mdPath: string;
   try {
     statSync(postPath);
     mdPath = postPath;
@@ -118,17 +118,19 @@ async function generateImage(slug) {
 
     // Hide UI controls — try multiple selectors for different ray.so versions
     await page.evaluate(() => {
-      const hide = (sel) => {
+      const hide = (sel: string) => {
         const el = document.querySelector(sel);
-        if (el) el.style.display = "none";
+        if (el) (el as HTMLElement).style.display = "none";
       };
       // Old selectors
       hide("#frame > div.drag-control-points > div.handle.left");
       hide("#frame > div.drag-control-points > div.handle.right");
       hide("#app > main > section");
       // New selectors — hide anything that's not the code frame
-      for (const el of document.querySelectorAll("nav, footer, header, [class*='controls'], [class*='toolbar'], [class*='sidebar']")) {
-        el.style.display = "none";
+      for (const el of document.querySelectorAll(
+        "nav, footer, header, [class*='controls'], [class*='toolbar'], [class*='sidebar']"
+      )) {
+        (el as HTMLElement).style.display = "none";
       }
     });
 
@@ -150,17 +152,17 @@ async function generateImage(slug) {
 // --- Main ---
 console.log(`Generating snippet images for ${demos.length} demo(s)...\n`);
 
-let success = 0;
+let successCount = 0;
 let failed = 0;
 
 for (const slug of demos) {
   try {
     const result = await generateImage(slug);
-    if (result) success++;
-  } catch (err) {
+    if (result) successCount++;
+  } catch (err: any) {
     console.log(`  ${slug}: FAILED - ${err.message}`);
     failed++;
   }
 }
 
-console.log(`\nDone: ${success} generated, ${failed} failed.`);
+console.log(`\nDone: ${successCount} generated, ${failed} failed.`);

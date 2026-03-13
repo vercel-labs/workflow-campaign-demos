@@ -3,10 +3,10 @@
  * Parse posts/<slug>.md into X thread drafts and publish to Typefully.
  *
  * Usage:
- *   bun run typefully-publish.ts fan-out --validate       # validate only
- *   bun run typefully-publish.ts fan-out --variant A       # one variant
- *   bun run typefully-publish.ts fan-out                   # all variants
- *   bun run typefully-publish.ts --all --variant A         # all posts, variant A
+ *   bun .scripts/typefully-publish.ts fan-out --validate       # validate only
+ *   bun .scripts/typefully-publish.ts fan-out --variant A       # one variant
+ *   bun .scripts/typefully-publish.ts fan-out                   # all variants
+ *   bun .scripts/typefully-publish.ts --all --variant A         # all posts, variant A
  */
 
 import { readFileSync, existsSync, readdirSync, writeFileSync } from "fs";
@@ -28,7 +28,7 @@ const { values, positionals } = parseArgs({
   allowPositionals: true,
 });
 
-const PROJECT_ROOT = import.meta.dir;
+const PROJECT_ROOT = join(import.meta.dir, "..");
 const POSTS_DIR = join(PROJECT_ROOT, "posts");
 const SOCIAL_SET_ID = 289983;
 const X_CHAR_LIMIT = 280;
@@ -62,7 +62,7 @@ function getApiKey(): string {
 // ---------------------------------------------------------------------------
 
 async function publishToV0(slug: string): Promise<string> {
-  const scriptPath = join(PROJECT_ROOT, "v0-publish-public.ts");
+  const scriptPath = join(import.meta.dir, "v0-publish-public.ts");
   const proc = Bun.spawn(["bun", "run", scriptPath, slug, "-y"], {
     cwd: PROJECT_ROOT,
     env: { ...process.env },
@@ -437,7 +437,7 @@ const slugs = values.all
 
 if (slugs.length === 0) {
   console.error(
-    "Usage: bun run typefully-publish.ts <slug>... [--validate] [--variant A|B|C] [--all]"
+    "Usage: bun .scripts/typefully-publish.ts <slug>... [--validate] [--variant A|B|C] [--all]"
   );
   process.exit(1);
 }
