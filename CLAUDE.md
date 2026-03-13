@@ -1,163 +1,88 @@
-# CLAUDE.md — Workflow Campaign Demos
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What This Repo Is
 
-This is a **subtree organizer** for the "30 Days of Workflow DevKit" demo
-collection. It lets you `git clone` once and get every demo project in a
-single checkout.
+A **git subtree organizer** for the "30 Days of Workflow DevKit" demo collection. Each subdirectory is a complete standalone Next.js app that also lives in its own repo under `vercel-labs/` (required for v0 import — v0 needs `package.json` at repo root).
 
-Each subdirectory (e.g., `fan-out/`, `retry-backoff/`) is a complete,
-standalone Next.js app. Each one also lives in its own GitHub repo under
-`vercel-labs/` so that v0 can import it.
+Pattern: directory `fan-out/` → repo `vercel-labs/workflow-fan-out` → v0 URL `https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-fan-out`
 
-## Why Individual Repos Exist
+## Commands
 
-v0 requires `package.json` at the repository root to create a sandbox. It
-cannot import subdirectories from a monorepo — we tested this on 2026-03-03
-and the URL `v0.app/chat/api/open?url=.../tree/main/fan-out` returns
-"Failed to fetch URL."
-
-So every demo needs its own repo. This organizer repo uses **git subtrees**
-to keep them all in one place for convenience.
-
-## What Are Git Subtrees?
-
-Git subtrees let you embed one repo inside another as a plain directory. Unlike
-submodules, there's no `.gitmodules` file, no special cloning steps, no broken
-links. You just see folders.
-
-The "subtree" part is invisible on GitHub — the directories look like regular
-folders. The magic is in two commands:
+Each demo is an independent Next.js app. Always `cd` into a demo directory first:
 
 ```bash
-# Pull updates FROM an individual repo INTO this organizer
-git subtree pull --prefix=fan-out workflow-fan-out main --squash
+cd fan-out
+pnpm install        # most demos use pnpm (25/33); some use npm
+pnpm dev            # start dev server
+pnpm build          # production build
+pnpm lint           # next lint
+```
 
-# Push changes FROM this organizer TO an individual repo
+Tests use Bun's test runner (not Jest/Vitest):
+```bash
+cd fan-out
+bun test                                    # run all tests in the demo
+bun test app/page-snippet.test.ts           # run a single test file
+```
+
+There is no root-level package.json — no monorepo commands. Each demo is fully isolated.
+
+## Git Subtree Workflow
+
+**CRITICAL: Every subdirectory is a git subtree.** Do not reorganize, rename, or move demo directories — this breaks the subtree prefix mapping.
+
+Each demo has a named remote: `workflow-{slug}` → `vercel-labs/workflow-{slug}.git`
+
+### Edit a demo here (recommended)
+```bash
+# Edit files, commit normally, then push to both repos:
+git push origin main
 git subtree push --prefix=fan-out workflow-fan-out main
 ```
 
-`--squash` collapses the individual repo's history into a single merge commit,
-keeping this repo's log clean.
-
-## Repo Architecture
-
-```
-vercel-labs/workflow-campaign-demos    ← You are here (subtree organizer)
-├── fan-out/                          ← subtree of vercel-labs/workflow-fan-out
-├── retry-backoff/                    ← subtree of vercel-labs/workflow-retry-backoff
-├── approval-gate/                    ← subtree of vercel-labs/workflow-approval-gate
-└── ...                               ← one directory per demo
-```
-
-Each individual repo:
-```
-vercel-labs/workflow-{slug}
-├── package.json                      ← at root (required for v0)
-├── workflows/{slug}.ts               ← real workflow with getWritable() streaming
-├── app/api/{slug}/route.ts           ← POST: start() from workflow/api
-├── app/api/readable/[runId]/route.ts ← GET: SSE via run.getReadable()
-├── app/api/run/[runId]/route.ts      ← GET: run status metadata
-├── app/page.tsx                      ← server: readFileSync + Prism code panes
-└── app/components/demo.tsx           ← client: SSE connection + interactive UI
-```
-
-## Naming Convention
-
-Directory name maps directly to repo name:
-
-| Directory | Individual Repo | v0 URL |
-|-----------|----------------|--------|
-| `fan-out/` | `vercel-labs/workflow-fan-out` | `https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-fan-out` |
-| `retry-backoff/` | `vercel-labs/workflow-retry-backoff` | `https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-retry-backoff` |
-
-Pattern: `vercel-labs/workflow-{directory-name}`
-
-## How to Add a New Demo
-
-### 1. Create the individual repo and push the demo
-
+### Pull changes made in the individual repo
 ```bash
-SLUG="approval-gate"
-gh repo create "vercel-labs/workflow-${SLUG}" --public \
-  --description "${SLUG} — Workflow DevKit Example"
-
-# From the demo's source directory:
-cd /path/to/approval-gate
-git init && git add -A
-git commit -m "feat: ${SLUG} demo with real Workflow DevKit APIs"
-git remote add origin "https://github.com/vercel-labs/workflow-${SLUG}.git"
-git push -u origin main
+git subtree pull --prefix=fan-out workflow-fan-out main --squash
 ```
 
-### 2. Add it as a subtree in this organizer
-
+### Push all subtrees at once
 ```bash
-# From this repo's root:
-git remote add "workflow-${SLUG}" "https://github.com/vercel-labs/workflow-${SLUG}.git"
-git subtree add --prefix="${SLUG}" "workflow-${SLUG}" main --squash
-git push origin main
-```
-
-### 3. Verify the v0 URL
-
-```
-https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-{slug}
-```
-
-## How to Update a Demo
-
-There are two workflows depending on where you make the edit.
-
-### Edit in this organizer repo (recommended)
-
-```bash
-# Make your changes in the subdirectory
-vim retry-backoff/workflows/retry-backoff.ts
-
-# Commit normally
-git add -A && git commit -m "fix: update retry-backoff workflow"
-
-# Push to this organizer
-git push origin main
-
-# Push the subdirectory changes to the individual repo
-git subtree push --prefix=retry-backoff workflow-retry-backoff main
-```
-
-### Edit in the individual repo directly
-
-```bash
-# Someone pushed a fix to vercel-labs/workflow-retry-backoff
-# Pull it into this organizer:
-git subtree pull --prefix=retry-backoff workflow-retry-backoff main --squash
-git push origin main
-```
-
-## How to Update Dependencies Across All Demos
-
-### Bump the workflow package version
-
-```bash
-NEW_VERSION="4.1.0-beta.60"
-
 for dir in */; do
   [ -f "${dir}package.json" ] || continue
-  if grep -q '"workflow"' "${dir}package.json"; then
-    cd "$dir"
-    jq --arg v "$NEW_VERSION" '.dependencies.workflow = $v' package.json > tmp.json
-    mv tmp.json package.json
-    cd ..
-    echo "Updated ${dir}"
-  fi
+  SLUG="${dir%/}"
+  REMOTE="workflow-${SLUG}"
+  git remote get-url "$REMOTE" &>/dev/null && git subtree push --prefix="${SLUG}" "${REMOTE}" main
 done
-
-git add -A && git commit -m "chore: bump workflow to ${NEW_VERSION}"
 ```
 
-### Sync shared files (globals.css, tsconfig.json, etc.)
+### Add a new demo
+```bash
+SLUG="my-demo"
+gh repo create "vercel-labs/workflow-${SLUG}" --public
+# ... push demo code to that repo ...
+git remote add "workflow-${SLUG}" "https://github.com/vercel-labs/workflow-${SLUG}.git"
+git subtree add --prefix="${SLUG}" "workflow-${SLUG}" main --squash
+```
 
-These files are identical across all demos:
+## Demo Architecture (Every Demo Follows This)
+
+Each demo has 5 layers that connect together:
+
+1. **Workflow** (`workflows/{slug}.ts`) — `"use workflow"` + `"use step"` directives. Steps call `getWritable()` to stream typed events to the client. Uses `sleep()` for durable pauses, `FatalError` to prevent SDK auto-retry.
+
+2. **Start API** (`app/api/{slug}/route.ts`) — POST handler calling `start()` from `workflow/api` to enqueue the workflow.
+
+3. **SSE Stream** (`app/api/readable/[runId]/route.ts`) — GET handler piping `run.getReadable()` through a `TransformStream` to emit `data: {...}\n\n` SSE frames.
+
+4. **Client Demo** (`app/components/demo.tsx`) — `"use client"` component connecting to SSE, accumulating events in React state, rendering interactive UI with code workbench sync.
+
+5. **Code Panes** (`app/page.tsx`) — Server component that reads the workflow source with `readFileSync`, extracts function blocks with `extractFunctionBlock()`, highlights with Prism/sugar-high, and computes line maps dynamically so code highlights survive edits.
+
+## Shared Files Across Demos
+
+These files should be kept identical across all demos. When updating, sync from a canonical source (e.g., `fan-out/`):
 
 | File | Purpose |
 |------|---------|
@@ -168,8 +93,7 @@ These files are identical across all demos:
 | `next.config.ts` | `withWorkflow()` wrapper |
 | `.gitignore` | Standard Next.js ignores |
 
-To sync from a canonical source (e.g., `fan-out`):
-
+Sync command:
 ```bash
 SOURCE="fan-out"
 for dir in */; do
@@ -179,94 +103,33 @@ for dir in */; do
     [ -f "${SOURCE}/${f}" ] && [ -f "${dir}${f}" ] && cp "${SOURCE}/${f}" "${dir}${f}"
   done
 done
-git add -A && git commit -m "chore: sync shared files from ${SOURCE}"
 ```
 
-### Push all changes to individual repos
+## Bump Workflow Package Across All Demos
 
 ```bash
+NEW_VERSION="4.2.0-beta.65"
 for dir in */; do
   [ -f "${dir}package.json" ] || continue
-  SLUG="${dir%/}"
-  REMOTE="workflow-${SLUG}"
-  # Check if remote exists
-  if git remote get-url "$REMOTE" &>/dev/null; then
-    echo "Pushing ${SLUG}..."
-    git subtree push --prefix="${SLUG}" "${REMOTE}" main
-  else
-    echo "SKIP: no remote '${REMOTE}' (run: git remote add ${REMOTE} https://github.com/vercel-labs/${REMOTE}.git)"
-  fi
+  grep -q '"workflow"' "${dir}package.json" && \
+    jq --arg v "$NEW_VERSION" '.dependencies.workflow = $v' "${dir}package.json" > tmp.json && \
+    mv tmp.json "${dir}package.json"
 done
 ```
 
-## Tech Stack (Every Demo)
+## Tech Stack
 
-- Next.js 16 + React 19 + App Router
+- Next.js 16, React 19, App Router
 - TypeScript 5 strict
 - Tailwind CSS v4
-- `workflow` package (Vercel Workflow DevKit)
-- `prism-react-renderer` for syntax highlighting
+- `workflow` package (Vercel Workflow DevKit) with `withWorkflow()` Next.js plugin
+- `prism-react-renderer` / `sugar-high` for syntax highlighting
 - Geist font family
+- Bun for test runner
 
-## How Each Demo Works
+## Key Constraints
 
-Every demo follows the same architecture:
-
-1. **Workflow** (`workflows/*.ts`) — Uses `"use workflow"` and `"use step"`
-   directives. Steps call `getWritable()` to stream progress events to the
-   client. Uses `sleep()` for durable pauses, `FatalError` to prevent SDK
-   auto-retry when the workflow owns retry logic.
-
-2. **Start API** (`app/api/{slug}/route.ts`) — POST handler that calls
-   `start()` from `workflow/api` to enqueue the workflow.
-
-3. **SSE Stream** (`app/api/readable/[runId]/route.ts`) — GET handler that
-   pipes `run.getReadable()` through a `TransformStream` to serialize objects
-   as `data: {...}\n\n` SSE frames.
-
-4. **Client Demo** (`app/components/demo.tsx`) — Connects to the SSE stream
-   via `fetch`, accumulates events in React state, derives a snapshot for
-   the UI (attempt ladder, execution log, code workbench sync).
-
-5. **Code Panes** (`app/page.tsx`) — Server component that reads the actual
-   workflow source with `readFileSync`, extracts functions with
-   `extractFunctionBlock()`, highlights with Prism, and passes pre-rendered
-   HTML to the client. Line maps are computed dynamically so highlights
-   survive code edits.
-
-## Troubleshooting
-
-### "Failed to fetch URL" on v0
-
-v0 needs `package.json` at the repo root. Make sure you're using the
-individual repo URL, not a subdirectory of this organizer:
-
-```
-WRONG: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-campaign-demos/tree/main/fan-out
-RIGHT: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-fan-out
-```
-
-### Subtree push fails with conflicts
-
-If someone edited the individual repo directly and also edited the same file
-here, you'll get conflicts. Resolve by pulling first:
-
-```bash
-git subtree pull --prefix=fan-out workflow-fan-out main --squash
-# Resolve any conflicts
-git subtree push --prefix=fan-out workflow-fan-out main
-```
-
-### "No remote" error during push-all
-
-Add the remote first:
-
-```bash
-git remote add workflow-fan-out https://github.com/vercel-labs/workflow-fan-out.git
-```
-
-### Demo builds locally but fails on v0
-
-Check that the demo doesn't use symlinks or reference files outside its
-directory. v0 sandboxes only see the repo contents. `readFileSync` with
-`process.cwd()` works on Vercel but may behave differently in v0's sandbox.
+- v0 cannot import subdirectories from monorepos — that's why each demo needs its own repo
+- `readFileSync(join(process.cwd(), "workflows/..."))` is used at build time to read workflow source for code panes — don't move workflow files without updating page.tsx
+- `extractFunctionBlock()` in page.tsx finds functions by string marker matching — renaming exported functions requires updating the markers
+- Demo workflows use simulated delays and `getWritable()` for UI streaming; production workflows wouldn't need these

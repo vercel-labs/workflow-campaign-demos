@@ -1,5 +1,7 @@
 # Fan-Out Notifications Demo
 
+[Open in v0](https://v0.app/chat/cBerqNknp5x)
+
 Broadcast an incident alert to Slack, Email, SMS, and PagerDuty in parallel using `Promise.allSettled()`. Each channel runs as a separate `"use step"` function with full retry semantics. The interactive UI lets you toggle channels between three failure modes to explore how the workflow handles partial failures.
 
 ## How It Works
