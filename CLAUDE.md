@@ -29,6 +29,24 @@ bun test app/page-snippet.test.ts           # run a single test file
 
 There is no root-level package.json — no monorepo commands. Each demo is fully isolated.
 
+## Root Scripts (`.scripts/`)
+
+All root-level utility scripts live in `.scripts/` and run with `bun`. They manage the campaign lifecycle: subtree sync, v0 publishing, social media, and image generation.
+
+| Script | Purpose | When to use |
+|--------|---------|-------------|
+| `bun .scripts/sync.ts` | Git subtree sync (pull/push/status/add) | After committing changes to push subtrees to individual repos, or to onboard new demos |
+| `bun .scripts/v0-publish-public.ts` | Publish demos to v0 as public shareable chats | When a demo is ready to share — creates a `v0.app/chat/...` URL via the v0 SDK |
+| `bun .scripts/typefully-publish.ts` | Parse posts into X thread drafts, generate ray.so images, upload to Typefully | When publishing social content for a demo — orchestrates v0 publish + image gen + Typefully API |
+| `bun .scripts/generate-snippet-image.ts` | Generate ray.so code snippet PNGs from post markdown | When you need a standalone code image without the full Typefully pipeline |
+| `bun .scripts/parse-post.ts` | Parse `posts/*.md` into structured thread data | For inspecting/debugging post structure, or as a library (`parsePostFile()` is exported) |
+
+### Environment requirements
+
+- `v0-publish-public.ts` requires `V0_API_KEY` in environment
+- `typefully-publish.ts` requires `TYPEFULLY_API_KEY` in `.env.local`
+- `generate-snippet-image.ts` requires `puppeteer` (uses headless Chrome for ray.so screenshots)
+
 ## Git Subtree Workflow
 
 **CRITICAL: Every subdirectory is a git subtree.** Do not reorganize, rename, or move demo directories — this breaks the subtree prefix mapping.
@@ -49,21 +67,14 @@ git subtree pull --prefix=fan-out workflow-fan-out main --squash
 
 ### Push all subtrees at once
 ```bash
-for dir in */; do
-  [ -f "${dir}package.json" ] || continue
-  SLUG="${dir%/}"
-  REMOTE="workflow-${SLUG}"
-  git remote get-url "$REMOTE" &>/dev/null && git subtree push --prefix="${SLUG}" "${REMOTE}" main
-done
+bun .scripts/sync.ts push          # push all configured subtrees
+bun .scripts/sync.ts push-one      # interactive picker for a single demo
 ```
 
 ### Add a new demo
 ```bash
-SLUG="my-demo"
-gh repo create "vercel-labs/workflow-${SLUG}" --public
-# ... push demo code to that repo ...
-git remote add "workflow-${SLUG}" "https://github.com/vercel-labs/workflow-${SLUG}.git"
-git subtree add --prefix="${SLUG}" "workflow-${SLUG}" main --squash
+bun .scripts/sync.ts add           # interactive: creates GitHub repo, adds remote, pushes subtree
+bun .scripts/sync.ts init-new      # batch: creates repos for all demos missing remotes
 ```
 
 ## Demo Architecture (Every Demo Follows This)
