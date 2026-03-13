@@ -39,7 +39,7 @@ All root-level utility scripts live in `.scripts/` and run with `bun`. They mana
 | `bun .scripts/v0-publish-public.ts` | Publish demos to v0 as public shareable chats | When a demo is ready to share — creates a `v0.app/chat/...` URL via the v0 SDK |
 | `bun .scripts/typefully-publish.ts` | Parse posts into X thread drafts, generate ray.so images, upload to Typefully | When publishing social content for a demo — orchestrates v0 publish + image gen + Typefully API |
 | `bun .scripts/generate-snippet-image.ts` | Generate ray.so code snippet PNGs from post markdown | When you need a standalone code image without the full Typefully pipeline |
-| `bun .scripts/parse-post.ts` | Parse `posts/*.md` into structured thread data | For inspecting/debugging post structure, or as a library (`parsePostFile()` is exported) |
+| `bun .scripts/parse-post.ts` | Parse `.posts/*.md` into structured thread data | For inspecting/debugging post structure, or as a library (`parsePostFile()` is exported) |
 
 ### Environment requirements
 

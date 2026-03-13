@@ -3,9 +3,9 @@
  * Parse a post markdown file into structured data ready for Typefully or similar APIs.
  *
  * Usage:
- *   bun .scripts/parse-post.ts posts/saga.md
- *   bun .scripts/parse-post.ts posts/saga.md --variant B
- *   bun .scripts/parse-post.ts posts/*.md --json
+ *   bun .scripts/parse-post.ts .posts/saga.md
+ *   bun .scripts/parse-post.ts .posts/saga.md --variant B
+ *   bun .scripts/parse-post.ts .posts/*.md --json
  */
 
 import { readFileSync } from "fs";

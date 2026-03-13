@@ -83,7 +83,7 @@ function buildRayUrl(code: string, title: string): string {
 
 // --- Generate image ---
 async function generateImage(slug: string): Promise<string | null> {
-  const postPath = join(PROJECT_ROOT, "posts", `${slug}.md`);
+  const postPath = join(PROJECT_ROOT, ".posts", `${slug}.md`);
   const readmePath = join(PROJECT_ROOT, slug, "README.md");
   // Prefer the post file (has curated TS snippets), fall back to README
   let mdPath: string;
@@ -101,7 +101,7 @@ async function generateImage(slug: string): Promise<string | null> {
 
   const title = prettyTitle(slug);
   const url = buildRayUrl(code, title);
-  const outPath = join(PROJECT_ROOT, "posts", `${slug}.png`);
+  const outPath = join(PROJECT_ROOT, ".posts", `${slug}.png`);
 
   const browser = await puppeteer.launch({
     headless: true,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Parse posts/<slug>.md into X thread drafts and publish to Typefully.
+ * Parse .posts/<slug>.md into X thread drafts and publish to Typefully.
  *
  * Usage:
  *   bun .scripts/typefully-publish.ts fan-out --validate       # validate only
@@ -29,7 +29,7 @@ const { values, positionals } = parseArgs({
 });
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
-const POSTS_DIR = join(PROJECT_ROOT, "posts");
+const POSTS_DIR = join(PROJECT_ROOT, ".posts");
 const SOCIAL_SET_ID = 289983;
 const X_CHAR_LIMIT = 280;
 const X_URL_LENGTH = 23; // t.co wrapping
@@ -349,7 +349,7 @@ async function uploadImage(
 ): Promise<string | null> {
   const imagePath = join(POSTS_DIR, `${slug}.png`);
   if (!existsSync(imagePath)) {
-    console.log(`  No image found at posts/${slug}.png, skipping`);
+    console.log(`  No image found at .posts/${slug}.png, skipping`);
     return null;
   }
 

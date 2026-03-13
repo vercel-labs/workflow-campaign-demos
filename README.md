@@ -76,7 +76,7 @@ bun .scripts/typefully-publish.ts fan-out --variant A
 bun .scripts/generate-snippet-image.ts fan-out --all
 
 # Parse/inspect post thread structure
-bun .scripts/parse-post.ts posts/saga.md --json
+bun .scripts/parse-post.ts .posts/saga.md --json
 ```
 
 ### Environment
