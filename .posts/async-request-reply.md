@@ -1,7 +1,7 @@
 ---
 slug: async-request-reply
 day: null
-v0_url: https://v0.app/chat/02effK2xiUs
+v0_url: https://v0.app/chat/L15jfU7Wbt4
 primitive: createWebhook() + Promise.race() + sleep()
 pick: null
 ---
