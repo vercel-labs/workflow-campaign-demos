@@ -9,7 +9,7 @@ Note: `bulkhead` now uses a v0-safe `next.config.ts` without `turbopack.root`.
 
 ## Day 1: `aggregator`
 
-[Open v0 demo](https://v0.app/chat/cxV40qpR4fn)
+[Open v0 demo](https://v0.app/chat/wS82DBhFkYY)
 
 - [A: Wait for all, but not forever](https://typefully.com/t/Lio1lYX)
 - [B: Proceed with partial data](https://typefully.com/t/9zviNIZ)
@@ -25,7 +25,7 @@ Note: `bulkhead` now uses a v0-safe `next.config.ts` without `turbopack.root`.
 
 ## Day 3: `async-request-reply`
 
-[Open v0 demo](https://v0.app/chat/N5bghLN7149)
+[Open v0 demo](https://v0.app/chat/CMhyfOV95kP)
 
 - [A: Vendor calls you back later](https://typefully.com/t/z43AHmn)
 - [B: Duplicate webhooks](https://typefully.com/t/beC5J5G)

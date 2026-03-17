@@ -1,7 +1,7 @@
 ---
 slug: aggregator
 day: null
-v0_url: https://v0.app/chat/cxV40qpR4fn
+v0_url: https://v0.app/chat/wS82DBhFkYY
 primitive: Promise.race() + defineHook() + sleep()
 pick: null
 ---
