@@ -1,7 +1,6 @@
 ---
 slug: dead-letter-queue
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-dead-letter-queue
 primitive: built-in retry with attempt tracking via getStepMetadata()
 pick: null
@@ -13,158 +12,56 @@ Process messages with automatic retries. After max retries, route undeliverable 
 
 ## Variant A — "Where do failed messages go?"
 
-
 Your message processor retries 3 times. All 3 fail. Where does the message go? Nowhere. It vanishes. You find out when a customer complains.
 
-Traditional: a manual retry counter, a DLQ table, a separate worker to process dead letters, and alerting on DLQ depth.
+Traditionally that means a manual retry counter, a DLQ table, a separate worker to process dead letters, and alerting on DLQ depth.
 
-Or you track attempts with `getStepMetadata()` and route failures durably:
-
-```ts
-import { getStepMetadata } from "workflow";
-
-const MAX_ATTEMPTS = 3;
-
-export async function deadLetterQueue(messages: string[]) {
-  "use workflow";
-
-  const results = [];
-  for (const messageId of messages) {
-    results.push(await processMessage(messageId));
-  }
-  return results;
-}
-
-async function processMessage(messageId: string) {
-  "use step";
-
-  const { attempt } = getStepMetadata();
-
-  try {
-    const result = await deliverMessage(messageId);
-    return { messageId, status: "delivered", attempts: attempt };
-  } catch (error) {
-    if (attempt >= MAX_ATTEMPTS) {
-      // Route to DLQ instead of retrying forever
-      return { messageId, status: "dead_lettered", attempts: attempt, error };
-    }
-    throw error; // Let the runtime retry
-  }
-}
-```
+`getStepMetadata()` exposes the attempt number natively. Your workflow checks it and decides to retry or route to dead letter.
 
 <!-- split -->
 
-The workflow knows its own attempt count. After N failures, it writes the message to a dead letter step instead of retrying again. The DLQ is just another durable step, not a separate system.
+Below the threshold, throw the error and let the runtime retry automatically. At the limit, catch the error and write the message to a dead letter step instead.
 
-No DLQ table. No sweep worker. No silent drops.
+Both paths are durable steps. Both survive crashes. Crash between retry 2 and 3? It resumes at retry 3, not retry 1.
 
 <!-- split -->
 
-Message arrives. Step fails. Retry 1, retry 2, retry 3. All fail. Message routes to DLQ step with full context: error, payload, attempt history.
-
-Nothing lost. Everything inspectable.
+No manual retry loops. No separate DLQ worker. No silent drops. The workflow is the retry policy and the dead letter queue, all in one file.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Retry-aware workflows"
+## Variant B — "Retry and dead-letter in the same step"
 
-Most retry logic is bolted on. You wrap a try/catch in a loop, increment a counter, check a threshold, then... hope you remembered to persist the failed message somewhere.
+Retry logic lives in one service. Dead letter routing lives in another. A message fails, gets retried by service A, exhausts retries, and needs to be routed by service B. That handoff is where messages get lost.
 
-`getStepMetadata()` gives you the attempt count natively:
-
-```ts
-import { getStepMetadata } from "workflow";
-
-const MAX_ATTEMPTS = 3;
-
-export async function deadLetterQueue(messages: string[]) {
-  "use workflow";
-
-  const results = [];
-  for (const messageId of messages) {
-    results.push(await processMessage(messageId));
-  }
-  return results;
-}
-
-async function processMessage(messageId: string) {
-  "use step";
-
-  const { attempt } = getStepMetadata();
-
-  try {
-    const result = await deliverMessage(messageId);
-    return { messageId, status: "delivered", attempts: attempt };
-  } catch (error) {
-    if (attempt >= MAX_ATTEMPTS) {
-      // Route to DLQ instead of retrying forever
-      return { messageId, status: "dead_lettered", attempts: attempt, error };
-    }
-    throw error; // Let the runtime retry
-  }
-}
-```
+`getStepMetadata()` gives you the attempt number inside the step itself. Check the number, decide the fate. Below the limit, throw and let the runtime retry. At the limit, route to a dead letter step. Same file. Same workflow.
 
 <!-- split -->
 
-The workflow tracks retries as part of its durable state. No external counter. No Redis key with a TTL. When attempts exceed the threshold, a `FatalError` stops retries and a DLQ step captures the message.
+The routing decision happens at the point of failure, not in a separate system. No handoff. No message bus between the retry service and the DLQ service. The step knows its own attempt count and acts on it.
 
-Crash between retry 2 and 3? It resumes at retry 3. Not retry 1.
+Both the retry path and the dead letter path are durable. A crash between any attempt resumes exactly where it left off.
 
 <!-- split -->
 
-No manual retry loops. No separate DLQ worker. No lost messages. The workflow is the retry policy and the dead letter queue.
+No retry service. No DLQ service. No handoff protocol. No lost messages in transit between systems. The retry policy and the dead letter route are two branches of the same conditional.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "The last stop for bad messages"
+## Variant C — "Know the attempt number without counting it yourself"
 
-Every message processing system needs a dead letter queue. Most teams build it as a separate service: a table, a worker, an alert, a dashboard.
+You implement retry logic. You need a counter. You store it in a database or pass it through a message header. You increment it on each attempt. You check it before each retry. You handle the off-by-one error.
 
-With WDK, the DLQ is a step in the same workflow:
-
-```ts
-import { getStepMetadata } from "workflow";
-
-const MAX_ATTEMPTS = 3;
-
-export async function deadLetterQueue(messages: string[]) {
-  "use workflow";
-
-  const results = [];
-  for (const messageId of messages) {
-    results.push(await processMessage(messageId));
-  }
-  return results;
-}
-
-async function processMessage(messageId: string) {
-  "use step";
-
-  const { attempt } = getStepMetadata();
-
-  try {
-    const result = await deliverMessage(messageId);
-    return { messageId, status: "delivered", attempts: attempt };
-  } catch (error) {
-    if (attempt >= MAX_ATTEMPTS) {
-      // Route to DLQ instead of retrying forever
-      return { messageId, status: "dead_lettered", attempts: attempt, error };
-    }
-    throw error; // Let the runtime retry
-  }
-}
-```
+`getStepMetadata()` gives you the attempt number for free. The runtime already tracks it. Your code reads the number and makes a decision. No counter variable. No database column. No message header.
 
 <!-- split -->
 
-`getStepMetadata()` exposes the attempt number. Your workflow checks it, decides to retry or route to dead letter. Both paths are durable steps. Both survive crashes.
+Attempt one fails? The runtime retries automatically and increments the counter. Attempt two fails? Same thing. Attempt three fails and `getStepMetadata()` reports attempt three? Route to dead letter instead of throwing.
 
-The dead letter step captures the original payload, the error, and the full attempt history. No data loss.
+The step metadata is native to the runtime. It survives crashes. It is always accurate. It cannot drift from the actual attempt count.
 
 <!-- split -->
 
-Process. Fail. Retry. Fail again. Route to DLQ. All in one file. All durable. All observable.
+No manual counter. No counter persistence. No off-by-one bugs. The runtime counts attempts natively, and `getStepMetadata()` exposes that count to your decision logic.
 
 Explore the interactive demo on v0: {v0_link}

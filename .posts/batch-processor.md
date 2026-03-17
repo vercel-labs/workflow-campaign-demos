@@ -1,7 +1,7 @@
 ---
 slug: batch-processor
 day: null
-v0_url: https://v0.app/chat/prfPMUPS2Y5
+v0_url: https://v0.app/chat/veJkYzFjTZY
 primitive: durable replay + sleep()
 pick: null
 ---

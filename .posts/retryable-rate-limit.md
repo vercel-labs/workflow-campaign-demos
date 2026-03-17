@@ -1,7 +1,6 @@
 ---
 slug: retryable-rate-limit
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-retryable-rate-limit
 primitive: RetryableError with retryAfter
 pick: null
@@ -11,136 +10,56 @@ pick: null
 
 Sync a contact to an external CRM API, automatically retrying when the API returns 429 with a retry-after header.
 
-## Variant A — "The API said wait"
+## Variant A — "The retry-after header nobody reads"
 
+You hit the CRM API. It returns 429. The `retry-after` header says 30 seconds. Now you need to parse the header, store retry state, schedule a delayed job, and hope the worker picks it up at the right time.
 
-You hit the CRM API. It returns 429. The `retry-after` header says 30 seconds.
-
-Traditional: parse the header, calculate backoff, store retry state, schedule a delayed job, hope the worker picks it up at the right time.
-
-With WDK you throw `new RetryableError()` with `retryAfter` and the runtime handles the rest:
-
-```ts
-import { RetryableError } from "workflow";
-
-export async function syncCrmContact(contactId: string) {
-  "use workflow";
-
-  const contact = await fetchContact(contactId);
-  await upsertIntoWarehouse(contactId, contact);
-  return { contactId, status: "synced" };
-}
-
-async function fetchContact(contactId: string) {
-  "use step";
-
-  const res = await fetch(`https://crm.example.com/contacts/${contactId}`);
-
-  if (res.status === 429) {
-    const retryAfter = parseInt(res.headers.get("retry-after") ?? "30") * 1000;
-    throw new RetryableError("CRM rate-limited (429)", { retryAfter });
-  }
-
-  return res.json();
-}
-```
+`RetryableError` with a `retryAfter` property handles the entire thing. Throw it, and the runtime durably pauses for exactly the requested duration.
 
 <!-- split -->
 
-`RetryableError` tells the runtime: "this failed, but try again." The `retryAfter` property tells it exactly when. The workflow durably pauses and resumes at the right moment.
+Catch a 429. Read the `retry-after` header. Throw `new RetryableError("Rate limited", { retryAfter })`. The workflow pauses and resumes on schedule, surviving restarts and redeployments.
 
-No retry queue. No backoff calculator. No scheduled job.
+`RetryableError` vs `FatalError` — that's the entire retry vocabulary. Retryable means try again. Fatal means stop permanently.
 
 <!-- split -->
 
-Hit the API. Get rate-limited. Throw `RetryableError`. Wait exactly as long as the API asked. Retry. Done.
-
-No cron. No retry table. No exponential backoff library.
+No backoff library. No retry queue. No scheduler. No timer service. Three lines of retry logic and the infrastructure does the waiting.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Retry-after without the retry infrastructure"
+## Variant B — "Let the API tell you when to come back"
 
-Every API has rate limits. Every integration needs retry logic. Traditionally that means: parse headers, implement exponential backoff, store retry state per request, and run a scheduler.
+Exponential backoff guesses when to retry. The API already knows. A 429 with `retry-after: 30` is the server telling you exactly when your request will succeed. Why calculate what you've already been told?
 
-WDK reduces it to one error class:
-
-```ts
-import { RetryableError } from "workflow";
-
-export async function syncCrmContact(contactId: string) {
-  "use workflow";
-
-  const contact = await fetchContact(contactId);
-  await upsertIntoWarehouse(contactId, contact);
-  return { contactId, status: "synced" };
-}
-
-async function fetchContact(contactId: string) {
-  "use step";
-
-  const res = await fetch(`https://crm.example.com/contacts/${contactId}`);
-
-  if (res.status === 429) {
-    const retryAfter = parseInt(res.headers.get("retry-after") ?? "30") * 1000;
-    throw new RetryableError("CRM rate-limited (429)", { retryAfter });
-  }
-
-  return res.json();
-}
-```
+`RetryableError` accepts a `retryAfter` duration directly from the response header. The workflow sleeps for exactly that long, durably.
 
 <!-- split -->
 
-Catch a 429. Read the `retry-after` header. Throw `new RetryableError("Rate limited", { retryAfter: seconds })`.
+The durable pause survives anything. Redeploy during the 30-second wait? The workflow resumes at the right moment. Server restart? Same thing. The retry timing is persisted, not held in memory.
 
-The runtime pauses the workflow for exactly that duration, durably. No timer service. No job queue. The step just re-runs when the time is up.
+When the workflow wakes up, the step re-executes. If the API returns another 429, throw another `RetryableError`. If it succeeds, move on. If it returns a permanent error, throw `FatalError`.
 
 <!-- split -->
 
-Your retry logic is three lines: catch, read header, throw. The infrastructure does the waiting.
+No exponential backoff library. No jitter calculations. No retry state in Redis. The API says when, `RetryableError` waits exactly that long, and the workflow resumes on schedule.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Rate limits are a sleep problem"
+## Variant C — "429s are a workflow problem, not a queue problem"
 
-Rate limiting is fundamentally simple: wait, then try again. But building "wait durably" from scratch is a whole system: retry queues, state persistence, timer workers.
+Most retry systems shove the failed request into a delayed queue, add a scheduler to re-enqueue it, and pray the timing works out. Rate limits become an infrastructure problem spread across three services.
 
-WDK makes it one throw:
-
-```ts
-import { RetryableError } from "workflow";
-
-export async function syncCrmContact(contactId: string) {
-  "use workflow";
-
-  const contact = await fetchContact(contactId);
-  await upsertIntoWarehouse(contactId, contact);
-  return { contactId, status: "synced" };
-}
-
-async function fetchContact(contactId: string) {
-  "use step";
-
-  const res = await fetch(`https://crm.example.com/contacts/${contactId}`);
-
-  if (res.status === 429) {
-    const retryAfter = parseInt(res.headers.get("retry-after") ?? "30") * 1000;
-    throw new RetryableError("CRM rate-limited (429)", { retryAfter });
-  }
-
-  return res.json();
-}
-```
+`RetryableError` keeps the retry inside the workflow. Throw it with `retryAfter` and the step pauses in place. No external queue. No scheduler. No re-enqueue.
 
 <!-- split -->
 
-`RetryableError` vs `FatalError`. That's the entire retry vocabulary. Retryable means try again. The optional `retryAfter` tells the runtime how long to wait. Fatal means stop.
+The workflow is the queue. The durable runtime is the scheduler. When the `retryAfter` duration expires, the step picks up exactly where it left off. The retry state lives in the workflow log, not in Redis or a database table.
 
-The wait is durable. Deploy during the pause? Restart the server? The retry still fires on schedule.
+Hit another 429? Throw another `RetryableError`. API returns a permanent 403? Throw `FatalError` and stop. Two error types cover every retry scenario.
 
 <!-- split -->
 
-Sync a CRM contact. Respect rate limits. Retry automatically. No backoff library. No retry queue. No scheduler.
+No delayed job queue. No retry scheduler. No backoff configuration. No retry count tracking. The workflow pauses, the workflow resumes, and the retry logic is three lines in a catch block.
 
 Explore the interactive demo on v0: {v0_link}

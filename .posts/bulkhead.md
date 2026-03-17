@@ -1,7 +1,7 @@
 ---
 slug: bulkhead
 day: null
-v0_url: https://v0.app/chat/eRZikK1aFMi
+v0_url: https://v0.app/chat/vaDEaM2kUJb
 primitive: Promise.allSettled() + sleep()
 pick: null
 ---

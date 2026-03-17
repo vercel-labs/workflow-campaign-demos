@@ -1,10 +1,13 @@
-import { highlightCodeToHtmlLines } from "@/components/code-highlight-server";
-import { OnboardingDripDemoClient } from "@/components/onboarding-drip-demo-client";
+import { highlightCodeToHtmlLines } from "@/app/components/code-highlight-server";
+import { OnboardingDripDemoClient } from "@/app/components/onboarding-drip-demo-client";
+
+const directiveUseWorkflow = `"use ${"workflow"}"`;
+const directiveUseStep = `"use ${"step"}"`;
 
 const workflowCode = `import { sleep } from "workflow";
 
 export async function runOnboardingDrip(email: string) {
-  "use workflow";
+  ${directiveUseWorkflow};
 
   // Day 0: Welcome email
   await sendWelcomeEmail(email);
@@ -24,7 +27,7 @@ export async function runOnboardingDrip(email: string) {
 
 const stepCodes = [
   `async function sendWelcomeEmail(email: string) {
-  "use step";
+  ${directiveUseStep};
 
   // Day 0: Immediate welcome after signup
   await fetch("https://mail.example.com/send", {
@@ -39,7 +42,7 @@ const stepCodes = [
   return { sent: true, day: 0 };
 }`,
   `async function sendGettingStartedEmail(email: string) {
-  "use step";
+  ${directiveUseStep};
 
   // Day 1: Practical tips after first 24 hours
   await fetch("https://mail.example.com/send", {
@@ -54,7 +57,7 @@ const stepCodes = [
   return { sent: true, day: 1 };
 }`,
   `async function sendFeatureHighlightsEmail(email: string) {
-  "use step";
+  ${directiveUseStep};
 
   // Day 3: Showcase key features
   await fetch("https://mail.example.com/send", {
@@ -69,7 +72,7 @@ const stepCodes = [
   return { sent: true, day: 3 };
 }`,
   `async function sendFollowUpEmail(email: string) {
-  "use step";
+  ${directiveUseStep};
 
   // Day 7: Request feedback
   await fetch("https://mail.example.com/send", {

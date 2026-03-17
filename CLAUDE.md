@@ -49,17 +49,21 @@ All root-level utility scripts live in `.scripts/` and run with `bun`. They mana
 
 ## Git Subtree Workflow
 
-**CRITICAL: Every subdirectory is a git subtree.** Do not reorganize, rename, or move demo directories — this breaks the subtree prefix mapping.
+**Default: real subtree only.** This monorepo is the source of truth. Sync to each standalone repo **only** with `git subtree push` (or `bun .scripts/sync.ts push`). Do **not** mirror with rsync or manual copy/push — that breaks subtree history and `subtree push` will fail with `no new revisions`.
 
-Each demo has a named remote: `workflow-{slug}` → `vercel-labs/workflow-{slug}.git`
+v0 still needs one repo per demo (`vercel-labs/workflow-{slug}`); subtree is how we keep those repos aligned.
+
+**CRITICAL:** Do not rename or move demo directories — that breaks the subtree prefix mapping.
+
+Each demo has a remote: `workflow-{slug}` → `vercel-labs/workflow-{slug}.git`
 
 ### Edit a demo here (recommended)
 ```bash
-# Edit files, commit normally, then push to both repos:
+# Edit files, commit on main, then push campaign + subtree:
 git push origin main
 git subtree push --prefix=fan-out workflow-fan-out main
-
 `async-request-reply` needs `--ignore-joins` (duplicate subtree history); `bun .scripts/sync.ts push` applies it automatically.
+# or: bun .scripts/sync.ts push-one
 ```
 
 ### Pull changes made in the individual repo
@@ -76,8 +80,23 @@ bun .scripts/sync.ts push-one      # interactive picker for a single demo
 ### Add a new demo
 ```bash
 bun .scripts/sync.ts add           # interactive: creates GitHub repo, adds remote, pushes subtree
-bun .scripts/sync.ts init-new      # batch: creates repos for all demos missing remotes
+bun .scripts/sync.ts init-new      # batch: creates repos for demos missing remotes
 ```
+
+### Repair a demo (subtree push says “no new revisions”)
+
+If a folder was never a real subtree (copy/rsync/`init-new` push failed), **re-link once**:
+
+1. Ensure **`vercel-labs/workflow-<slug>` `main`** has the code you want (if monorepo is ahead, mirror there once).
+2. Clean working tree, then:
+
+```bash
+bun .scripts/sync.ts repair map-reduce
+```
+
+3. `git push origin main`, then normal `subtree push` works for that demo.
+
+Until repaired, use `v0-publish-public.ts --skip-sync-check` for that slug only.
 
 ## Demo Architecture (Every Demo Follows This)
 

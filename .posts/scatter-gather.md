@@ -1,7 +1,6 @@
 ---
 slug: scatter-gather
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-scatter-gather
 primitive: Promise.allSettled() + reduce
 pick: null
@@ -11,132 +10,56 @@ pick: null
 
 Query 4 shipping providers in parallel. Pick the cheapest quote. If one provider times out, use the rest.
 
-## Variant A — "Cheapest quote wins"
+## Variant A — "The sequential bottleneck"
 
+You need shipping quotes from four providers. One is slow. One might be down. Querying them sequentially wastes time, and querying them in parallel without coordination means you lose track of who failed.
 
-You need shipping quotes from 4 providers. One is slow. One might be down.
-
-Traditional: a fan-out queue, a correlation table, and a timeout sweep.
-
-Or `Promise.allSettled()` with durable steps:
-
-```ts
-async function scatterGather(packageId) {
-  "use workflow";
-
-  const settled = await Promise.allSettled([
-    fetchFedExQuote(packageId),  // each is "use step"
-    fetchUpsQuote(packageId),
-    fetchDhlQuote(packageId),
-    fetchUspsQuote(packageId),
-  ]);
-
-  const quotes = settled
-    .filter((r) => r.status === "fulfilled")
-    .map((r) => r.value);
-
-  const winner = quotes.reduce((best, cur) =>
-    cur.price < best.price ? cur : best
-  );
-
-  return { packageId, winner };
-}
-```
+`Promise.allSettled()` fans out to all four providers as independent durable steps. Every call runs in parallel with its own retry logic.
 
 <!-- split -->
 
-Each provider call is a `"use step"`, retried independently. `Promise.allSettled()` waits for all of them, failures included.
+Each provider call is a `"use step"`, so failures are isolated. `Promise.allSettled()` collects every result — successes and errors alike — without short-circuiting.
 
-Filter the successes, reduce to the cheapest. Done.
+Filter the fulfilled results and `reduce()` to the cheapest quote. If one provider crashed, the other three still contribute.
 
 <!-- split -->
 
-No fan-out queue. No correlation IDs. No timeout cron. Four parallel calls and a `reduce()`.
+No fan-out queue. No correlation IDs. No aggregation service. No timeout cron. Four parallel calls and a `reduce()`.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Parallel calls, partial failures"
+## Variant B — "One provider crashes. Do you lose all four quotes?"
 
-Fire 4 API calls. Two return in 200ms. One takes 3 seconds. One fails.
+FedEx returns a quote in 200ms. DHL takes 2 seconds. USPS throws a 500. UPS never responds. With `Promise.all()`, one failure kills the entire batch.
 
-You still need the best result from whoever responded. That's scatter-gather.
-
-With WDK, it's `Promise.allSettled()`:
-
-```ts
-async function scatterGather(packageId) {
-  "use workflow";
-
-  const settled = await Promise.allSettled([
-    fetchFedExQuote(packageId),  // each is "use step"
-    fetchUpsQuote(packageId),
-    fetchDhlQuote(packageId),
-    fetchUspsQuote(packageId),
-  ]);
-
-  const quotes = settled
-    .filter((r) => r.status === "fulfilled")
-    .map((r) => r.value);
-
-  const winner = quotes.reduce((best, cur) =>
-    cur.price < best.price ? cur : best
-  );
-
-  return { packageId, winner };
-}
-```
+`Promise.allSettled()` waits for every provider to resolve or reject, then hands you the full picture. No short-circuiting.
 
 <!-- split -->
 
-Each call is its own durable step with independent retries. `allSettled` never throws. You get every result or every error.
+Each provider is a `"use step"` with independent retry logic. USPS gets retried automatically. UPS hits its timeout and fails. FedEx and DHL succeed on the first attempt. All four run in parallel.
 
-Pick the winner from the successes. Log the failures. Move on.
+`reduce()` across the fulfilled results picks the cheapest surviving quote. The failed providers show up as rejected entries you can log or alert on.
 
 <!-- split -->
 
-No orchestrator. No aggregation service. Four steps, one reduce, best quote selected.
+No aggregation service. No timeout coordinator. No partial-result database. Parallel calls, independent failures, and a `reduce()` to pick the winner.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "The RFQ pattern"
+## Variant C — "Cheapest quote wins, even when providers misbehave"
 
-Request for Quote: ask multiple vendors, pick the best offer.
+Four shipping providers. Different latencies. Different reliability. You want the cheapest quote from whoever responds successfully, without waiting for the slowest one to drag everything down.
 
-In infrastructure, this means fan-out, collect, aggregate, decide. Usually 4 services and a correlation database.
-
-In WDK, it's one workflow:
-
-```ts
-async function scatterGather(packageId) {
-  "use workflow";
-
-  const settled = await Promise.allSettled([
-    fetchFedExQuote(packageId),  // each is "use step"
-    fetchUpsQuote(packageId),
-    fetchDhlQuote(packageId),
-    fetchUspsQuote(packageId),
-  ]);
-
-  const quotes = settled
-    .filter((r) => r.status === "fulfilled")
-    .map((r) => r.value);
-
-  const winner = quotes.reduce((best, cur) =>
-    cur.price < best.price ? cur : best
-  );
-
-  return { packageId, winner };
-}
-```
+`Promise.allSettled()` plus `reduce()` turns this into a two-step operation: gather everything in parallel, then pick the best from whatever came back.
 
 <!-- split -->
 
-`Promise.allSettled()` fans out to all providers. Each is a durable step. If one crashes mid-call, only that step retries.
+Each provider call is a durable step. Retries happen automatically for transient failures. If a provider is permanently broken, `FatalError` stops its retries without affecting the others.
 
-The rest of your quotes are safe. No shared failure modes.
+The `reduce()` only considers fulfilled results. Three out of four providers responding? You still get the cheapest quote from those three.
 
 <!-- split -->
 
-Scatter. Gather. Pick the cheapest. No message broker. No aggregation database. No correlation table.
+No fan-out infrastructure. No result correlation. No retry policies per provider. Parallel steps, a reduce, and the cheapest quote wins regardless of which providers cooperated.
 
 Explore the interactive demo on v0: {v0_link}

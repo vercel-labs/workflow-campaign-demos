@@ -28,6 +28,28 @@ export interface ParsedPost {
   threads: PostThread[];
 }
 
+export function toMonospace(text: string): string {
+  let result = "";
+  for (const ch of text) {
+    const code = ch.codePointAt(0)!;
+    if (code >= 0x41 && code <= 0x5a) {
+      result += String.fromCodePoint(0x1d670 + (code - 0x41));
+    } else if (code >= 0x61 && code <= 0x7a) {
+      result += String.fromCodePoint(0x1d68a + (code - 0x61));
+    } else if (code >= 0x30 && code <= 0x39) {
+      result += String.fromCodePoint(0x1d7f6 + (code - 0x30));
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
+/** Convert `backtick code` to Unicode monospace in a string */
+export function applyMonospace(text: string): string {
+  return text.replace(/`([^`]+)`/g, (_, code) => toMonospace(code));
+}
+
 export function parsePostFile(filePath: string): ParsedPost {
   const raw = readFileSync(filePath, "utf-8");
 

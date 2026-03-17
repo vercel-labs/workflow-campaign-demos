@@ -1,7 +1,6 @@
 ---
 slug: process-manager
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-process-manager
 primitive: sleep() for durable wait + branching logic
 pick: null
@@ -11,141 +10,56 @@ pick: null
 
 Orchestrate a multi-stage order: payment, inventory, reservation, shipping, delivery, with branching logic for backorders and durable waits for restocking.
 
-## Variant A — "The order that waits"
+## Variant A — "The state machine you don't need"
 
+Payment clears. Inventory check says backordered. Now your order needs to wait 48 hours for restocking, then resume shipping. Traditional process managers need a state machine, a transition table in Postgres, a background job scheduler, and a cron that polls for resumable orders.
 
-Payment clears. Inventory check says backordered. Now your order needs to wait 48 hours for restocking, then resume shipping.
-
-Traditional: an order state machine, a state transition table in Postgres, a background job scheduler, and a cron that polls for resumable orders.
-
-With WDK you call `sleep("48h")` and the workflow resumes itself:
-
-```ts
-import { sleep } from "workflow";
-
-export async function processManager(orderId: string, items: string[]) {
-  "use workflow";
-
-  let state = "received";
-
-  state = await validatePayment(orderId);
-  if (state === "payment_failed") return await cancelOrder(orderId);
-
-  state = await checkInventory(orderId, items);
-
-  if (state === "backordered") {
-    await sleep("48h"); // durable — survives restarts
-    state = await recheckInventory(orderId);
-  }
-
-  await reserveInventory(orderId, items);
-  await shipOrder(orderId);
-  await confirmDelivery(orderId);
-
-  return { orderId, finalState: "completed" };
-}
-```
+`sleep("48h")` makes the workflow durably pause and resume itself. Branching logic is just `if/else`.
 
 <!-- split -->
 
-The branching logic is just `if/else`. Backorder? Sleep. In stock? Ship. The `sleep()` is durable. It survives restarts, redeployments, and infrastructure changes.
+Each stage is a `"use step"`. Backorder? `sleep("48h")` and recheck. Payment failed? Return early and cancel. The sleep survives restarts, redeployments, and infrastructure changes.
 
-No state transition table. No scheduler. No polling cron.
+Crash mid-shipment? The workflow resumes at the shipping step. Sleep for 48 hours? It wakes up at exactly 48 hours.
 
 <!-- split -->
 
-Payment → inventory check → backorder wait → shipping → delivery. Five stages, branching paths, durable pauses.
-
-One file. Regular TypeScript. No workflow engine.
+No state transition table. No BPMN diagrams. No timer service. No scheduler. Just an async function that happens to survive anything.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Branching without a state machine"
+## Variant B — "Backorder? Sleep 48 hours and pick up where you left off."
 
-Order fulfillment has branches. In stock? Ship it. Backordered? Wait, then ship. Failed payment? Cancel everything.
+The order is paid. Inventory says out of stock. Restocking takes two days. In a traditional system, you save the order state, schedule a background job for 48 hours from now, and hope the job runner is still healthy when it fires.
 
-Traditional process managers model this as a state machine with a transition table. Each state is a row. Each transition is a rule.
-
-WDK process managers model this as code:
-
-```ts
-import { sleep } from "workflow";
-
-export async function processManager(orderId: string, items: string[]) {
-  "use workflow";
-
-  let state = "received";
-
-  state = await validatePayment(orderId);
-  if (state === "payment_failed") return await cancelOrder(orderId);
-
-  state = await checkInventory(orderId, items);
-
-  if (state === "backordered") {
-    await sleep("48h"); // durable — survives restarts
-    state = await recheckInventory(orderId);
-  }
-
-  await reserveInventory(orderId, items);
-  await shipOrder(orderId);
-  await confirmDelivery(orderId);
-
-  return { orderId, finalState: "completed" };
-}
-```
+`sleep("48h")` pauses the workflow durably. No external scheduler. No state to save. The workflow just waits and resumes at the exact moment.
 
 <!-- split -->
 
-`if (backordered)` → `sleep("48h")` → check again. That's the branch. The `sleep()` is durable. The workflow literally pauses for 48 hours and picks up where it left off.
+The backorder branch is an `if` statement. The wait is a `sleep()`. The recheck is the next step. Redeploy during the 48-hour pause? The workflow wakes up on schedule. Infrastructure restart? Same thing.
 
-No state column. No transition rules. No background job to wake it up.
+Payment branch, backorder branch, shipping branch — all just `if/else` in a single function. Each stage is a `"use step"` with its own retry behavior.
 
 <!-- split -->
 
-Payment. Inventory. Branching. Waiting. Shipping. Delivery. All the complexity of order fulfillment, none of the infrastructure.
+No state machine library. No workflow engine. No timer database. No job scheduler polling for resumable orders. Branching logic in code, durable sleeps for waits, and the runtime handles persistence.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "A workflow engine in a function"
+## Variant C — "Five stages, three branches, one function"
 
-Process managers coordinate long-running, multi-step business processes. Traditionally that means a workflow engine: BPMN diagrams, state persistence, timer services.
+Payment. Inventory. Backorder wait. Shipping. Delivery confirmation. Traditional process managers model this as a state machine with a transition table, a persistence layer, a scheduler for timed transitions, and a recovery system for crashes.
 
-WDK gives you the same durability in a TypeScript function:
-
-```ts
-import { sleep } from "workflow";
-
-export async function processManager(orderId: string, items: string[]) {
-  "use workflow";
-
-  let state = "received";
-
-  state = await validatePayment(orderId);
-  if (state === "payment_failed") return await cancelOrder(orderId);
-
-  state = await checkInventory(orderId, items);
-
-  if (state === "backordered") {
-    await sleep("48h"); // durable — survives restarts
-    state = await recheckInventory(orderId);
-  }
-
-  await reserveInventory(orderId, items);
-  await shipOrder(orderId);
-  await confirmDelivery(orderId);
-
-  return { orderId, finalState: "completed" };
-}
-```
+This is an async function with `if/else` branches and `sleep()` calls. Each stage is a `"use step"`. Each wait is durable. Each branch is code.
 
 <!-- split -->
 
-Each stage is a `"use step"`. Branching is `if/else`. Durable waits are `sleep()`. The runtime checkpoints after every step and resumes after every pause.
+Payment fails? Early return. Inventory available? Skip to shipping. Backordered? `sleep("48h")` and recheck. The control flow reads like the business logic because it is the business logic.
 
-Crash mid-shipment? It resumes at shipping. Sleep for 48 hours? It wakes up at 48 hours.
+Crash at any stage and the workflow replays completed steps from the log, then resumes at the exact point of failure. Durable sleeps wake up on schedule regardless of restarts.
 
 <!-- split -->
 
-No BPMN. No state database. No timer service. Just an async function that happens to survive anything.
+No BPMN engine. No state transition table. No workflow DSL. No cron jobs. A single function that branches, waits, retries, and survives infrastructure failures.
 
 Explore the interactive demo on v0: {v0_link}

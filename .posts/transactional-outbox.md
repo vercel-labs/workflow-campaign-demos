@@ -1,7 +1,6 @@
 ---
 slug: transactional-outbox
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-transactional-outbox
 primitive: multi-step sequence with durable checkpoints
 pick: null
@@ -13,94 +12,58 @@ Persist an outbox record, relay it to a message broker, and confirm delivery, en
 
 ## Variant A — "The dual-write trap"
 
+You save to the database. Then you publish to the broker. The broker call fails. Now your database has a record that was never delivered.
 
-You save to the database. Then you publish to the broker. The broker call fails. Now your DB has a record that was never delivered.
+The traditional fix is an outbox table in the same database, a polling worker to relay undelivered records, and a confirmation step to mark them sent. That means idempotency keys, delivery tracking, and failure handling on top.
 
-Traditional: an outbox table in the same DB, a polling worker to relay undelivered records, and a confirmation step to mark them sent.
-
-With WDK each operation is a durable step:
-
-```ts
-export async function transactionalOutbox(orderId: string, payload: string) {
-  "use workflow";
-
-  const { outboxId } = await persistOrder(orderId, payload);
-  const { brokerId } = await pollRelay(outboxId);
-  await publishEvent(outboxId, brokerId);
-  return markSent(orderId, outboxId, brokerId);
-}
-```
+With durable steps, each operation is a checkpoint. `persistOrder` commits the record. `pollRelay` sends it to the broker. `publishEvent` and `markSent` confirm delivery.
 
 <!-- split -->
 
-Step 1 persists the record. Step 2 relays to the broker. Step 3 confirms delivery. If step 2 fails, the workflow retries it. The record from step 1 is already committed.
+If the relay step fails, the workflow retries from that step, not from scratch. The persist step does not re-execute. Each `"use step"` boundary is an automatic checkpoint that the runtime manages.
 
-No outbox table. No polling worker. The durability is built into the step boundary.
+No outbox table. No polling interval. No delivery tracking table. No idempotency layer bolted on top. The durability is built into the step boundary.
 
 <!-- split -->
 
-Persist. Relay. Confirm. At-least-once delivery without a separate outbox infrastructure.
-
-One workflow. Three steps. No dual-write bugs.
+Three durable steps give you at-least-once delivery without a separate outbox infrastructure. Persist. Relay. Confirm. No dual-write bugs. No relay worker. No dead-letter queue.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Why the outbox pattern exists"
+## Variant B — "What if the broker is down?"
 
-The outbox pattern exists because you can't atomically write to a database and a message broker in one transaction.
+Database write succeeds. Broker publish fails. Now you have a committed record with no corresponding event. Customers see the order but downstream services never hear about it.
 
-So you write to an outbox table instead, and a background worker picks it up. That worker needs idempotency keys, delivery tracking, and failure handling.
+Polling workers and outbox tables exist to solve this, but they introduce their own failure modes: stale polls, duplicate relays, and orphaned delivery records.
 
-WDK replaces the worker with durable steps:
-
-```ts
-export async function transactionalOutbox(orderId: string, payload: string) {
-  "use workflow";
-
-  const { outboxId } = await persistOrder(orderId, payload);
-  const { brokerId } = await pollRelay(outboxId);
-  await publishEvent(outboxId, brokerId);
-  return markSent(orderId, outboxId, brokerId);
-}
-```
+Durable step boundaries make each operation a checkpoint. `persistOrder` runs once and is never repeated. If `pollRelay` fails, the workflow retries from that exact step, not from the beginning.
 
 <!-- split -->
 
-Each step is an atomic checkpoint. If the relay step fails, the workflow retries from that step, not from scratch. The persist step doesn't re-execute.
+The runtime knows which steps completed. A restart after a broker failure skips the persist step entirely and goes straight to relay. No duplicate database writes. No idempotency keys on the application side.
 
-No polling interval. No delivery tracking table. No idempotency layer on top.
+`publishEvent` confirms the broker received the message. `markSent` updates the record. Each step is atomic from the workflow's perspective.
 
 <!-- split -->
 
-At-least-once semantics from durable execution. The outbox pattern without the outbox.
+No outbox table polling every 5 seconds. No delivery tracking service. No dual-write coordination logic. Durable checkpoints turn a fragile multi-service dance into a sequential workflow that retries from exactly the right place.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "At-least-once without the infrastructure"
+## Variant C — "Persist, relay, confirm — nothing else"
 
-At-least-once delivery usually means: outbox table, relay worker, confirmation flag, dead-letter queue, and a monitoring dashboard to watch it all.
+The transactional outbox pattern usually means three new pieces of infrastructure: an outbox table, a relay worker, and a delivery tracker. Each one has its own failure modes, monitoring, and deployment pipeline.
 
-WDK collapses that to a step sequence:
-
-```ts
-export async function transactionalOutbox(orderId: string, payload: string) {
-  "use workflow";
-
-  const { outboxId } = await persistOrder(orderId, payload);
-  const { brokerId } = await pollRelay(outboxId);
-  await publishEvent(outboxId, brokerId);
-  return markSent(orderId, outboxId, brokerId);
-}
-```
+Durable steps collapse all three into sequential checkpoint boundaries. `persistOrder` commits the record. `pollRelay` forwards it. `publishEvent` and `markSent` close the loop. Each step runs exactly once on success and retries only itself on failure.
 
 <!-- split -->
 
-Write the record. Send to the broker. Confirm delivery. Each step checkpoints automatically. Failure at any point resumes from the last successful step.
+The checkpoint boundary is the outbox. When `persistOrder` completes, its result is durable. The workflow will never re-execute it, even after a crash. The relay step picks up from its own boundary, not from the beginning of the workflow.
 
-No relay worker. No confirmation flags. No dead-letter queue. The runtime guarantees progress.
+This eliminates the classic dual-write bug at the architecture level, not through application-level idempotency checks.
 
 <!-- split -->
 
-Three steps. At-least-once delivery. Zero extra infrastructure.
+No outbox table. No polling worker. No delivery tracking database. No idempotency middleware. Three steps, three checkpoints, at-least-once delivery guaranteed by the runtime.
 
 Explore the interactive demo on v0: {v0_link}

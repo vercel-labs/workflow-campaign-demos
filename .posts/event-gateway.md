@@ -1,7 +1,6 @@
 ---
 slug: event-gateway
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-event-gateway
 primitive: Promise.race() + Promise.all() + defineHook() + sleep()
 pick: null
@@ -11,156 +10,56 @@ pick: null
 
 Wait for multiple required signals (payment, inventory, fraud check) to all arrive, or timeout, before shipping an order.
 
-## Variant A — "Three signals, one gate"
+## Variant A — "The correlation table problem"
 
+Before you ship an order, three things must be true: payment cleared, inventory reserved, fraud check passed. They arrive at different times from different services. Building a correlation table and polling loop per signal gets complicated fast.
 
-Before you ship an order, three things must be true: payment cleared, inventory reserved, fraud check passed. They arrive at different times from different services.
-
-Traditional: correlation IDs in a database, a polling loop per signal, a state machine to track which signals arrived, a timeout sweep.
-
-Or you compose `Promise.all()` with `defineHook()` and `sleep()`:
-
-```ts
-import { defineHook, sleep } from "workflow";
-
-export const orderSignal = defineHook<{ ok: true }>();
-
-const SIGNAL_KINDS = ["payment", "inventory", "fraud"] as const;
-
-export async function eventGateway(orderId: string, timeoutMs = 10_000) {
-  "use workflow";
-
-  // Create a hook for each required signal
-  const hooks = SIGNAL_KINDS.map((kind) => ({
-    kind,
-    hook: orderSignal.create({ token: `${kind}:${orderId}` }),
-  }));
-
-  // Race: all signals arrive vs. timeout
-  const outcome = await Promise.race([
-    Promise.all(hooks.map(({ hook }) => hook)).then(() => "ready" as const),
-    sleep(`${timeoutMs}ms`).then(() => "timeout" as const),
-  ]);
-
-  if (outcome === "timeout") {
-    return { orderId, status: "timeout" };
-  }
-
-  await shipOrder(orderId);
-  return { orderId, status: "shipped" };
-}
-```
+`defineHook()` creates a durable signal endpoint for each event. `Promise.all()` gates on all three. `Promise.race()` wraps the gate with a `sleep()` timeout.
 
 <!-- split -->
 
-Each signal is a hook. `Promise.all()` waits for all three. `Promise.race()` wraps the gate with a `sleep()` timeout. If all signals arrive, the order ships. If the timeout wins, the order cancels.
-
-No correlation table. No polling. The workflow is the gate.
-
-<!-- split -->
-
-Payment clears at T+2s. Inventory confirms at T+5s. Fraud passes at T+8s. Gate opens. Order ships.
-
-Or: fraud check stalls. Timeout fires at T+30s. Order cancels. All durable. All in one file.
-
-Explore the interactive demo on v0: {v0_link}
-
-## Variant B — "Race the clock"
-
-Waiting for multiple async signals is easy. Waiting for all of them with a timeout is where it gets messy.
-
-Traditional: a multi-step approval service, DB-backed correlation, completion polling, timeout cron.
-
-WDK: `Promise.race()` between `Promise.all(hooks)` and `sleep(timeout)`:
-
-```ts
-import { defineHook, sleep } from "workflow";
-
-export const orderSignal = defineHook<{ ok: true }>();
-
-const SIGNAL_KINDS = ["payment", "inventory", "fraud"] as const;
-
-export async function eventGateway(orderId: string, timeoutMs = 10_000) {
-  "use workflow";
-
-  // Create a hook for each required signal
-  const hooks = SIGNAL_KINDS.map((kind) => ({
-    kind,
-    hook: orderSignal.create({ token: `${kind}:${orderId}` }),
-  }));
-
-  // Race: all signals arrive vs. timeout
-  const outcome = await Promise.race([
-    Promise.all(hooks.map(({ hook }) => hook)).then(() => "ready" as const),
-    sleep(`${timeoutMs}ms`).then(() => "timeout" as const),
-  ]);
-
-  if (outcome === "timeout") {
-    return { orderId, status: "timeout" };
-  }
-
-  await shipOrder(orderId);
-  return { orderId, status: "shipped" };
-}
-```
-
-<!-- split -->
-
-`defineHook()` creates a signal endpoint for each external event. `Promise.all()` gates on every signal. `Promise.race()` adds the deadline. Whichever resolves first wins.
+Whichever resolves first wins. If all signals arrive before the deadline, the order ships. If `sleep()` wins the race, the order times out.
 
 Each hook is durable. If the workflow crashes after payment clears but before fraud passes, it resumes with payment already recorded.
 
 <!-- split -->
 
-No approval service. No correlation IDs. No completion polling. Three hooks, one race, one file.
+No correlation table. No polling loop. No approval service. No completion database. Three hooks, one race, one file.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "The AND gate for async events"
+## Variant B — "Three services, three timelines, one deadline"
 
-You need payment AND inventory AND fraud check before shipping. That's a logical AND gate across three async, unreliable sources, with a timeout.
+Payment clears in 2 seconds. Inventory reservation takes 10. Fraud check takes anywhere from 1 second to never. You need all three before you can ship, but you can't wait forever.
 
-Compose the primitives:
-
-```ts
-import { defineHook, sleep } from "workflow";
-
-export const orderSignal = defineHook<{ ok: true }>();
-
-const SIGNAL_KINDS = ["payment", "inventory", "fraud"] as const;
-
-export async function eventGateway(orderId: string, timeoutMs = 10_000) {
-  "use workflow";
-
-  // Create a hook for each required signal
-  const hooks = SIGNAL_KINDS.map((kind) => ({
-    kind,
-    hook: orderSignal.create({ token: `${kind}:${orderId}` }),
-  }));
-
-  // Race: all signals arrive vs. timeout
-  const outcome = await Promise.race([
-    Promise.all(hooks.map(({ hook }) => hook)).then(() => "ready" as const),
-    sleep(`${timeoutMs}ms`).then(() => "timeout" as const),
-  ]);
-
-  if (outcome === "timeout") {
-    return { orderId, status: "timeout" };
-  }
-
-  await shipOrder(orderId);
-  return { orderId, status: "shipped" };
-}
-```
+`defineHook()` registers a durable endpoint for each signal. `Promise.all()` requires all three. `Promise.race()` pits the gate against a `sleep()` deadline.
 
 <!-- split -->
 
-`defineHook()` for each signal. `Promise.all()` for the AND logic. `sleep()` for the deadline. `Promise.race()` to pick the winner.
+Signals arrive in any order. The workflow doesn't care which comes first. `Promise.all()` resolves the moment all three hooks have fired. If the deadline hits first, `sleep()` wins the race and the order times out gracefully.
 
-Four primitives, one pattern. Each signal survives restarts independently. The gate evaluates when all have resolved, or when time runs out.
+Crash between the second and third signal? The workflow resumes with the first two already recorded. Only the missing signal is still pending.
 
 <!-- split -->
 
-Three external services. Three hooks. One gate. One timeout. Zero infrastructure beyond the workflow file.
+No state machine. No event correlation service. No completion tracking database. Hooks for signals, a race for the deadline, and `Promise.all()` for the gate.
+
+Explore the interactive demo on v0: {v0_link}
+
+## Variant C — "What if the fraud check never comes?"
+
+Payment and inventory are fast. Fraud check depends on a third party that sometimes goes silent. Without a timeout, your order sits in limbo. With a naive timeout, you lose track of which signals already arrived.
+
+`Promise.race()` between `Promise.all()` and `sleep()` gives you a clean answer: either everything arrived or the deadline expired. `defineHook()` makes each signal durable and individually trackable.
+
+<!-- split -->
+
+The fraud service responds at minute 3? The hook captures it. The workflow already timed out at minute 2? The timeout path runs. No ambiguity, no partial states, no signals arriving after you've moved on causing side effects.
+
+Each hook persists independently. The workflow knows exactly which signals arrived and which didn't when it makes its decision.
+
+<!-- split -->
+
+No polling for missing signals. No TTL columns in a database. No cron job sweeping stale orders. A race between completion and a deadline, with durable hooks that survive anything.
 
 Explore the interactive demo on v0: {v0_link}

@@ -1,7 +1,6 @@
 ---
 slug: choreography
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-choreography
 primitive: FatalError for compensation + sleep() for handoff delays
 pick: null
@@ -11,170 +10,56 @@ pick: null
 
 Orchestrate an order through inventory, payment, and shipping, with event-driven handoffs and compensating transactions when a participant fails.
 
-## Variant A — "When payment fails after inventory reserved"
+## Variant A — "Payment declines after inventory is reserved"
 
+Order placed. Inventory reserved. Payment declines. Now you need to release the inventory, notify the customer, and log the failure — in the right order.
 
-Order placed. Inventory reserved. Payment declines. Now you need to release the inventory, notify the customer, and log the failure, in the right order.
-
-Traditional: an event bus with subscribers for each participant, a saga table to track progress, and explicit rollback services per step.
-
-With WDK each participant is a step with compensation:
-
-```ts
-import { sleep, FatalError } from "workflow";
-
-export async function choreography(orderId: string, items: OrderItem[]) {
-  "use workflow";
-
-  await orderServicePlaceOrder(orderId, items);
-
-  const inventory = await inventoryServiceReserve(items);
-  if (!inventory.success) {
-    await orderServiceCompensate(orderId, "inventory_failed");
-    return { outcome: "compensated" };
-  }
-
-  await sleep("3s"); // handoff latency between participants
-
-  const payment = await paymentServiceCharge(orderId);
-  if (!payment.success) {
-    await inventoryServiceCompensate(items, "payment_failed");
-    await orderServiceCompensate(orderId, "payment_failed");
-    return { outcome: "compensated" };
-  }
-
-  const shipping = await shippingServiceShip(orderId, items);
-  if (!shipping.success) {
-    await paymentServiceCompensate(orderId, "shipping_failed");
-    await inventoryServiceCompensate(items, "shipping_failed");
-    await orderServiceCompensate(orderId, "shipping_failed");
-    return { outcome: "compensated" };
-  }
-
-  return { outcome: "fulfilled" };
-}
-```
+Each participant is a durable step. When a later step throws `FatalError`, compensations run in reverse automatically.
 
 <!-- split -->
 
-Reserve inventory. Charge payment. Book shipping. If payment throws `FatalError`, the workflow runs compensations in reverse: release inventory, cancel the reservation.
+`sleep()` between steps simulates real-world handoff latency between services. Each compensation is itself a durable step, so crashing mid-rollback means the unwinding resumes exactly where it left off.
 
-Each handoff has a `sleep()` to simulate real-world processing delays between services. Each compensation is durable. Crash mid-rollback? It resumes.
+Payment fails after inventory was reserved? The workflow releases inventory, then cancels the order. Shipping fails? It refunds the charge, releases inventory, then cancels the order. The reverse ordering is explicit in the code.
 
 <!-- split -->
 
-Four participants. One workflow. Failure at any point triggers automatic compensation in reverse order.
-
-No event bus. No saga table. No rollback microservices.
+No event bus. No saga table. No rollback microservices. Four participants, one workflow file, and compensating transactions that actually survive crashes.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Choreography without the message broker"
+## Variant B — "Crash mid-rollback"
 
-Choreography patterns usually need a message broker. Each service subscribes to events, publishes results, and you pray the ordering is correct.
+The scariest moment in a distributed order flow is not when payment fails. It is when the compensation to release inventory also crashes halfway through.
 
-WDK replaces the broker with sequential durable steps:
-
-```ts
-import { sleep, FatalError } from "workflow";
-
-export async function choreography(orderId: string, items: OrderItem[]) {
-  "use workflow";
-
-  await orderServicePlaceOrder(orderId, items);
-
-  const inventory = await inventoryServiceReserve(items);
-  if (!inventory.success) {
-    await orderServiceCompensate(orderId, "inventory_failed");
-    return { outcome: "compensated" };
-  }
-
-  await sleep("3s"); // handoff latency between participants
-
-  const payment = await paymentServiceCharge(orderId);
-  if (!payment.success) {
-    await inventoryServiceCompensate(items, "payment_failed");
-    await orderServiceCompensate(orderId, "payment_failed");
-    return { outcome: "compensated" };
-  }
-
-  const shipping = await shippingServiceShip(orderId, items);
-  if (!shipping.success) {
-    await paymentServiceCompensate(orderId, "shipping_failed");
-    await inventoryServiceCompensate(items, "shipping_failed");
-    await orderServiceCompensate(orderId, "shipping_failed");
-    return { outcome: "compensated" };
-  }
-
-  return { outcome: "fulfilled" };
-}
-```
+Each compensation is its own durable step. If the workflow dies while unwinding, it resumes the rollback from the exact step that was interrupted.
 
 <!-- split -->
 
-Order → inventory → payment → shipping. Each step is a handoff. `sleep()` adds realistic processing time between participants. If any step fails with `FatalError`, compensations run automatically.
+`FatalError` triggers the compensation chain. Each undo action — refund payment, release inventory, cancel order — is a checkpointed step. The workflow tracks which compensations have completed and which remain.
 
-No pub/sub. No event ordering guarantees to worry about. No dead-letter queues. The sequence is the code.
+`sleep()` between compensations models real handoff latency. A crash during that sleep resumes when the durable timer fires, not from the beginning.
 
 <!-- split -->
 
-The choreography is a function. The handoffs are steps. The rollbacks are compensations attached to each step.
-
-All participants, one file. All durable.
+No manual rollback tracking. No compensation state table. No idempotency keys to manage yourself. The workflow engine remembers where it was, even mid-undo.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Compensating transactions that actually work"
+## Variant C — "Four services, one file"
 
-Compensating transactions sound simple. In practice: which services need rollback? In what order? What if the compensation itself fails?
+Inventory service. Payment gateway. Shipping provider. Notification system. Four participants that need to coordinate, and each one can fail independently.
 
-WDK handles all of it:
-
-```ts
-import { sleep, FatalError } from "workflow";
-
-export async function choreography(orderId: string, items: OrderItem[]) {
-  "use workflow";
-
-  await orderServicePlaceOrder(orderId, items);
-
-  const inventory = await inventoryServiceReserve(items);
-  if (!inventory.success) {
-    await orderServiceCompensate(orderId, "inventory_failed");
-    return { outcome: "compensated" };
-  }
-
-  await sleep("3s"); // handoff latency between participants
-
-  const payment = await paymentServiceCharge(orderId);
-  if (!payment.success) {
-    await inventoryServiceCompensate(items, "payment_failed");
-    await orderServiceCompensate(orderId, "payment_failed");
-    return { outcome: "compensated" };
-  }
-
-  const shipping = await shippingServiceShip(orderId, items);
-  if (!shipping.success) {
-    await paymentServiceCompensate(orderId, "shipping_failed");
-    await inventoryServiceCompensate(items, "shipping_failed");
-    await orderServiceCompensate(orderId, "shipping_failed");
-    return { outcome: "compensated" };
-  }
-
-  return { outcome: "fulfilled" };
-}
-```
+A `for` loop of durable steps walks forward through participants. A `FatalError` at any point triggers the reverse walk through compensations.
 
 <!-- split -->
 
-Attach a `compensate` function to each step. If a later step throws `FatalError`, the runtime calls compensations in reverse, and each compensation is itself a durable step.
+Each participant is a `"use step"` boundary. Forward steps execute in order with `sleep()` modeling real handoff delays. When a step throws `FatalError`, the workflow iterates backward through completed participants, running each compensation as its own durable step.
 
-Compensation fails? It retries. Server crashes mid-compensation? It resumes. The unwinding is as reliable as the forward path.
+The compensation order is explicit — last committed participant undoes first.
 
 <!-- split -->
 
-Order flow: reserve → charge → ship. Payment fails? Release inventory. Shipping fails? Refund charge, release inventory.
-
-No manual rollback coordination. No saga orchestrator. Just functions that undo other functions.
+No event bus connecting services. No saga orchestrator table. No distributed transaction coordinator. One workflow file with forward steps and their matching compensations.
 
 Explore the interactive demo on v0: {v0_link}

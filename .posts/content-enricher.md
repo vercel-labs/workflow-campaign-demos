@@ -1,7 +1,6 @@
 ---
 slug: content-enricher
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-content-enricher
 primitive: Promise.allSettled() for partial success
 pick: null
@@ -11,133 +10,56 @@ pick: null
 
 Enrich a lead profile by querying 4 sources (CRM, social, Clearbit, GitHub) in parallel, then merge all available results, even if some sources fail.
 
-## Variant A — "Partial data is still useful data"
+## Variant A — "One failure shouldn't erase three successes"
 
+A new lead signs up. You need to hydrate their profile from four sources. If Clearbit times out, do you throw away the other three results? Sequential calls are slow. Parallel calls without coordination lose partial results on the first failure.
 
-A new lead signs up. You need to hydrate their profile from CRM, social, Clearbit, and GitHub. If Clearbit times out, do you throw away the other three results?
-
-Traditional: an orchestration service with parallel API calls, retry policies per source, a dedup cache, and fallback logic when sources disagree.
-
-Or you fan out with `Promise.allSettled()` and merge what comes back:
-
-```ts
-export async function enrichLeadProfile(email: string) {
-  "use workflow";
-
-  const baseLead = await lookupBaseContact(email);
-
-  const [crm, social, clearbit, github] = await Promise.allSettled([
-    fetchCrmEnrichment(baseLead),
-    fetchSocialEnrichment(baseLead),
-    fetchClearbitEnrichment(baseLead),
-    fetchGitHubEnrichment(baseLead),
-  ]);
-
-  const profile = await mergeEnrichmentProfile(baseLead, {
-    crm: crm.status === "fulfilled" ? crm.value : null,
-    social: social.status === "fulfilled" ? social.value : null,
-    clearbit: clearbit.status === "fulfilled" ? clearbit.value : null,
-    github: github.status === "fulfilled" ? github.value : null,
-  });
-
-  return { email, baseLead, profile };
-}
-```
+`Promise.allSettled()` fans out to all four sources as independent durable steps. Every call completes — success or failure — without canceling the others.
 
 <!-- split -->
 
-Four sources queried in parallel. Each is a durable step. `Promise.allSettled()` means a failure in one doesn't cancel the others. You get partial enrichment instead of total failure.
+Each source call is a `"use step"` with its own retry logic. `Promise.allSettled()` collects every outcome. The merge step sees what succeeded and what didn't, building the richest profile possible from whatever came back.
 
-No orchestration service. No retry coordinator. The workflow is the coordinator.
+Crash mid-enrichment? Completed steps replay from the log instantly. Only the incomplete step re-runs.
 
 <!-- split -->
 
-CRM returns. Social returns. Clearbit times out. GitHub returns. Three out of four merge cleanly. The lead gets a rich profile now, not a perfect profile never.
+No orchestration service. No retry coordinator. No dedup cache. Four calls, one merge, partial success built in.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Four APIs, one merge"
+## Variant B — "The enrichment pipeline that doesn't block on Clearbit"
 
-Enriching a record means calling multiple APIs. One is slow. One is flaky. One changes its schema quarterly. You still need to merge results and move on.
+CRM responds in 50ms. GitHub in 200ms. Social API in 800ms. Clearbit is down. Your lead is waiting for a profile that's 75% ready while you block on the one source that won't respond.
 
-Traditional: a queue per source, a callback aggregator, dedup logic, and a timeout sweep.
-
-WDK: four parallel steps, one `Promise.allSettled()`, one merge:
-
-```ts
-export async function enrichLeadProfile(email: string) {
-  "use workflow";
-
-  const baseLead = await lookupBaseContact(email);
-
-  const [crm, social, clearbit, github] = await Promise.allSettled([
-    fetchCrmEnrichment(baseLead),
-    fetchSocialEnrichment(baseLead),
-    fetchClearbitEnrichment(baseLead),
-    fetchGitHubEnrichment(baseLead),
-  ]);
-
-  const profile = await mergeEnrichmentProfile(baseLead, {
-    crm: crm.status === "fulfilled" ? crm.value : null,
-    social: social.status === "fulfilled" ? social.value : null,
-    clearbit: clearbit.status === "fulfilled" ? clearbit.value : null,
-    github: github.status === "fulfilled" ? github.value : null,
-  });
-
-  return { email, baseLead, profile };
-}
-```
+`Promise.allSettled()` runs all four sources in parallel and waits for every one to settle. The merge step gets three successes and one failure, and builds the profile from what's available.
 
 <!-- split -->
 
-Each source call is its own durable step. If Clearbit throws, the step records the failure. The other three steps still complete. `allSettled` collects everything, successes and errors alike.
+Each source is a durable step with automatic retries. Clearbit gets a few retry attempts, then gives up. The other three sources finished long ago. No source blocks another.
 
-No partial-failure recovery logic. The runtime handles it.
+The merge step inspects each result's status. Fulfilled sources contribute their data. Rejected sources log a warning. The profile ships with everything that worked.
 
 <!-- split -->
 
-Query CRM. Query social. Query Clearbit. Query GitHub. Merge results. One file. Five steps. Partial success built in.
+No waterfall of API calls. No failure-cancels-everything logic. No partial enrichment recovery job. Four parallel calls, a merge of whatever succeeded, and the profile is ready.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Enrich without the orchestrator"
+## Variant C — "Partial data is better than no data"
 
-You need data from four sources to build a lead profile. Building an orchestration service for this feels like overkill. Doing it sequentially feels like a waste.
+Four enrichment sources. Different reliability. Different latency. The traditional choice is all-or-nothing: either every source responds or you retry the whole batch. That's wasteful when three out of four succeeded.
 
-Parallel enrichment in a workflow file:
-
-```ts
-export async function enrichLeadProfile(email: string) {
-  "use workflow";
-
-  const baseLead = await lookupBaseContact(email);
-
-  const [crm, social, clearbit, github] = await Promise.allSettled([
-    fetchCrmEnrichment(baseLead),
-    fetchSocialEnrichment(baseLead),
-    fetchClearbitEnrichment(baseLead),
-    fetchGitHubEnrichment(baseLead),
-  ]);
-
-  const profile = await mergeEnrichmentProfile(baseLead, {
-    crm: crm.status === "fulfilled" ? crm.value : null,
-    social: social.status === "fulfilled" ? social.value : null,
-    clearbit: clearbit.status === "fulfilled" ? clearbit.value : null,
-    github: github.status === "fulfilled" ? github.value : null,
-  });
-
-  return { email, baseLead, profile };
-}
-```
+`Promise.allSettled()` gives you graduated success. Every source gets its own durable step, its own retries, and its own outcome. The merge step works with whatever came back.
 
 <!-- split -->
 
-`Promise.allSettled()` runs four durable steps concurrently. Each step fetches one source. Failures are captured, not propagated. The merge step sees what succeeded and what didn't.
+CRM and GitHub succeed immediately. Social retries twice and then succeeds. Clearbit fails permanently. The merge step receives three fulfilled results and one rejected, and builds the richest profile it can.
 
-Crash mid-enrichment? Completed steps don't re-run. The workflow resumes from where it stopped.
+Crash after CRM and GitHub complete? They replay instantly from the log. Only social and Clearbit re-execute.
 
 <!-- split -->
 
-No dedup cache. No callback coordinator. No retry policies scattered across services. Four calls, one merge, one file.
+No all-or-nothing enrichment. No batch retry on partial failure. No enrichment queue with dedup. Parallel calls, independent outcomes, and a merge that embraces partial success.
 
 Explore the interactive demo on v0: {v0_link}

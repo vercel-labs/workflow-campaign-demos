@@ -1,7 +1,6 @@
 ---
 slug: namespaced-streams
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-namespaced-streams
 primitive: getWritable({ namespace: "..." })
 pick: null
@@ -11,135 +10,56 @@ pick: null
 
 Emit workflow events to multiple independent streams (draft and telemetry) simultaneously, each with its own subscriber.
 
-## Variant A — "One workflow, two audiences"
+## Variant A — "Two audiences, one workflow"
 
+Your workflow generates draft content and telemetry data. The UI needs the drafts. The ops dashboard needs the metrics. Both consumers need events at the same time, but they should never see each other's traffic.
 
-Your workflow generates draft content and telemetry data. The UI needs the drafts. The ops dashboard needs the metrics. Both at the same time.
-
-Traditional: two message brokers, pub/sub topics, correlation IDs to stitch events back to the right run.
-
-With WDK you call `getWritable({ namespace: "..." })` and each stream gets its own channel:
-
-```ts
-import { getWritable } from "workflow";
-
-export async function generatePost(topic: string) {
-  "use workflow";
-
-  const draft = getWritable({ namespace: "draft" }).getWriter();
-  const telemetry = getWritable({ namespace: "telemetry" }).getWriter();
-
-  await telemetry.write({ type: "start", name: "generatePost" });
-
-  const outline = await buildOutline(topic);
-  await draft.write({ type: "chunk", text: outline });
-  await telemetry.write({ type: "tokens", input: 45, output: 120 });
-
-  const sections = await writeSections(topic, outline);
-  for (const section of sections) {
-    await draft.write({ type: "chunk", text: section });
-  }
-
-  await telemetry.write({ type: "done", totalTokens: 945 });
-}
-```
+`getWritable({ namespace: "draft" })` and `getWritable({ namespace: "telemetry" })` give you two dedicated channels from the same workflow run.
 
 <!-- split -->
 
-One workflow, multiple namespaces. The draft stream pushes content to the editor UI. The telemetry stream pushes timing and status to your dashboard.
+Each namespace is an independent SSE stream. The workflow writes to whichever namespaces it needs, and each consumer subscribes only to the one it cares about.
 
-No broker. No correlation IDs. Each namespace is just a scoped writable you subscribe to independently.
+No event tagging. No client-side filtering. The routing is the namespace string itself.
 
 <!-- split -->
 
-Write to `"draft"`. Write to `"telemetry"`. Each consumer reads only the events it cares about.
-
-One workflow file. Zero pub/sub infrastructure.
+One workflow, multiple audiences, clean separation. No message broker, no pub/sub topics, no correlation IDs.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Stop multiplexing your event streams"
+## Variant B — "Server-side event routing without a broker"
 
-You have one workflow emitting events for two completely different consumers. So you tag every event, filter on the client, and pray nothing mis-routes.
+Normally, routing events to different consumers means a message broker with topics, subscriptions, and filtering rules. That is a lot of infrastructure for "send drafts here and metrics there."
 
-`getWritable({ namespace: "draft" })` gives you a dedicated channel. `getWritable({ namespace: "telemetry" })` gives you another:
-
-```ts
-import { getWritable } from "workflow";
-
-export async function generatePost(topic: string) {
-  "use workflow";
-
-  const draft = getWritable({ namespace: "draft" }).getWriter();
-  const telemetry = getWritable({ namespace: "telemetry" }).getWriter();
-
-  await telemetry.write({ type: "start", name: "generatePost" });
-
-  const outline = await buildOutline(topic);
-  await draft.write({ type: "chunk", text: outline });
-  await telemetry.write({ type: "tokens", input: 45, output: 120 });
-
-  const sections = await writeSections(topic, outline);
-  for (const section of sections) {
-    await draft.write({ type: "chunk", text: section });
-  }
-
-  await telemetry.write({ type: "done", totalTokens: 945 });
-}
-```
+`getWritable({ namespace })` turns a string into a dedicated SSE channel. The consumer subscribes to the namespace it wants. The workflow writes to the namespace it means.
 
 <!-- split -->
 
-Each namespace is an independent SSE stream. Subscribe to one, subscribe to both. The workflow doesn't care. It just writes to the namespace it was given.
+The workflow calls `getWritable({ namespace: "draft" })` when emitting content and `getWritable({ namespace: "telemetry" })` when emitting metrics. Each call returns an independent writable stream bound to that namespace.
 
-No event tagging. No client-side filtering. No shared bus.
+On the client side, each subscriber connects to the SSE endpoint with the namespace it cares about. Events are separated at the source, not filtered at the destination.
 
 <!-- split -->
 
-Draft events go to the editor. Telemetry events go to the dashboard. Clean separation, zero coordination.
+No topic configuration. No subscription management. No fan-out service. The namespace string is the entire routing layer.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Pub/sub without the pub/sub"
+## Variant C — "No client-side filtering"
 
-Traditional multi-consumer workflows need a message broker, topic routing, and subscriber management. That's three systems before you write business logic.
+The typical pattern: one event stream, many event types, and every client filters for the subset it needs. That means every client receives every event and discards most of them.
 
-WDK namespaced streams replace all of it with one function call:
-
-```ts
-import { getWritable } from "workflow";
-
-export async function generatePost(topic: string) {
-  "use workflow";
-
-  const draft = getWritable({ namespace: "draft" }).getWriter();
-  const telemetry = getWritable({ namespace: "telemetry" }).getWriter();
-
-  await telemetry.write({ type: "start", name: "generatePost" });
-
-  const outline = await buildOutline(topic);
-  await draft.write({ type: "chunk", text: outline });
-  await telemetry.write({ type: "tokens", input: 45, output: 120 });
-
-  const sections = await writeSections(topic, outline);
-  for (const section of sections) {
-    await draft.write({ type: "chunk", text: section });
-  }
-
-  await telemetry.write({ type: "done", totalTokens: 945 });
-}
-```
+Namespaced streams flip this around. The workflow writes to separate channels, and each client subscribes to exactly the events it needs — nothing more.
 
 <!-- split -->
 
-`getWritable({ namespace: "draft" })`: a scoped, typed stream. Your workflow writes to as many namespaces as it needs. Each consumer connects to the namespace it wants.
+`getWritable({ namespace: "draft" })` emits only to the draft stream. `getWritable({ namespace: "telemetry" })` emits only to the telemetry stream. The UI subscribes to drafts. The ops dashboard subscribes to telemetry. Neither sees the other's events.
 
-The routing is the namespace string. That's it.
+No type field to switch on. No filter predicate to maintain. No wasted bandwidth from events that get thrown away.
 
 <!-- split -->
 
-Emit drafts and telemetry from the same workflow run. Two independent streams. Two independent consumers. One file.
-
-No message broker. No topic configuration. No correlation IDs.
+No message broker. No pub/sub topics. No event bus. Clean separation at the source, with each consumer receiving only what it asked for.
 
 Explore the interactive demo on v0: {v0_link}

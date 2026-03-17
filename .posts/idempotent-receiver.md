@@ -1,7 +1,6 @@
 ---
 slug: idempotent-receiver
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-idempotent-receiver
 primitive: durable state (workflow keyed by idempotency key)
 pick: null
@@ -11,145 +10,58 @@ pick: null
 
 Detect duplicate payment requests using an idempotency key. Return the cached result for duplicates without reprocessing the payment.
 
-## Variant A — "Same request, same result"
+## Variant A — "The double-charge nightmare"
 
+A client retries a payment request. Your server processes it again. The customer gets charged twice. Support ticket incoming.
 
-The client retries a payment request. Your server processes it again. The customer gets charged twice. Support ticket incoming.
+The standard fix is a distributed cache or database lookup for the idempotency key, expiration policies, and race condition handling with locks or compare-and-swap.
 
-Traditional: a distributed cache or DB lookup for the idempotency key, expiration policies, race condition handling with locks or compare-and-swap.
-
-Or you key the workflow by the idempotency key, and duplicates resolve to the same run:
-
-```ts
-export async function idempotentReceiver(
-  idempotencyKey: string,
-  amount: number,
-  currency: string
-) {
-  "use workflow";
-
-  // Workflow keyed by idempotencyKey — same key = same run
-  const cached = await checkIdempotencyKey(idempotencyKey);
-
-  if (cached) {
-    // Duplicate request — return cached result, no reprocessing
-    return { idempotencyKey, deduplicated: true, result: cached };
-  }
-
-  const result = await processPayment(idempotencyKey, amount, currency);
-  return { idempotencyKey, deduplicated: false, result };
-}
-
-async function processPayment(key: string, amount: number, currency: string) {
-  "use step";
-  const result = await chargeCard({ amount, currency });
-  // Result stored durably — future duplicate requests get this back
-  return result;
-}
-```
+The workflow ID is the idempotency key. When you call `start()` with the same key, the runtime resolves it to the same run. Already completed? Return the cached result. Still running? Attach to the existing execution.
 
 <!-- split -->
 
-The workflow ID is the idempotency key. Second request with the same key? Same workflow. Already completed? Return the cached result. Still running? Attach to the existing run.
+Durable state means the result persists without a cache TTL. No expired keys leading to reprocessing after cache eviction. Two requests with the same key start the same workflow. The first one runs through `processPayment`. The second one gets the result of the first.
 
-No cache layer. No lock contention. No TTL expiration. Durable state is the dedup mechanism.
+The runtime handles the deduplication. No application-level locking. No compare-and-swap logic.
 
 <!-- split -->
 
-Payment request arrives. Workflow runs. Result stored. Same request arrives again. Same result returned. No reprocessing.
-
-No distributed lock. No Redis lookup. No race conditions.
+No Redis. No distributed lock. No TTL management. No expiration sweeps. The durable execution model gives you idempotency for free. Process once, return the same result forever.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Idempotency without the cache"
+## Variant B — "What happens when the cache expires?"
 
-Every payment API needs idempotency. The standard solution: store the idempotency key in Redis, set a TTL, check before processing, handle the race condition when two requests arrive simultaneously.
+You store the idempotency key in Redis with a 24-hour TTL. Day two, the client retries. The key is gone. The payment processes again. The customer calls. You dig through logs trying to figure out if it is a legitimate retry or a duplicate.
 
-WDK: the workflow ID is the idempotency key:
-
-```ts
-export async function idempotentReceiver(
-  idempotencyKey: string,
-  amount: number,
-  currency: string
-) {
-  "use workflow";
-
-  // Workflow keyed by idempotencyKey — same key = same run
-  const cached = await checkIdempotencyKey(idempotencyKey);
-
-  if (cached) {
-    // Duplicate request — return cached result, no reprocessing
-    return { idempotencyKey, deduplicated: true, result: cached };
-  }
-
-  const result = await processPayment(idempotencyKey, amount, currency);
-  return { idempotencyKey, deduplicated: false, result };
-}
-
-async function processPayment(key: string, amount: number, currency: string) {
-  "use step";
-  const result = await chargeCard({ amount, currency });
-  // Result stored durably — future duplicate requests get this back
-  return result;
-}
-```
+TTL-based idempotency is a time bomb. Durable workflow state has no expiration. The workflow ID is the idempotency key, and `start()` with the same ID returns the same result whether it has been one minute or one year.
 
 <!-- split -->
 
-Two requests with the same key start the same workflow. The first one runs. The second one gets the result of the first. The runtime handles the dedup. No application-level locking.
+`processPayment` runs exactly once for a given workflow ID. Every subsequent `start()` call with that ID resolves to the completed run and returns the cached result. No cache lookup. No TTL renewal. No expiration sweep job.
 
-Durable state means the result persists without a cache TTL. No expired keys. No reprocessing after cache eviction.
+If the first request is still in progress, the second request attaches to the running workflow instead of creating a new one.
 
 <!-- split -->
 
-No Redis. No compare-and-swap. No expiration sweep. The workflow is the idempotency record.
+No cache eviction surprises. No TTL tuning. No "was this a real retry or a duplicate?" investigations. Durable state means the idempotency key never expires and the result never needs recomputation.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "The cheapest dedup is no dedup"
+## Variant C — "Idempotency without a cache layer"
 
-Deduplication infrastructure is surprisingly expensive: a cache cluster, TTL management, lock coordination, and fallback logic when the cache is down.
+Most idempotency implementations start with "add Redis" and end with TTL policies, race condition handling, cache warming, and eviction monitoring. The cache becomes its own service to maintain.
 
-What if the dedup was just... how workflows work?
-
-```ts
-export async function idempotentReceiver(
-  idempotencyKey: string,
-  amount: number,
-  currency: string
-) {
-  "use workflow";
-
-  // Workflow keyed by idempotencyKey — same key = same run
-  const cached = await checkIdempotencyKey(idempotencyKey);
-
-  if (cached) {
-    // Duplicate request — return cached result, no reprocessing
-    return { idempotencyKey, deduplicated: true, result: cached };
-  }
-
-  const result = await processPayment(idempotencyKey, amount, currency);
-  return { idempotencyKey, deduplicated: false, result };
-}
-
-async function processPayment(key: string, amount: number, currency: string) {
-  "use step";
-  const result = await chargeCard({ amount, currency });
-  // Result stored durably — future duplicate requests get this back
-  return result;
-}
-```
+The workflow ID is the idempotency key. No separate cache. No separate lookup. `start()` with the same ID returns the same execution. The runtime is the deduplication layer.
 
 <!-- split -->
 
-Key the workflow by the idempotency key. The runtime guarantees one execution per key. Duplicate requests attach to the existing run and receive the same result.
+Two requests hit your API with the same idempotency key. Both call `start()` with that key as the workflow ID. The first creates a run and executes `processPayment`. The second resolves to the same run and gets the result.
 
-No separate dedup layer. No cache. No locks. The durable execution model gives you idempotency for free.
+No lock contention. No compare-and-swap. No "check cache, then process, then write cache" sequence with its own race conditions.
 
 <!-- split -->
 
-Process once. Return the same result forever. No infrastructure beyond the workflow itself.
+No Redis cluster. No cache invalidation bugs. No TTL management. No expiration-triggered reprocessing. The durable execution runtime is the idempotency layer. One fewer service to deploy, monitor, and debug.
 
 Explore the interactive demo on v0: {v0_link}

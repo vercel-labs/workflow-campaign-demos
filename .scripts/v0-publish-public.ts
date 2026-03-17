@@ -6,6 +6,7 @@
  *   bun .scripts/v0-publish-public.ts                    # all demos
  *   bun .scripts/v0-publish-public.ts fan-out saga       # specific demos
  *   bun .scripts/v0-publish-public.ts --dry-run          # preview only
+ *   bun .scripts/v0-publish-public.ts --skip-sync-check  # skip subtree sync verification
  *
  * Requires V0_API_KEY in environment.
  */
@@ -20,12 +21,67 @@ const { values, positionals } = parseArgs({
   options: {
     "dry-run": { type: "boolean", default: false },
     yes: { type: "boolean", short: "y", default: false },
+    "skip-sync-check": { type: "boolean", default: false },
   },
   allowPositionals: true,
 });
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
 const REPO_ORG = "vercel-labs";
+
+// --- Subtree sync check ---------------------------------------------------
+
+function run(cmd: string[]): { ok: boolean; stdout: string; stderr: string } {
+  const proc = Bun.spawnSync(cmd, { cwd: PROJECT_ROOT, env: process.env });
+  return {
+    ok: proc.exitCode === 0,
+    stdout: proc.stdout.toString().trim(),
+    stderr: proc.stderr.toString().trim(),
+  };
+}
+
+function hasRemote(slug: string): boolean {
+  return run(["git", "remote", "get-url", `workflow-${slug}`]).ok;
+}
+
+/**
+ * Check if the local subtree for a demo is in sync with its remote repo.
+ * Fetches the remote, splits the local subtree, and compares SHAs.
+ */
+function isSubtreeSynced(slug: string): { synced: boolean; reason: string } {
+  const remote = `workflow-${slug}`;
+
+  if (!hasRemote(slug)) {
+    return { synced: false, reason: `no remote ${remote} configured` };
+  }
+
+  // Fetch latest from the remote
+  const fetch = run(["git", "fetch", remote, "main"]);
+  if (!fetch.ok) {
+    return { synced: false, reason: `failed to fetch ${remote}: ${fetch.stderr}` };
+  }
+
+  // Get the remote HEAD SHA
+  const remoteHead = run(["git", "rev-parse", `${remote}/main`]);
+  if (!remoteHead.ok) {
+    return { synced: false, reason: `no ${remote}/main branch found` };
+  }
+
+  // Split the local subtree to get its synthetic commit SHA
+  const split = run(["git", "subtree", "split", `--prefix=${slug}`]);
+  if (!split.ok) {
+    return { synced: false, reason: `subtree split failed: ${split.stderr}` };
+  }
+
+  if (split.stdout !== remoteHead.stdout) {
+    return {
+      synced: false,
+      reason: `local subtree is ahead of ${remote}/main — run: bun .scripts/sync.ts push-one`,
+    };
+  }
+
+  return { synced: true, reason: "up to date" };
+}
 
 // Discover demos: directories containing a package.json
 function discoverDemos(): string[] {
@@ -92,6 +148,31 @@ if (!values.yes) {
     console.log("Aborted.");
     process.exit(0);
   }
+}
+
+// Check subtree sync status
+if (!values["skip-sync-check"]) {
+  console.log("\nChecking subtree sync status...\n");
+  const outOfSync: string[] = [];
+  for (const slug of demos) {
+    const { synced, reason } = isSubtreeSynced(slug);
+    if (synced) {
+      console.log(`  \x1b[32m✓\x1b[0m ${slug}`);
+    } else {
+      console.log(`  \x1b[31m✗\x1b[0m ${slug} — ${reason}`);
+      outOfSync.push(slug);
+    }
+  }
+
+  if (outOfSync.length > 0) {
+    console.error(
+      `\n${outOfSync.length} demo(s) not synced to their remote repos. Push subtrees first:\n` +
+      `  bun .scripts/sync.ts push\n\n` +
+      `Or skip this check with --skip-sync-check`
+    );
+    process.exit(1);
+  }
+  console.log("");
 }
 
 // Publish

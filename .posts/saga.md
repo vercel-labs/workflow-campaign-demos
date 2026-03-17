@@ -1,7 +1,6 @@
 ---
 slug: saga
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-saga
 primitive: FatalError + compensating transactions
 pick: null
@@ -13,142 +12,54 @@ Upgrade a subscription in 3 steps (reserve seats, capture invoice, provision). I
 
 ## Variant A — "The undo problem"
 
+You charged the card. Then provisioning failed. Now you need to reverse the charge and release the seats.
 
-You charged the card. Then provisioning failed. Now you need to reverse the charge, release the seats, and email the customer.
-
-Traditional: a rollback table, a compensations queue, and a cron to sweep incomplete sagas.
-
-Or you write try/catch with durable steps:
-
-```ts
-async function subscriptionUpgradeSaga(accountId, seats) {
-  "use workflow";
-
-  const compensations = [];
-
-  try {
-    const reservationId = await reserveSeats(accountId, seats);
-    compensations.push(() => releaseSeats(accountId, reservationId));
-
-    const invoiceId = await captureInvoice(accountId, seats);
-    compensations.push(() => refundInvoice(accountId, invoiceId));
-
-    const entitlementId = await provisionSeats(accountId, seats);
-    compensations.push(() => deprovisionSeats(accountId, entitlementId));
-
-    await sendConfirmation(accountId, seats, invoiceId, entitlementId);
-  } catch (error) {
-    // Roll back in reverse order
-    while (compensations.length > 0) {
-      const undo = compensations.pop();
-      await undo();
-    }
-  }
-}
-```
+Each durable step records a compensating function. If a later step throws `FatalError`, compensations run in reverse automatically.
 
 <!-- split -->
 
-Each step records what it did. If a later step throws a `FatalError`, the workflow runs compensations in reverse order, automatically.
+Undo logic lives next to the do logic. Each compensation is a durable step — crashing mid-rollback picks up where it left off.
 
-No rollback table. The undo logic lives right next to the do logic.
+`FatalError` means "don't retry, roll back." Compensations unwind like a stack.
 
 <!-- split -->
 
-Reserve seats. Capture invoice. Provision access. If step 3 fails, step 2 refunds, step 1 releases.
-
-All in one file. All durable.
+No saga orchestrator. No compensation queue. Just try/catch that survives restarts.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "What if step 3 fails?"
+## Variant B — "Rollbacks that crash mid-rollback"
 
-What if step 3 of 3 fails, and you need to undo steps 1 and 2?
+Process crashes between compensation two and three. Half-rolled-back. Where did you stop?
 
-That's a saga. Traditionally you'd need a compensations table, a state machine, and a recovery worker.
-
-With WDK, each step just has a compensate function:
-
-```ts
-async function subscriptionUpgradeSaga(accountId, seats) {
-  "use workflow";
-
-  const compensations = [];
-
-  try {
-    const reservationId = await reserveSeats(accountId, seats);
-    compensations.push(() => releaseSeats(accountId, reservationId));
-
-    const invoiceId = await captureInvoice(accountId, seats);
-    compensations.push(() => refundInvoice(accountId, invoiceId));
-
-    const entitlementId = await provisionSeats(accountId, seats);
-    compensations.push(() => deprovisionSeats(accountId, entitlementId));
-
-    await sendConfirmation(accountId, seats, invoiceId, entitlementId);
-  } catch (error) {
-    // Roll back in reverse order
-    while (compensations.length > 0) {
-      const undo = compensations.pop();
-      await undo();
-    }
-  }
-}
-```
+Each compensation is a durable step. Crash mid-rollback and the workflow resumes at the exact compensation it was running.
 
 <!-- split -->
 
-`FatalError` means "don't retry, roll back." The workflow calls each compensation in reverse, like unwinding a stack.
+`FatalError` triggers the rollback. The workflow walks compensations in reverse. Each one checkpoints on completion — crash at any point and it's safe.
 
-Every compensation is a durable step too. Crash mid-rollback? It picks up where it left off.
+Same durability guarantees for undo as for do.
 
 <!-- split -->
 
-No saga orchestrator. No event sourcing. No compensation queue. Just try/catch that survives restarts.
+No compensation log. No recovery sweeper. No idempotency checks on rollback steps. The workflow survives crashes in both directions.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Distributed transactions without the distributed part"
+## Variant C — "Keep the undo next to the do"
 
-Distributed transactions are hard. Two-phase commit is fragile. Saga orchestrators are their own microservice.
+Compensation logic drifts when it lives in a different file or service. Colocate each step with its undo and they stay in sync.
 
-WDK sagas are a try/catch block:
-
-```ts
-async function subscriptionUpgradeSaga(accountId, seats) {
-  "use workflow";
-
-  const compensations = [];
-
-  try {
-    const reservationId = await reserveSeats(accountId, seats);
-    compensations.push(() => releaseSeats(accountId, reservationId));
-
-    const invoiceId = await captureInvoice(accountId, seats);
-    compensations.push(() => refundInvoice(accountId, invoiceId));
-
-    const entitlementId = await provisionSeats(accountId, seats);
-    compensations.push(() => deprovisionSeats(accountId, entitlementId));
-
-    await sendConfirmation(accountId, seats, invoiceId, entitlementId);
-  } catch (error) {
-    // Roll back in reverse order
-    while (compensations.length > 0) {
-      const undo = compensations.pop();
-      await undo();
-    }
-  }
-}
-```
+Throw `FatalError` and the workflow runs every registered compensation in reverse, each as its own durable step.
 
 <!-- split -->
 
-Each `"use step"` is an atomic unit. Attach a compensate function and the runtime handles rollback order if anything throws `FatalError`.
+Reserve seats → register release. Capture invoice → register refund. Provision access → register revoke. Each pair lives together.
 
-The compensation chain is just your code running in reverse. Durable. Retriable. Inspectable.
+`FatalError` during provisioning refunds the invoice, then releases seats. Order is automatic. Durability is automatic.
 
 <!-- split -->
 
-Upgrade a subscription: reserve → invoice → provision. Failure at any point unwinds cleanly.
+No mapping table. No event bus connecting do-services to undo-services. One file where every action knows how to undo itself.
 
 Explore the interactive demo on v0: {v0_link}

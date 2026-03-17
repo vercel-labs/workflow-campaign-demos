@@ -1,7 +1,6 @@
 ---
 slug: status-poller
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-status-poller
 primitive: sleep() in a loop + timeout
 pick: null
@@ -11,131 +10,56 @@ pick: null
 
 Poll a transcoding job status repeatedly until ready, sleeping between polls, with a max-poll safety valve.
 
-## Variant A — "The waiting game"
+## Variant A — "The polling loop that survives restarts"
 
+You upload a video. The transcoding service says "processing." You need to check back every 10 seconds until it's done, but not forever. Traditional polling means state in a database, a background worker to resume polls, and a TTL to garbage-collect stale entries.
 
-You upload a video. The transcoding service says "processing." You need to check back every 10 seconds until it's done, but not forever.
-
-Traditional: a polling loop in the client, poll state in a database, and an external timeout to kill runaway pollers.
-
-With WDK it's a while-loop with `sleep()`:
-
-```ts
-import { sleep } from "workflow";
-
-export async function pollTranscodeStatus(jobId: string, maxPolls = 8, intervalMs = 1000) {
-  "use workflow";
-
-  for (let poll = 1; poll <= maxPolls; poll++) {
-    const state = await checkTranscodeJob(jobId, poll);
-
-    if (state === "ready") {
-      return { jobId, status: "completed", pollCount: poll };
-    }
-
-    if (poll < maxPolls) {
-      await sleep(`${intervalMs}ms`);
-    }
-  }
-
-  return { jobId, status: "timeout", pollCount: maxPolls };
-}
-```
+`sleep()` in a loop with a counter gives you durable polling. Each poll is a `"use step"`. Each pause survives restarts.
 
 <!-- split -->
 
-Each poll is a durable step. `sleep()` pauses between them. A counter enforces max polls. If the server restarts between polls, it picks up at the right iteration.
+Deploy mid-poll? The workflow resumes at the exact iteration it was on. Poll 14 of 30? It wakes up and runs poll 15. The counter caps iterations so runaway pollers are impossible.
 
-No poll state in your DB. No client-side setInterval. No external timeout service.
+When the status comes back "ready," the loop breaks. If it hits max polls, the workflow returns a timeout result. Either way, you know.
 
 <!-- split -->
 
-Poll. Sleep 10s. Poll again. 30 max attempts. Done or timed out. Either way, you know.
-
-One workflow. One file. Durable polling without infrastructure.
+No poll table. No background worker. No dead-letter queue. No client-side `setInterval`. Durable polling in a for-loop.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "setInterval doesn't survive deploys"
+## Variant B — "Poll 14 of 30, then the server restarts"
 
-You wrote a poller with setInterval. It worked until the next deploy killed the process. Now you need to track which polls are in-flight, which timed out, and which need restarting.
+You're on poll 14. The server restarts. Traditional systems lose the poll count, the last status, and the timing. You need a database row tracking iteration number, last poll time, and a background job to resume.
 
-Traditional: poll records in a database, a background worker to resume them, and a TTL to garbage-collect stale entries.
-
-WDK polling survives restarts by default:
-
-```ts
-import { sleep } from "workflow";
-
-export async function pollTranscodeStatus(jobId: string, maxPolls = 8, intervalMs = 1000) {
-  "use workflow";
-
-  for (let poll = 1; poll <= maxPolls; poll++) {
-    const state = await checkTranscodeJob(jobId, poll);
-
-    if (state === "ready") {
-      return { jobId, status: "completed", pollCount: poll };
-    }
-
-    if (poll < maxPolls) {
-      await sleep(`${intervalMs}ms`);
-    }
-  }
-
-  return { jobId, status: "timeout", pollCount: maxPolls };
-}
-```
+Durable replay makes the loop itself the checkpoint. Each poll is a `"use step"`. Each `sleep()` between polls persists. Restart and the workflow replays polls 1–14 from the log, then continues at 15.
 
 <!-- split -->
 
-`sleep()` is durable. When the process comes back, the workflow resumes at the exact sleep it was on. Poll 14 of 30? It wakes up and runs poll 15.
+The replay is instant — no actual API calls for completed polls. The `sleep()` between polls is durable too. Crash during a 10-second pause and it resumes with the remaining time.
 
-No database records. No resume logic. The runtime handles it.
+Max poll count is the safety valve. Hit 30 polls without a "ready" response? The loop exits and the workflow returns a timeout. No runaway pollers, no TTL cleanup.
 
 <!-- split -->
 
-Upload → poll every 10s → max 30 attempts → resolve with status.
-
-The whole thing is a loop. The durability is free.
+No poll tracking table. No iteration counter in Redis. No resume-from-last-poll logic. A for-loop, durable steps, durable sleeps, and a max counter.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Polling without the poll table"
+## Variant C — "setInterval can't survive a deploy"
 
-Every polling system eventually grows a poll_jobs table. Then a worker to sweep it. Then a dead-letter queue for polls that exceeded max retries.
+Client-side polling with `setInterval` dies when the tab closes. Server-side polling with a background worker dies when the process restarts. Both need external state to recover.
 
-WDK needs none of that:
-
-```ts
-import { sleep } from "workflow";
-
-export async function pollTranscodeStatus(jobId: string, maxPolls = 8, intervalMs = 1000) {
-  "use workflow";
-
-  for (let poll = 1; poll <= maxPolls; poll++) {
-    const state = await checkTranscodeJob(jobId, poll);
-
-    if (state === "ready") {
-      return { jobId, status: "completed", pollCount: poll };
-    }
-
-    if (poll < maxPolls) {
-      await sleep(`${intervalMs}ms`);
-    }
-  }
-
-  return { jobId, status: "timeout", pollCount: maxPolls };
-}
-```
+`sleep()` in a durable loop is polling that survives everything. Each iteration is a step. Each pause persists. The loop counter is the timeout.
 
 <!-- split -->
 
-A while-loop checks status. `sleep()` waits between checks. A counter caps the iterations. Every step persists automatically. No table, no worker, no sweep.
+Every 10 seconds, the workflow wakes up and checks the transcoding status. "Processing"? Sleep and poll again. "Ready"? Break the loop and proceed. Hit max iterations? Return a timeout result.
 
-If the status comes back "complete," the loop breaks. If it hits max polls, the workflow returns a timeout result.
+Redeploy, restart, crash — the workflow replays completed iterations in milliseconds and picks up at the next poll. No state reconstruction. No missed polls.
 
 <!-- split -->
 
-Durable polling in 20 lines. No poll table. No background worker. No dead-letter queue.
+No `setInterval`. No background worker. No poll state database. No cron-based retry. A for-loop with `sleep()` that happens to be indestructible.
 
 Explore the interactive demo on v0: {v0_link}

@@ -1,9 +1,8 @@
 ---
 slug: claim-check
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-claim-check
-primitive: defineHook() for token-based claim
+primitive: defineHook() for token-based claims
 pick: null
 ---
 
@@ -11,141 +10,58 @@ pick: null
 
 Accept a lightweight token instead of passing a large payload through every step. Retrieve the full payload only when a step actually needs it.
 
-## Variant A — "Stop passing blobs around"
-
+## Variant A — "50 MB through every step"
 
 Your workflow processes a 50 MB upload. Every step serializes it, deserializes it, passes it to the next step. Memory spikes. Timeouts spike. Your bill spikes.
 
-Traditional: upload to blob storage, pass a reference URL, remember to clean up temp objects, coordinate across services.
+The traditional fix is uploading to blob storage, passing a reference URL, managing TTL cleanup workers, and coordinating across services for orphaned objects.
 
-Or you pass a token and fetch on demand:
-
-```ts
-import { defineHook } from "workflow";
-
-export const blobReady = defineHook<{ blobToken: string }>();
-
-export async function claimCheckImport(importId: string) {
-  "use workflow";
-
-  const hookToken = `upload:${importId}`;
-
-  // Claim-check: only a token enters the workflow (not a 50MB payload)
-  const { blobToken } = await blobReady.create({ token: hookToken });
-
-  // Retrieve and process the blob only when needed
-  await processBlob(blobToken);
-
-  return { importId, blobToken, status: "indexed" as const };
-}
-
-async function processBlob(blobToken: string) {
-  "use step";
-  // Fetch + index the large blob by its token
-  await fetchAndIndex(blobToken);
-}
-```
+`defineHook()` gives you token-based claims natively. The workflow calls `blobReady.create()` with a hook token and receives a lightweight `blobToken` in return. Only a string enters the workflow, not a 50 MB payload.
 
 <!-- split -->
 
-`defineHook()` creates a claim token. The workflow stores a lightweight reference. When a step needs the payload, it redeems the token. One fetch, scoped to that step.
+Steps that need the payload redeem the token. Steps that don't just pass it along at zero cost. No deserialization tax on steps that never touch the bytes.
 
-No blob URLs threaded through every function signature. No cleanup cron.
+Durable steps mean the token survives restarts. Crash between steps? The token is still valid. The payload is still there. Redeem it once or ten times, same result.
 
 <!-- split -->
 
-Upload lands. Token issued. Steps 1 through 4 pass a string, not a buffer. Step 3 redeems the token because it actually needs the bytes.
-
-All durable. All lazy.
+No temp bucket policies. No orphaned objects. No presigned URL management. No multi-service cleanup coordination. Store once, reference everywhere, and let each step decide whether it needs the bytes.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Your payload is not your message"
+## Variant B — "Pass the ticket, not the suitcase"
 
-Passing a 10 MB JSON blob through every workflow step is like mailing a filing cabinet instead of a claim ticket.
+A 50 MB payload flowing through ten steps means ten serialization cycles, ten memory allocations, and ten chances for a timeout. Most of those steps never even look at the bytes — they just pass them along.
 
-The claim check pattern fixes this: store the payload once, pass a token. Traditional approach? Blob storage, presigned URLs, TTL cleanup workers.
-
-With WDK, `defineHook()` gives you token-based claims natively:
-
-```ts
-import { defineHook } from "workflow";
-
-export const blobReady = defineHook<{ blobToken: string }>();
-
-export async function claimCheckImport(importId: string) {
-  "use workflow";
-
-  const hookToken = `upload:${importId}`;
-
-  // Claim-check: only a token enters the workflow (not a 50MB payload)
-  const { blobToken } = await blobReady.create({ token: hookToken });
-
-  // Retrieve and process the blob only when needed
-  await processBlob(blobToken);
-
-  return { importId, blobToken, status: "indexed" as const };
-}
-
-async function processBlob(blobToken: string) {
-  "use step";
-  // Fetch + index the large blob by its token
-  await fetchAndIndex(blobToken);
-}
-```
+`defineHook()` creates a claim token via `blobReady.create()`. The token is a string. It costs nothing to serialize, nothing to pass between steps, and nothing to checkpoint.
 
 <!-- split -->
 
-The workflow holds a reference. Each step decides whether to redeem it. No deserialization tax on steps that don't care about the payload.
+When a step actually needs the payload, it redeems the token. When it doesn't, the token passes through untouched. The workflow processes a string instead of a 50 MB blob for every step that doesn't need the data.
 
-Durable steps mean the token survives restarts. Redeem it once or ten times, same result.
+Durable checkpoints mean the token persists across restarts. The payload stays in storage. No re-upload. No broken references after a crash.
 
 <!-- split -->
 
-No temp bucket policies. No orphaned objects. No multi-service coordination for cleanup.
+No serialization overhead on pass-through steps. No memory spikes from steps that never read the payload. No orphaned blob cleanup. A claim token replaces the payload in the workflow, and only the steps that need the bytes pay for them.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Decouple size from flow"
+## Variant C — "Tokens survive crashes"
 
-Large payloads break workflow ergonomics. Serialization overhead, memory pressure, timeout risk, all because you're dragging bytes through steps that don't need them.
+You store a large payload in blob storage and pass a reference through your pipeline. The server crashes. When it restarts, is the reference still valid? Is the payload still there? Did the cleanup worker delete it during the restart window?
 
-Claim check: store once, reference everywhere:
-
-```ts
-import { defineHook } from "workflow";
-
-export const blobReady = defineHook<{ blobToken: string }>();
-
-export async function claimCheckImport(importId: string) {
-  "use workflow";
-
-  const hookToken = `upload:${importId}`;
-
-  // Claim-check: only a token enters the workflow (not a 50MB payload)
-  const { blobToken } = await blobReady.create({ token: hookToken });
-
-  // Retrieve and process the blob only when needed
-  await processBlob(blobToken);
-
-  return { importId, blobToken, status: "indexed" as const };
-}
-
-async function processBlob(blobToken: string) {
-  "use step";
-  // Fetch + index the large blob by its token
-  await fetchAndIndex(blobToken);
-}
-```
+With `defineHook()`, the claim token is part of the durable workflow state. Crash between any two steps and the token is still valid on restart. The payload stays in storage until you explicitly remove it.
 
 <!-- split -->
 
-`defineHook()` mints a durable token. The payload lives outside the workflow. Steps that need it call the hook. Steps that don't just pass the token along at zero cost.
+`blobReady.create()` returns a lightweight token that checkpoints with the workflow. No presigned URL expiration. No TTL race between the cleanup worker and the workflow restart. The token is valid as long as the workflow needs it.
 
-Crash between steps? The token is still valid. The payload is still there.
+Steps redeem the token on demand. Steps that don't need the payload never touch it, never deserialize it, never pay the memory cost.
 
 <!-- split -->
 
-Accept upload. Mint token. Five steps run. One redeems. The rest never touch the bytes.
+No presigned URL expiration handling. No TTL coordination between cleanup workers and workflow restarts. No orphaned payload investigations. Durable tokens mean the claim check pattern works across crashes, restarts, and retries without any additional infrastructure.
 
 Explore the interactive demo on v0: {v0_link}

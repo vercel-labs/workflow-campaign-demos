@@ -1,7 +1,7 @@
 ---
 slug: approval-chain
 day: null
-v0_url: https://v0.app/chat/X3M2W5yZP1O
+v0_url: https://v0.app/chat/tohtY2jLGXW
 primitive: Promise.race() + defineHook() + sleep()
 pick: null
 ---

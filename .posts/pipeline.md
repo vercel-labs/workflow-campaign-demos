@@ -1,7 +1,6 @@
 ---
 slug: pipeline
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-pipeline
 primitive: sequential step execution with progress events
 pick: null
@@ -11,121 +10,58 @@ pick: null
 
 Execute a 4-stage ETL pipeline (Extract, Transform, Validate, Load) sequentially with progress updates streamed to the client after each stage.
 
-## Variant A — "ETL without the orchestrator"
+## Variant A — "Know which stage you're on"
 
+Extract. Transform. Validate. Load. Four stages in strict order, and you need to know which stage you're on.
 
-Extract. Transform. Validate. Load. Four stages, strict order, and you need to know which stage you're on.
+Traditionally that means a pipeline orchestrator, a job state table, and a polling UI to track progress.
 
-Traditional: a pipeline orchestrator service, a job state table, dependency resolution logic, and a polling UI.
-
-With WDK each stage is a step. Progress events stream automatically:
-
-```ts
-export async function pipeline(documentId: string) {
-  "use workflow";
-
-  const steps = ["Extract", "Transform", "Validate", "Load"];
-
-  for (let i = 0; i < steps.length; i++) {
-    await runPipelineStep(steps[i], i, steps.length);
-  }
-
-  return { status: "completed", steps: steps.length };
-}
-
-async function runPipelineStep(name: string, index: number, total: number) {
-  "use step";
-  // Each step runs to completion, then the next begins.
-  // Crash after Transform? Resumes at Validate.
-}
-```
+With `"use step"`, each stage runs to completion before the next begins. Progress events stream to the client via `getWritable()`.
 
 <!-- split -->
 
-Each `"use step"` runs to completion before the next one starts. If the workflow crashes after Transform, it resumes at Validate, not from the beginning.
+If the workflow crashes after Transform, it resumes at Validate, not from the beginning. Each completed step is checkpointed automatically.
 
-Progress events hit the client via `getWritable()`. No polling. No job status table.
+The client sees progress events for each stage as they complete. Real-time visibility with zero extra code. No polling. No job status table.
 
 <!-- split -->
 
-Extract → Transform → Validate → Load. Four steps. One file. Durable progress tracking built in.
-
-No orchestrator. No dependency graph. No state database.
+No orchestrator. No dependency graph. No state database. Four steps in a for-loop, durable and observable out of the box.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "What happens when stage 3 crashes?"
+## Variant B — "Crash after stage two, resume at stage three"
 
-Your ETL pipeline is on stage 3 of 4. The server restarts. Traditional answer: check the job table, figure out what completed, resume manually.
+Your ETL pipeline processes a million records. It crashes after Transform. Without checkpointing, you start over from Extract. With a job table, you need to query the last completed stage and wire up resume logic.
 
-WDK answer: it just resumes at stage 3. Every completed step is checkpointed:
-
-```ts
-export async function pipeline(documentId: string) {
-  "use workflow";
-
-  const steps = ["Extract", "Transform", "Validate", "Load"];
-
-  for (let i = 0; i < steps.length; i++) {
-    await runPipelineStep(steps[i], i, steps.length);
-  }
-
-  return { status: "completed", steps: steps.length };
-}
-
-async function runPipelineStep(name: string, index: number, total: number) {
-  "use step";
-  // Each step runs to completion, then the next begins.
-  // Crash after Transform? Resumes at Validate.
-}
-```
+Durable steps checkpoint automatically. Each completed stage is recorded by the runtime. Restart the workflow and it skips straight to Validate.
 
 <!-- split -->
 
-Steps are durable. Extract finishes, checkpointed. Transform finishes, checkpointed. Crash after Transform? Validate runs next. No re-extraction, no re-transformation.
+`getWritable()` streams a progress event after each stage completes. The client knows you're on stage three without polling a database. The server knows where to resume without querying a job table.
 
-The client sees progress events for each stage as they complete. Real-time visibility with zero extra code.
+Checkpointing and progress are the same mechanism. A completed step is both the resume point and the progress event.
 
 <!-- split -->
 
-Four stages. Crash anywhere. Resume exactly where you stopped.
+No job status table. No resume logic. No "last completed stage" column. The runtime tracks what finished and skips it on restart. Four stages, automatic checkpoints, real-time progress.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Sequential steps are just... sequential"
+## Variant C — "Real-time pipeline progress without polling"
 
-Pipeline orchestration frameworks exist because running things in order, durably, used to be hard. State machines, dependency resolvers, checkpoint stores.
+Your ETL runs for minutes. The user stares at a spinner. They refresh the page and lose track entirely. You build a polling endpoint, a job status table, and a progress column.
 
-In WDK, sequential is the default:
-
-```ts
-export async function pipeline(documentId: string) {
-  "use workflow";
-
-  const steps = ["Extract", "Transform", "Validate", "Load"];
-
-  for (let i = 0; i < steps.length; i++) {
-    await runPipelineStep(steps[i], i, steps.length);
-  }
-
-  return { status: "completed", steps: steps.length };
-}
-
-async function runPipelineStep(name: string, index: number, total: number) {
-  "use step";
-  // Each step runs to completion, then the next begins.
-  // Crash after Transform? Resumes at Validate.
-}
-```
+`getWritable()` pushes progress events to the client as each stage completes. No polling interval. No stale reads. The client renders pipeline progress the moment it happens.
 
 <!-- split -->
 
-Write four steps. They run in order. Each one streams a progress event to the client when it completes. If anything fails, the workflow retries that step, not the whole pipeline.
+Each stage is a step. Each step emits a progress event on completion via `getWritable()`. The client connects to the SSE stream and accumulates events. Four stages, four events, a real-time progress bar.
 
-No DAG. No dependency resolution. No orchestration layer.
+Refresh the page? Reconnect to the stream. The workflow is still running. Completed steps replay their events.
 
 <!-- split -->
 
-Extract. Transform. Validate. Load. Four functions in a file. Durable. Observable. Resumable.
+No polling endpoint. No progress column. No refresh-and-lose-state. The pipeline streams its own progress, and the UI is always current.
 
 Explore the interactive demo on v0: {v0_link}

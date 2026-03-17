@@ -1,7 +1,6 @@
 ---
 slug: message-history
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-message-history
 primitive: step-level error handling + history envelope
 pick: null
@@ -11,133 +10,58 @@ pick: null
 
 Route a support ticket through normalize, classify, route, and dispatch, with full history tracking at every step.
 
-## Variant A — "Every step leaves a receipt"
+## Variant A — "Where did step 1 go?"
 
+A support ticket flows through four steps. Something breaks at step 3. You check the audit log to see what happened at step 1. Entries are missing because one of the earlier steps forgot to write its log.
 
-A support ticket flows through four steps: normalize, classify, route, dispatch. Something goes wrong at step 3. What happened at step 1? You check the audit log. It's missing entries.
+The usual fix is a separate audit database, per-step triggers, and a reconstruction service to piece it all together after the fact.
 
-Traditional: an audit log database, triggers per step, a separate service to rebuild history on demand, and hope that every step remembered to write its log entry.
-
-Or each step appends to a history envelope that flows through the workflow:
-
-```ts
-export async function messageHistory(subject: string, body: string) {
-  "use workflow";
-
-  let envelope = { subject, body, severity: null, route: null, history: [] };
-
-  envelope = await normalizeTicket(envelope);
-  envelope = await classifySeverity(envelope);
-  envelope = await chooseRoute(envelope);
-  envelope = await dispatchTicket(envelope);
-
-  return envelope; // includes full history from every step
-}
-
-async function normalizeTicket(envelope) {
-  "use step";
-  const normalized = envelope.subject.trim().toLowerCase();
-  return appendHistory(
-    { ...envelope, subject: normalized },
-    { step: "normalize", status: "succeeded" }
-  );
-}
-```
+Instead, each step appends to a history envelope that flows through the workflow using `"use step"` functions. Every step receives the message plus its full history and appends its own result before passing forward.
 
 <!-- split -->
 
-Every step receives the message plus its history. Every step appends its result before passing forward. The envelope is the audit trail. No external log needed.
+The envelope itself becomes the audit trail. `normalizeTicket` cleans the input and logs it. `classifySeverity` assigns priority and logs it. `chooseRoute` picks a team and logs it. `dispatchTicket` sends and logs it. Each function uses `appendHistory()` to record its step name, status, and timestamp.
 
-Step fails? The history shows exactly what happened before the failure. No missing entries. No log reconstruction.
+If a step fails, the history shows exactly what succeeded before the failure. No missing entries. No log reconstruction. Durable steps mean the envelope persists across restarts.
 
 <!-- split -->
 
-Normalize: cleaned input, logged. Classify: priority high, logged. Route: team assigned, logged. Dispatch: sent, logged. Full history in one object.
-
-No audit log DB. No triggers. No reconstruction service.
+No audit log database. No triggers. No correlation ID lookup. No external reconstruction service. The message carries its own history through every step, and the workflow output includes the complete processing trace.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "The message is the log"
+## Variant B — "The audit trail that writes itself"
 
-Audit trails for multi-step pipelines usually mean a separate logging service, a correlation ID, and a query to reconstruct what happened after the fact.
+Every compliance team asks the same question: show me exactly what happened to this ticket, in order, with timestamps. Building that from scattered logs across four services is a weekend project.
 
-What if the message itself carried its history?
-
-```ts
-export async function messageHistory(subject: string, body: string) {
-  "use workflow";
-
-  let envelope = { subject, body, severity: null, route: null, history: [] };
-
-  envelope = await normalizeTicket(envelope);
-  envelope = await classifySeverity(envelope);
-  envelope = await chooseRoute(envelope);
-  envelope = await dispatchTicket(envelope);
-
-  return envelope; // includes full history from every step
-}
-
-async function normalizeTicket(envelope) {
-  "use step";
-  const normalized = envelope.subject.trim().toLowerCase();
-  return appendHistory(
-    { ...envelope, subject: normalized },
-    { step: "normalize", status: "succeeded" }
-  );
-}
-```
+A history envelope carried inside the workflow means every step inherits the full trace and appends its own entry. `appendHistory()` records the step name, status, and timestamp automatically. No separate logging infrastructure required.
 
 <!-- split -->
 
-Each durable step wraps its output in a history entry: timestamp, step name, result, any errors. The next step receives the full envelope. The pipeline output includes the complete processing history.
+`normalizeTicket`, `classifySeverity`, `chooseRoute`, `dispatchTicket` — each one reads the envelope, does its work, and adds a line. The envelope is the source of truth. If `chooseRoute` fails, you see exactly what `normalizeTicket` and `classifySeverity` produced before the failure.
 
-Step-level error handling means a failure at classify doesn't lose the normalize result. The history envelope captures both successes and failures.
+Durable steps mean the envelope survives crashes. Restart the workflow and the history picks up where it left off.
 
 <!-- split -->
 
-No external audit log. No correlation ID lookup. No "rebuild from events" step. The message carries its own history through every step.
+No log aggregation pipeline. No correlation IDs stitched together after the fact. No missing entries from steps that forgot to emit events. One envelope, four steps, complete traceability from input to dispatch.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Pipeline observability for free"
+## Variant C — "Four steps, zero log gaps"
 
-Four steps. Four potential failure points. Traditional observability: instrument each step, ship logs to a collector, correlate by request ID, build a dashboard.
+Four processing steps. Four chances for a log entry to go missing. Traditional pipelines scatter their audit data across services, and reconstruction requires correlating timestamps, IDs, and formats that never quite match.
 
-Or let the workflow carry its own history:
-
-```ts
-export async function messageHistory(subject: string, body: string) {
-  "use workflow";
-
-  let envelope = { subject, body, severity: null, route: null, history: [] };
-
-  envelope = await normalizeTicket(envelope);
-  envelope = await classifySeverity(envelope);
-  envelope = await chooseRoute(envelope);
-  envelope = await dispatchTicket(envelope);
-
-  return envelope; // includes full history from every step
-}
-
-async function normalizeTicket(envelope) {
-  "use step";
-  const normalized = envelope.subject.trim().toLowerCase();
-  return appendHistory(
-    { ...envelope, subject: normalized },
-    { step: "normalize", status: "succeeded" }
-  );
-}
-```
+The history envelope pattern keeps every step's output in one object. Each `"use step"` function receives the envelope, processes the ticket, and appends its result via `appendHistory()` before passing it forward.
 
 <!-- split -->
 
-The history envelope accumulates as the message flows. Normalize appends. Classify appends. Route appends. Dispatch appends. At the end, you have a complete trace, not in a log aggregator, but in the workflow output.
+The envelope grows as the ticket moves. Normalize appends cleaned data. Classify appends severity. Route appends team assignment. Dispatch appends delivery confirmation. At any point, the current state of the envelope tells you everything that happened.
 
-Durable steps mean crash recovery doesn't lose history. The envelope persists across restarts.
+When a step fails, the envelope shows the last successful state. No gaps. No guessing which step ran and which didn't.
 
 <!-- split -->
 
-Support ticket in. Four steps. Full trace out. No log aggregator. No correlation service. No missing entries.
+No external audit service. No per-step logging triggers. No post-hoc reconstruction. The message carries its complete history, and the workflow output is the audit trail. Four steps, zero log gaps.
 
 Explore the interactive demo on v0: {v0_link}

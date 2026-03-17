@@ -1,7 +1,6 @@
 ---
 slug: competing-consumers
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-competing-consumers
 primitive: durable execution with automatic deduplication
 pick: null
@@ -11,129 +10,58 @@ pick: null
 
 Multiple workflow instances compete to process items from a shared queue, with only one consumer winning each item.
 
-## Variant A — "Two workers, one job"
-
+## Variant A — "Two workers, one message"
 
 Three workers poll the same queue. A message arrives. Two workers grab it simultaneously. One processes it. The other needs to back off without duplicating work.
 
-Traditional: distributed locking, message visibility timeouts, consumer group management, and poison pill handling for messages that keep failing.
+The usual fix is distributed locking, message visibility timeouts, consumer group management, and poison pill handling for messages that keep failing.
 
-With WDK each item is a workflow run with a deterministic ID:
-
-```ts
-import { start } from "workflow/api";
-
-// Each queue item maps to a deterministic workflow run ID.
-// Duplicate starts for the same ID are no-ops.
-async function consumeItem(item: QueueItem) {
-  await start({
-    id: `process-item-${item.id}`, // deterministic — deduped by runtime
-    fn: processItem,
-    args: [item],
-  });
-}
-
-async function processItem(item: QueueItem) {
-  "use workflow";
-
-  await validateItem(item);
-  await enrichItem(item);
-  await storeResult(item);
-}
-```
+With deterministic workflow IDs, each queue item maps to a workflow run via `start()` with an `id` like `process-item-${item.id}`. Duplicate starts for the same ID are no-ops, deduplicated by the runtime.
 
 <!-- split -->
 
-Same item ID means same workflow run. If two consumers try to start a run for the same item, only one executes. The other is a no-op, deduplicated by the runtime.
+Same item ID means same workflow run. If two consumers try to start a run for the same item, only one executes. The runtime handles the deduplication at the execution level, not the application level.
 
-No distributed locks. No visibility timeouts. No consumer group coordination. The deduplication is the execution model.
+Failed items retry automatically from the last successful step. No reprocessing of completed work. No poison pill queue needed.
 
 <!-- split -->
 
-Queue fills up. Consumers race. Each item processes exactly once. Failed items retry automatically. No poison pill queue needed.
+No distributed locks. No visibility timeouts. No consumer group rebalancing. No broker infrastructure. Items arrive, workflows run, duplicates are eliminated by the runtime.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Exactly-once without distributed locks"
+## Variant B — "The deduplication is in the ID"
 
-Distributed locks are fragile. Lock expires too early? Duplicate processing. Lock holder crashes? Stuck messages. You end up building a lock manager for the lock manager.
+You could build a deduplication layer with Redis locks, visibility timeouts, and consumer group protocols. Or you could make the workflow ID deterministic.
 
-WDK sidesteps locking entirely:
-
-```ts
-import { start } from "workflow/api";
-
-// Each queue item maps to a deterministic workflow run ID.
-// Duplicate starts for the same ID are no-ops.
-async function consumeItem(item: QueueItem) {
-  await start({
-    id: `process-item-${item.id}`, // deterministic — deduped by runtime
-    fn: processItem,
-    args: [item],
-  });
-}
-
-async function processItem(item: QueueItem) {
-  "use workflow";
-
-  await validateItem(item);
-  await enrichItem(item);
-  await storeResult(item);
-}
-```
+`start()` with `id: process-item-${item.id}` means the same item always maps to the same workflow run. Call it once or call it ten times — the runtime creates one execution and ignores the rest.
 
 <!-- split -->
 
-Each queue item maps to a workflow run ID. The runtime ensures one execution per ID. Concurrent attempts to start the same run are safely deduplicated. No lock, no race.
+No race condition between consumers. No lock acquisition. No timeout tuning. The runtime sees the same ID and resolves it to the same run. If the run is already complete, it returns the result. If it is still running, it attaches to the existing execution.
 
-If a run fails, it retries from the last successful step. Not from scratch. No reprocessing of completed work.
+Failed steps retry from their checkpoint, not from the beginning. Completed steps are never re-executed.
 
 <!-- split -->
 
-No distributed locks. No visibility timeouts. No consumer group rebalancing. No poison pill handling.
-
-One item, one run, one result. The runtime guarantees it.
+No Redis. No Zookeeper. No consumer group rebalancing protocol. No visibility timeout configuration. Deterministic IDs give you exactly-once processing semantics from a simple `start()` call.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "The queue without the queue infrastructure"
+## Variant C — "Scale consumers without coordination"
 
-Traditional competing consumers need: a broker with consumer groups, visibility timeouts, dead-letter queues, and monitoring for stuck messages.
+Adding more consumers usually means reconfiguring consumer groups, rebalancing partitions, and testing that your locking strategy still holds under higher concurrency.
 
-WDK replaces the pattern with durable workflow runs:
-
-```ts
-import { start } from "workflow/api";
-
-// Each queue item maps to a deterministic workflow run ID.
-// Duplicate starts for the same ID are no-ops.
-async function consumeItem(item: QueueItem) {
-  await start({
-    id: `process-item-${item.id}`, // deterministic — deduped by runtime
-    fn: processItem,
-    args: [item],
-  });
-}
-
-async function processItem(item: QueueItem) {
-  "use workflow";
-
-  await validateItem(item);
-  await enrichItem(item);
-  await storeResult(item);
-}
-```
+With deterministic workflow IDs, scaling is just adding more callers. Every consumer calls `start()` with the item ID. The runtime deduplicates. No coordination protocol between consumers.
 
 <!-- split -->
 
-Each item triggers a workflow run with a deterministic ID. Multiple triggers for the same ID collapse into one execution. Each step checkpoints, so failures resume mid-workflow, not from the beginning.
+Ten consumers can all try to process the same item. Only one workflow run is created. The others get a no-op. No lock contention. No partition rebalancing. No visibility timeout races.
 
-No broker. No consumer groups. No visibility timeout tuning. No dead-letter queue.
+Each workflow run retries failed steps independently. One consumer crashing does not affect any other consumer's in-flight work.
 
 <!-- split -->
 
-Items arrive. Workflows run. Duplicates are eliminated by the runtime. Failures retry from the last checkpoint.
-
-Competing consumers without the competition.
+No consumer group management. No partition assignment. No distributed lock service. No rebalancing downtime. Add consumers freely and let the runtime handle the rest.
 
 Explore the interactive demo on v0: {v0_link}

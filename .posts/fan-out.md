@@ -1,7 +1,6 @@
 ---
 slug: fan-out
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-fan-out
 primitive: Promise.allSettled() + FatalError
 pick: null
@@ -11,155 +10,60 @@ pick: null
 
 Broadcast an incident alert to 4 channels (Slack, email, SMS, PagerDuty) in parallel. Handle transient and permanent failures independently per channel.
 
-## Variant A — "Four channels, zero coordination"
+## Variant A — "The sequential bottleneck"
 
+Sending an alert to four channels sequentially means the last channel waits for the first three.
 
-Incident fires. Notify Slack, email, SMS, and PagerDuty, all in parallel. If SMS fails, don't block Slack.
+If you send them in parallel without coordination, you lose track of which specific channels failed.
 
-Fan out with `Promise.allSettled()` and let each channel fail independently:
-
-```ts
-import { FatalError } from "workflow";
-
-export async function incidentFanOut(incidentId: string, message: string) {
-  "use workflow";
-
-  const settled = await Promise.allSettled([
-    sendSlackAlert(incidentId, message),
-    sendEmailAlert(incidentId, message),
-    sendSmsAlert(incidentId, message),
-    sendPagerDutyAlert(incidentId, message),
-  ]);
-
-  const deliveries = settled.map((result, i) =>
-    result.status === "fulfilled"
-      ? { channel: channels[i], status: "sent", providerId: result.value.providerId }
-      : { channel: channels[i], status: "failed", error: result.reason }
-  );
-
-  return { incidentId, deliveries };
-}
-
-async function sendSlackAlert(incidentId: string, message: string) {
-  "use step";
-  // Transient errors retry automatically
-  // FatalError stops retries for permanent failures
-  const response = await slack.post(message);
-  if (response.status === 403) throw new FatalError("Invalid API key");
-  return { providerId: response.id };
-}
-```
+`Promise.allSettled()` provides the best of both worlds.
 
 <!-- split -->
 
-Each channel is a durable step. `Promise.allSettled()` runs all four in parallel. Transient failures retry automatically. Permanent failures throw `FatalError`. No retry, no blocking other channels.
+Using `Promise.allSettled()` provides parallel execution alongside per-channel failure tracking.
 
-No callback coordinator. No partial failure table. The workflow tracks it all.
+Each step is independent, so throwing a `FatalError` stops retries for that specific channel while the others continue.
 
 <!-- split -->
 
-Slack: delivered. Email: delivered. SMS: carrier down, retrying. PagerDuty: invalid API key, `FatalError`.
+This setup handles transient retries automatically while stopping permanent failures immediately.
 
-Three succeed. One permanently fails. You know exactly what happened and why.
+You can track everything without a coordinator service, dead letter queues, or complex retry policies.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Parallel delivery with independent failure"
+## Variant B — "What happens when one channel is permanently dead?"
 
-Sending an alert to four channels sequentially means channel 4 waits for channels 1–3. Sending in parallel without coordination means you don't know what failed.
+SMS provider is down for good. Email is slow. PagerDuty works fine. You need all three results, not just the first failure.
 
-`Promise.allSettled()` gives you both: parallel execution and per-channel failure tracking.
-
-```ts
-import { FatalError } from "workflow";
-
-export async function incidentFanOut(incidentId: string, message: string) {
-  "use workflow";
-
-  const settled = await Promise.allSettled([
-    sendSlackAlert(incidentId, message),
-    sendEmailAlert(incidentId, message),
-    sendSmsAlert(incidentId, message),
-    sendPagerDutyAlert(incidentId, message),
-  ]);
-
-  const deliveries = settled.map((result, i) =>
-    result.status === "fulfilled"
-      ? { channel: channels[i], status: "sent", providerId: result.value.providerId }
-      : { channel: channels[i], status: "failed", error: result.reason }
-  );
-
-  return { incidentId, deliveries };
-}
-
-async function sendSlackAlert(incidentId: string, message: string) {
-  "use step";
-  // Transient errors retry automatically
-  // FatalError stops retries for permanent failures
-  const response = await slack.post(message);
-  if (response.status === 403) throw new FatalError("Invalid API key");
-  return { providerId: response.id };
-}
-```
+`Promise.all()` would reject the moment SMS fails. `Promise.allSettled()` waits for every channel and reports each result individually.
 
 <!-- split -->
 
-Each step is independent. FatalError marks a channel as permanently failed. The SDK stops retrying it but lets the others continue.
+Throw a FatalError inside the SMS step and it stops retrying immediately. Email keeps retrying transient errors. PagerDuty completes first attempt. All three run in parallel.
 
-Transient failures retry automatically. Permanent failures stop immediately.
+The settled results tell you exactly which channels succeeded, retried, or gave up.
 
 <!-- split -->
 
-No retry policy per client. No coordinator service. No dead letter queue for failed notifications. Four steps, one `allSettled`, one file.
+No coordinator service. No per-channel retry policies. No dead letter queue. Parallel steps with independent failure handling in a single `Promise.allSettled()` call.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Broadcast without the message broker"
+## Variant C — "Retryable vs fatal, per channel"
 
-Traditional fan-out needs a message broker, subscriber queues, and retry policies per subscriber. That's infrastructure for what should be a function call.
+Transient errors should retry. Permanent errors should stop. And you need that decision made per channel, not globally.
 
-WDK fan-out is `Promise.allSettled()` over durable steps:
-
-```ts
-import { FatalError } from "workflow";
-
-export async function incidentFanOut(incidentId: string, message: string) {
-  "use workflow";
-
-  const settled = await Promise.allSettled([
-    sendSlackAlert(incidentId, message),
-    sendEmailAlert(incidentId, message),
-    sendSmsAlert(incidentId, message),
-    sendPagerDutyAlert(incidentId, message),
-  ]);
-
-  const deliveries = settled.map((result, i) =>
-    result.status === "fulfilled"
-      ? { channel: channels[i], status: "sent", providerId: result.value.providerId }
-      : { channel: channels[i], status: "failed", error: result.reason }
-  );
-
-  return { incidentId, deliveries };
-}
-
-async function sendSlackAlert(incidentId: string, message: string) {
-  "use step";
-  // Transient errors retry automatically
-  // FatalError stops retries for permanent failures
-  const response = await slack.post(message);
-  if (response.status === 403) throw new FatalError("Invalid API key");
-  return { providerId: response.id };
-}
-```
+`FatalError` is the kill switch for a single step. Throw it and retries stop for that step only. Every other step continues independently.
 
 <!-- split -->
 
-Four steps run in parallel. Each is independently durable, with crash recovery per channel, not per broadcast. `FatalError` distinguishes "stop trying" from "try again."
+Wrap all four channel steps in `Promise.allSettled()`. Each step handles its own retry logic. A 500 from the SMS provider? Retries automatically. An invalid API key? `FatalError` stops it cold.
 
-The workflow is the broker. The steps are the subscribers. The runtime handles delivery guarantees.
+The workflow completes when every channel has either succeeded or permanently failed.
 
 <!-- split -->
 
-Incident alert to Slack, email, SMS, PagerDuty. Parallel. Durable. Independent failure domains. One file.
+No global error handler deciding the fate of all channels. No retry configuration spread across services. Each channel owns its failure mode, and `Promise.allSettled()` collects the results.
 
 Explore the interactive demo on v0: {v0_link}

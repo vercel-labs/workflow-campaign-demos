@@ -1,7 +1,6 @@
 ---
 slug: circuit-breaker
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-circuit-breaker
 primitive: sleep() for cooldown
 pick: null
@@ -11,156 +10,62 @@ pick: null
 
 Monitor failures, trip the circuit to stop cascading damage. After a cooldown, test one request. If it passes, close the circuit.
 
-## Variant A — "Stop hitting a dead API"
-
+## Variant A — "Stop DDoS-ing your own dependency"
 
 Your upstream API is down. You keep retrying. Now you're DDoS-ing a service that's trying to recover.
 
-A circuit breaker stops the bleeding. Traditional approach: a circuit breaker library, a Redis counter, and a TTL key.
+A circuit breaker stops the bleeding, but traditionally that means a library, a Redis counter, and a TTL key.
 
-With WDK it's a counter and a `sleep()`:
-
-```ts
-import { sleep } from "workflow";
-
-async function circuitBreakerFlow(serviceId, maxRequests) {
-  "use workflow";
-
-  let state = "closed";
-  let consecutiveFailures = 0;
-
-  for (let i = 1; i <= maxRequests; i++) {
-    if (state === "open") {
-      await sleep("3000ms"); // cooldown — real wall time, zero compute
-      state = "half-open";
-    }
-
-    const success = await callService(serviceId, i);
-
-    if (success) {
-      consecutiveFailures = 0;
-      if (state === "half-open") state = "closed";
-    } else {
-      consecutiveFailures++;
-      if (consecutiveFailures >= 3) {
-        state = "open";
-        consecutiveFailures = 0;
-      }
-    }
-  }
-}
-```
+`sleep()` replaces all of that with a durable cooldown.
 
 <!-- split -->
 
-Three states: closed (normal), open (blocked), half-open (testing). The transitions are just if-statements.
+Three consecutive failures open the circuit. `sleep()` pauses for real wall time with zero compute. When the cooldown expires, one test request goes through.
 
-`sleep()` handles the cooldown. It pauses for real wall time, zero compute, and survives deploys. Crash during cooldown? It picks up with the remaining time.
+If the test succeeds, the circuit closes and traffic resumes. If it fails, `sleep()` starts another cooldown. Crash during the cooldown? It picks up with the remaining time.
 
 <!-- split -->
 
-No circuit breaker library. No Redis counter. No TTL key. A for-loop, a counter, and a durable sleep.
+No circuit breaker library. No Redis counter. No TTL key. The circuit state lives in the workflow itself and survives restarts.
+
+A for-loop, a counter, and a durable `sleep()` give you the full closed/open/half-open pattern.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "The 3-state loop"
+## Variant B — "A cooldown that survives a deploy"
 
-Closed → Open → Half-open → Closed.
+You trip the circuit and start a 30-second cooldown. Then you deploy. The in-memory timer is gone. The circuit resets to closed and immediately hammers the failing service again.
 
-That's the circuit breaker pattern. Traditionally you'd wire up a library, a shared state store, and a TTL-based reset.
+Traditional circuit breakers store state in Redis or a shared cache. That adds a dependency to the thing protecting you from dependency failures.
 
-In WDK it's a loop with durable `sleep()`:
-
-```ts
-import { sleep } from "workflow";
-
-async function circuitBreakerFlow(serviceId, maxRequests) {
-  "use workflow";
-
-  let state = "closed";
-  let consecutiveFailures = 0;
-
-  for (let i = 1; i <= maxRequests; i++) {
-    if (state === "open") {
-      await sleep("3000ms"); // cooldown — real wall time, zero compute
-      state = "half-open";
-    }
-
-    const success = await callService(serviceId, i);
-
-    if (success) {
-      consecutiveFailures = 0;
-      if (state === "half-open") state = "closed";
-    } else {
-      consecutiveFailures++;
-      if (consecutiveFailures >= 3) {
-        state = "open";
-        consecutiveFailures = 0;
-      }
-    }
-  }
-}
-```
+`sleep()` is durable. Deploy, crash, restart — the cooldown resumes with the remaining time. No external state store required.
 
 <!-- split -->
 
-Failures increment a counter inside the workflow. Hit the threshold? Open the circuit and `sleep("30s")`. Real wall time, zero cost.
+The circuit state is the workflow state. Closed, open, half-open — all represented by where the workflow is in its execution. A counter tracks failures. `sleep()` holds the open state. A single test request probes half-open.
 
-After the cooldown, try one request. If it works, reset the counter. If not, sleep again. All state lives in the workflow itself.
+If the probe succeeds, the loop continues. If it fails, `sleep()` starts another cooldown. The workflow is the state machine.
 
 <!-- split -->
 
-No Redis. No shared state. No library dependency. The circuit state lives in the workflow and survives restarts.
+No Redis. No TTL keys. No shared cache that itself could fail. The circuit breaker is a loop with a counter and a `sleep()`, and it survives anything the infrastructure throws at it.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Protect your downstream"
+## Variant C — "Closed, open, half-open in a for-loop"
 
-When a dependency fails, the worst thing you can do is keep calling it.
+The circuit breaker pattern has three states: closed, open, half-open. Most implementations need a state machine, a timer, and a probe mechanism. That means a library or a custom class with careful concurrency handling.
 
-A circuit breaker gives it room to recover. Traditionally that means a library, a distributed counter, and careful TTL management.
-
-WDK makes it trivial -- a counter and a `sleep()`:
-
-```ts
-import { sleep } from "workflow";
-
-async function circuitBreakerFlow(serviceId, maxRequests) {
-  "use workflow";
-
-  let state = "closed";
-  let consecutiveFailures = 0;
-
-  for (let i = 1; i <= maxRequests; i++) {
-    if (state === "open") {
-      await sleep("3000ms"); // cooldown — real wall time, zero compute
-      state = "half-open";
-    }
-
-    const success = await callService(serviceId, i);
-
-    if (success) {
-      consecutiveFailures = 0;
-      if (state === "half-open") state = "closed";
-    } else {
-      consecutiveFailures++;
-      if (consecutiveFailures >= 3) {
-        state = "open";
-        consecutiveFailures = 0;
-      }
-    }
-  }
-}
-```
+A for-loop with `sleep()` gives you all three states implicitly. Closed is the loop running normally. Open is `sleep()` holding execution. Half-open is the single request after the sleep returns.
 
 <!-- split -->
 
-`sleep("30s")` is a real 30-second pause. No compute. No polling. The workflow resumes exactly when the cooldown expires.
+Count consecutive failures in a variable. When the threshold hits, call `sleep()` for the cooldown period. When sleep returns, try one request. Success resets the counter and the loop continues in the closed state. Failure triggers another `sleep()`.
 
-Crash during the cooldown? It picks up with the remaining time. No orphaned timers. No stale state.
+The pattern emerges from the control flow, not from a state machine definition. The runtime handles durability.
 
 <!-- split -->
 
-No external state. No TTL keys. No circuit breaker dependency. Just TypeScript that pauses and resumes.
+No state enum. No transition table. No circuit breaker library to configure. Three states from a counter, a conditional, and a `sleep()`. The full pattern in a few lines of workflow code.
 
 Explore the interactive demo on v0: {v0_link}

@@ -1,7 +1,6 @@
 ---
 slug: scheduler-agent-supervisor
 day: null
-status: draft
 v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-scheduler-agent-supervisor
 primitive: sleep() for cooldown + sequential dispatch
 pick: null
@@ -11,134 +10,58 @@ pick: null
 
 Dispatch content generation to multiple agents in sequence, each checked against a quality threshold; if one fails, route to the next agent after a cooldown.
 
-## Variant A — "The agent babysitter"
+## Variant A — "Three agents, one quality bar"
 
+You need three agents to generate content. Agent 1 produces a draft. A supervisor scores it. If quality is below the threshold, wait and try Agent 2. If that fails too, escalate to Agent 3.
 
-You need three agents. Agent 1 generates content. A supervisor scores it. If quality is below threshold, wait 30 seconds and try Agent 2.
+The traditional setup is an agent dispatch service, a quality gate service, an agent assignment database, and retry logic spread across all of them.
 
-Traditional: an agent dispatch service, a quality gate service, an agent assignment database, and retry logic spread across all of them.
-
-With WDK it's a loop with `sleep()`:
-
-```ts
-import { sleep } from "workflow";
-
-const AGENTS = ["fast-model", "thorough-model", "premium-model"];
-
-export async function schedulerAgentSupervisor(topic: string, requiredScore: number) {
-  "use workflow";
-
-  for (const agent of AGENTS) {
-    const draft = await dispatchToAgent(agent, topic);
-    const quality = await checkQuality(draft, requiredScore);
-
-    if (quality.passed) {
-      return await publishContent(draft, quality);
-    }
-
-    await sleep("2s"); // cooldown before next agent
-  }
-
-  return { status: "failed" };
-}
-```
+With `sleep()` and durable steps, it becomes a loop. Each agent call is a step. The quality check is a step. If the score fails the threshold, `sleep()` handles the cooldown before dispatching the next agent.
 
 <!-- split -->
 
-Each agent call is a durable step. The supervisor scores the output. If it fails the threshold, `sleep()` handles the cooldown, then the next agent gets dispatched.
+`sleep()` is durable. If the server restarts mid-cooldown, it resumes exactly where it left off. No timers to re-register. No state to recover. The supervisor logic is just an if-statement: pass means return, fail means next agent.
 
-No dispatch service. No assignment DB. The routing logic is a for-loop.
+The dispatch order is array order. The routing logic is a for-loop. Each step checkpoints automatically.
 
 <!-- split -->
 
-Agent 1 misses the bar. Wait 30s. Agent 2 tries. Still bad. Wait 30s. Agent 3 nails it.
-
-Sequential dispatch, quality gates, and cooldown timers. One file.
+No dispatch service. No agent registry. No retry queue with exponential backoff. Sequential dispatch, quality gates, and cooldown timers in a single workflow file.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "What happens when your best agent chokes?"
+## Variant B — "Durable cooldowns between agents"
 
-Your primary agent produces garbage. You need a fallback. Then a fallback for the fallback. Each with a cooldown so you don't hammer the API.
+Agent 1 scores below threshold. You need to wait 30 seconds before trying Agent 2. In a traditional setup, that means a timer service, a callback mechanism, and state recovery logic in case the server dies mid-wait.
 
-Traditional: a scheduler service, an agent registry, a quality scoring pipeline, and a retry queue with exponential backoff.
-
-WDK replaces all of that with steps in a loop:
-
-```ts
-import { sleep } from "workflow";
-
-const AGENTS = ["fast-model", "thorough-model", "premium-model"];
-
-export async function schedulerAgentSupervisor(topic: string, requiredScore: number) {
-  "use workflow";
-
-  for (const agent of AGENTS) {
-    const draft = await dispatchToAgent(agent, topic);
-    const quality = await checkQuality(draft, requiredScore);
-
-    if (quality.passed) {
-      return await publishContent(draft, quality);
-    }
-
-    await sleep("2s"); // cooldown before next agent
-  }
-
-  return { status: "failed" };
-}
-```
+`sleep()` is a durable primitive. Set it to 30 seconds and the workflow pauses. Server restarts? The sleep resumes from where it left off. No timer registration. No callback URL. No state database to query on restart.
 
 <!-- split -->
 
-`sleep()` is durable. If the server restarts mid-cooldown, it resumes exactly where it left off. No state to recover. No timers to re-register.
+The supervisor pattern is a for-loop over agents. Call the agent step. Check the quality step. Below threshold? `sleep()` for cooldown, then continue to the next agent. Above threshold? Return the result.
 
-The supervisor is just an if-statement. Pass? Return. Fail? Next agent.
+Each step is a checkpoint. If the quality check crashes, it retries from the check, not from the agent call. The agent's output is already persisted.
 
 <!-- split -->
 
-Three agents. One quality bar. Automatic fallback with cooldown between each attempt.
-
-No queue. No agent registry. No retry infrastructure.
+No timer service. No callback infrastructure. No agent state database. No manual checkpoint management. A for-loop, an if-statement, and `sleep()` give you the full scheduler-agent-supervisor pattern.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Orchestrating agents without an orchestrator"
+## Variant C — "Escalation as a for-loop"
 
-Agent orchestration frameworks are their own category of infrastructure. Dispatch tables, health checks, quality pipelines, cooldown management.
+Escalation logic usually lives in a dispatch service with agent priority tables, assignment databases, and fallback routing rules. Changing the escalation order means a config change, a deploy, and a prayer.
 
-WDK turns it into sequential function calls with `sleep()`:
-
-```ts
-import { sleep } from "workflow";
-
-const AGENTS = ["fast-model", "thorough-model", "premium-model"];
-
-export async function schedulerAgentSupervisor(topic: string, requiredScore: number) {
-  "use workflow";
-
-  for (const agent of AGENTS) {
-    const draft = await dispatchToAgent(agent, topic);
-    const quality = await checkQuality(draft, requiredScore);
-
-    if (quality.passed) {
-      return await publishContent(draft, quality);
-    }
-
-    await sleep("2s"); // cooldown before next agent
-  }
-
-  return { status: "failed" };
-}
-```
+Here, escalation order is array order. The agents array defines priority. A for-loop iterates through them. Each agent gets a step, a quality check, and a `sleep()` cooldown on failure. Pass the threshold and the loop breaks.
 
 <!-- split -->
 
-Each agent is a step. The quality check is a step. The cooldown is `sleep()`. If all agents fail, the workflow completes with a failure result. No silent drops.
+Adding a fourth agent means adding an element to the array. Changing priority means reordering the array. No config files. No dispatch service redeployment. No routing table update.
 
-Every step is durable. Every sleep survives restarts. The dispatch order is just array order.
+`sleep()` between agents is durable. Crash mid-cooldown and the workflow resumes the sleep, then dispatches the next agent. No lost position. No re-evaluation of already-failed agents.
 
 <!-- split -->
 
-Dispatch Agent A. Score it. Below threshold? Cool down. Dispatch Agent B. Score it. Repeat until quality passes or agents run out.
+No dispatch service. No priority database. No routing configuration. No escalation state machine. Agent priority is array order. Escalation is iteration. Quality gates are if-statements.
 
 Explore the interactive demo on v0: {v0_link}
