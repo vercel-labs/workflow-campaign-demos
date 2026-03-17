@@ -1,8 +1,0 @@
-node_modules
-package-lock.json
-.next
-.swc
-.vercel
-*.tsbuildinfo
-.env
-.env.local
