@@ -65,7 +65,7 @@ posts:
     day: null
     x_posted_at: null
     x: null
-    v0: https://v0.app/chat/0LXZOKw1AbS
+    v0: https://v0.app/chat/f4Pc9NKcSio
   - slug: choreography
     status: draft
     day: null

@@ -1,6 +1,6 @@
 # Draft picker (5 days)
 
-Updated 2026-03-17
+Updated 2026-03-17 (bulkhead v0 + Typefully refreshed after turbopack fix)
 
 ---
 
@@ -38,11 +38,11 @@ Updated 2026-03-17
 
 ### Day 5 — Bulkhead
 
-[v0 demo](https://v0.app/chat/0LXZOKw1AbS)
+[v0 demo](https://v0.app/chat/f4Pc9NKcSio)
 
-- [A · One bad item doesn’t kill the batch](https://typefully.com/t/gUgLr8b)
-- [B · Bounded concurrency compartments](https://typefully.com/t/45nrA3I)
-- [C · Failure isolation](https://typefully.com/t/INYFoLo)
+- [A · One bad item doesn’t kill the batch](https://typefully.com/t/16HfiC2)
+- [B · Bounded concurrency compartments](https://typefully.com/t/G2gDMAg)
+- [C · Failure isolation](https://typefully.com/t/Je8kOHb)
 
 ---
 
