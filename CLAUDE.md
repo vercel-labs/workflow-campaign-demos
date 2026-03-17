@@ -101,7 +101,7 @@ These files should be kept identical across all demos. When updating, sync from 
 | `app/layout.tsx` | Geist fonts + metadata shell |
 | `postcss.config.mjs` | Tailwind v4 config |
 | `tsconfig.json` | TypeScript strict + workflow plugin |
-| `next.config.ts` | `withWorkflow()` wrapper |
+| `next.config.ts` | `withWorkflow()` only — no `turbopack.root` (breaks v0 preview) |
 | `.gitignore` | Standard Next.js ignores |
 
 Sync command:
