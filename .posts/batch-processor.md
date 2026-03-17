@@ -1,8 +1,7 @@
 ---
 slug: batch-processor
 day: null
-status: draft
-v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-batch-processor
+v0_url: https://v0.app/chat/prfPMUPS2Y5
 primitive: durable replay + sleep()
 pick: null
 ---
@@ -11,114 +10,56 @@ pick: null
 
 Process a large dataset in batches with automatic resume from the last completed batch after a crash.
 
-## Variant A — "Pick up where you left off"
+## Variant A — "The checkpoint table you don't need"
 
+Processing 10k records. Batch 47 crashes. Now you need a checkpoint DB, crash detection, and recovery queries.
 
-You're processing 10,000 records in batches of 100. Batch 47 crashes. Do you start over?
-
-Traditional: a checkpoint database, crash detection logic, and recovery queries to find the last successful batch.
-
-With WDK, durable replay handles it:
-
-```ts
-async function batchProcessor(total = 10_000, batchSize = 1_000) {
-  "use workflow";
-
-  const totalBatches = Math.ceil(total / batchSize);
-
-  for (let batch = 1; batch <= totalBatches; batch++) {
-    const start = (batch - 1) * batchSize + 1;
-    const end = Math.min(total, batch * batchSize);
-
-    await processBatch(batch, start, end); // "use step" — durable
-  }
-
-  return { total, batchSize, status: "done" };
-}
-```
+Durable replay handles it. Each batch is a `"use step"`. The runtime logs every completion.
 
 <!-- split -->
 
-Each batch is a `"use step"`. The runtime records completions. Crash on batch 47? The workflow restarts and replays steps 1-46 instantly from the log, then resumes at 47.
+Crash on batch 47? Restart replays steps 1–46 from the log, then resumes at 47. No re-execution, no repeated side effects.
 
-No checkpoint table. No recovery query. The durability is built into the execution model.
+Add `sleep()` between batches for rate limiting. It's durable too — crash mid-pause and it resumes with time remaining.
 
 <!-- split -->
 
-No checkpoint database. No crash detection. No recovery logic. Process, crash, resume. Automatically.
+No checkpoint table. No `last_processed_id` column. No crash detection. No recovery queries. Process, crash, resume. Automatically.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "The checkpoint problem"
+## Variant B — "Crash on batch 47. Resume at batch 47."
 
-Every batch job needs checkpointing. Where did I stop? What's left? How do I avoid reprocessing?
+Batch crashes mean figuring out what ran, what didn't, what ran halfway. Idempotency keys, checkpoint tables, recovery scripts.
 
-Traditional batch frameworks make you manage this: a `last_processed_id` column, a status table, a startup query.
-
-WDK checkpoints every step automatically:
-
-```ts
-async function batchProcessor(total = 10_000, batchSize = 1_000) {
-  "use workflow";
-
-  const totalBatches = Math.ceil(total / batchSize);
-
-  for (let batch = 1; batch <= totalBatches; batch++) {
-    const start = (batch - 1) * batchSize + 1;
-    const end = Math.min(total, batch * batchSize);
-
-    await processBatch(batch, start, end); // "use step" — durable
-  }
-
-  return { total, batchSize, status: "done" };
-}
-```
+Durable replay kills all of it. Each batch is a `"use step"` logged on completion. Restart and steps 1–46 replay from the log.
 
 <!-- split -->
 
-Each `"use step"` is a durable checkpoint. Completed steps replay from the log. No re-execution, no side effects repeated.
+No API calls, no DB writes during replay — just reading the log. Batch 47 picks up fresh.
 
-Add a `sleep()` between batches to avoid rate limits. The sleep is durable too. Crash mid-pause? It resumes with the remaining time.
+Rate limiting? `sleep()` between steps is durable. Crash during a sleep and it resumes with time remaining.
 
 <!-- split -->
 
-No status table. No `last_processed_id`. No startup recovery. Batches flow through a loop and durability comes free.
+No idempotency keys. No checkpoint database. No recovery scripts. No "did this batch already run?" queries. The log is the checkpoint, and replay is the recovery.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Batches that survive anything"
+## Variant C — "10,000 records, zero recovery code"
 
-Server restarts. Deploy mid-batch. OOM on record 4,700. Every batch system eventually hits these.
+Batch processing is easy. Crash recovery is where the complexity hides — checkpoint tables, dedup logic, recovery jobs.
 
-The question is whether you wrote the recovery logic or the framework handles it. Traditional: you write it. WDK: the runtime handles it.
-
-Durable replay means completed steps are never re-executed:
-
-```ts
-async function batchProcessor(total = 10_000, batchSize = 1_000) {
-  "use workflow";
-
-  const totalBatches = Math.ceil(total / batchSize);
-
-  for (let batch = 1; batch <= totalBatches; batch++) {
-    const start = (batch - 1) * batchSize + 1;
-    const end = Math.min(total, batch * batchSize);
-
-    await processBatch(batch, start, end); // "use step" — durable
-  }
-
-  return { total, batchSize, status: "done" };
-}
-```
+Durable steps make the runtime the checkpoint. Each batch is a `"use step"`, each completion logged. Recovery is replay.
 
 <!-- split -->
 
-Process batch 1 → recorded. Batch 2 → recorded. Crash. Restart. Batches 1-2 replay from log. Batch 3 begins fresh.
+A loop where each iteration is a step. Crash anywhere — replay finishes in milliseconds, then resumes at the failed batch.
 
-`sleep()` between batches adds rate-limiting that also survives crashes. No timers to restore. No state to reconstruct.
+`sleep()` between batches for throttling. Also durable — crash mid-nap and it wakes with time remaining.
 
 <!-- split -->
 
-No recovery code. No checkpoint queries. No idempotency keys for reprocessed batches. Process, crash, resume. Like nothing happened.
+No checkpoint infrastructure. No recovery job. No crash detection heuristics. No manual restart procedures. A loop, durable steps, and the runtime handles the rest.
 
 Explore the interactive demo on v0: {v0_link}

@@ -7,6 +7,7 @@
  *   bun .scripts/typefully-publish.ts fan-out --variant A       # one variant
  *   bun .scripts/typefully-publish.ts fan-out                   # all variants
  *   bun .scripts/typefully-publish.ts --all --variant A         # all posts, variant A
+ *   bun .scripts/typefully-publish.ts saga --skip-v0           # Typefully only; v0_url from .posts frontmatter
  */
 
 import { readFileSync, existsSync, readdirSync, writeFileSync } from "fs";
@@ -24,6 +25,7 @@ const { values, positionals } = parseArgs({
     validate: { type: "boolean", default: false },
     variant: { type: "string" },
     all: { type: "boolean", default: false },
+    "skip-v0": { type: "boolean", default: false },
   },
   allowPositionals: true,
 });
@@ -63,7 +65,7 @@ function getApiKey(): string {
 
 async function publishToV0(slug: string): Promise<string> {
   const scriptPath = join(import.meta.dir, "v0-publish-public.ts");
-  const proc = Bun.spawn(["bun", "run", scriptPath, slug, "-y"], {
+  const proc = Bun.spawn(["bun", "run", scriptPath, slug, "-y", "--skip-sync-check"], {
     cwd: PROJECT_ROOT,
     env: { ...process.env },
     stdout: "pipe",
@@ -126,9 +128,29 @@ function parseFrontmatter(raw: string): Frontmatter {
   };
 }
 
+function toMonospace(text: string): string {
+  let result = "";
+  for (const ch of text) {
+    const code = ch.codePointAt(0)!;
+    if (code >= 0x41 && code <= 0x5a) {
+      // A-Z → 𝙰-𝚉
+      result += String.fromCodePoint(0x1d670 + (code - 0x41));
+    } else if (code >= 0x61 && code <= 0x7a) {
+      // a-z → 𝚊-𝚣
+      result += String.fromCodePoint(0x1d68a + (code - 0x61));
+    } else if (code >= 0x30 && code <= 0x39) {
+      // 0-9 → 𝟶-𝟿
+      result += String.fromCodePoint(0x1d7f6 + (code - 0x30));
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
 function stripMarkdownFormatting(text: string): string {
   return text
-    .replace(/`([^`]+)`/g, "$1") // inline code
+    .replace(/`([^`]+)`/g, (_, code) => toMonospace(code)) // inline code → monospace
     .replace(/\*\*([^*]+)\*\*/g, "$1") // bold
     .replace(/\*([^*]+)\*/g, "$1") // italic
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links (keep text)
@@ -454,7 +476,7 @@ if (variantFilter && !["A", "B", "C"].includes(variantFilter)) {
 
 const v0Urls: Record<string, string> = {};
 
-if (!values.validate) {
+if (!values.validate && !values["skip-v0"]) {
   console.log("Publishing to v0...\n");
   for (const slug of slugs) {
     try {
@@ -467,6 +489,8 @@ if (!values.validate) {
     }
   }
   console.log("");
+} else if (!values.validate && values["skip-v0"]) {
+  console.log("Skipping v0 publish — using v0_url from each post's frontmatter.\n");
 }
 
 // ---------------------------------------------------------------------------

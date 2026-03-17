@@ -17,6 +17,7 @@ A collection of standalone Next.js demos showcasing the [Vercel Workflow DevKit]
 | `circuit-breaker` | Circuit Breaker |
 | `claim-check` | Claim Check |
 | `competing-consumers` | Competing Consumers |
+| `content-based-router` | Content-Based Router |
 | `content-enricher` | Content Enricher |
 | `dead-letter-queue` | Dead Letter Queue |
 | `event-gateway` | Event Gateway |
@@ -71,6 +72,11 @@ bun .scripts/v0-publish-public.ts fan-out saga
 
 # Full social pipeline: v0 publish + ray.so images + Typefully drafts
 bun .scripts/typefully-publish.ts fan-out --variant A
+
+# Typefully drafts only (set v0_url in .posts/<slug>.md frontmatter first)
+bun .scripts/typefully-publish.ts aggregator approval-chain --skip-v0
+
+# 5-day Slack draft links: .posts/DRAFT-SLACK-PICKER.md
 
 # Generate code snippet images from post markdown
 bun .scripts/generate-snippet-image.ts fan-out --all

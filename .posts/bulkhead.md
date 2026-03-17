@@ -1,8 +1,7 @@
 ---
 slug: bulkhead
 day: null
-status: draft
-v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-bulkhead
+v0_url: https://v0.app/chat/0LXZOKw1AbS
 primitive: Promise.allSettled() + sleep()
 pick: null
 ---
@@ -11,196 +10,56 @@ pick: null
 
 Partition items into isolated compartments processed in parallel. One failure doesn't sink the others.
 
-## Variant A — "One bad item can't take down the batch"
+## Variant A — "One bad item sinks the whole batch"
 
+Processing 20 items in parallel sounds great until item 7 throws and tanks the whole batch.
 
-You're processing 20 items. Item 7 throws. Traditional parallel processing? The whole batch fails. Or you catch everything and lose visibility.
-
-A bulkhead isolates each compartment. With WDK it's `Promise.allSettled()` over durable steps:
-
-```ts
-export async function bulkhead(
-  jobId: string,
-  items: string[],
-  maxConcurrency: number
-) {
-  "use workflow";
-
-  const results = [];
-  let compartmentIndex = 0;
-
-  for (let i = 0; i < items.length; i += maxConcurrency) {
-    compartmentIndex++;
-    const batch = items.slice(i, i + maxConcurrency);
-
-    // Run compartment in parallel — failures are isolated
-    const outcomes = await Promise.allSettled(
-      batch.map((item, idx) => processItem(item, compartmentIndex, idx))
-    );
-
-    for (const outcome of outcomes) {
-      results.push(
-        outcome.status === "fulfilled"
-          ? outcome.value
-          : { ok: false, error: String(outcome.reason) }
-      );
-    }
-
-    // Durable pacing between compartments
-    if (i + maxConcurrency < items.length) {
-      await sleep("1s");
-    }
-  }
-
-  return { results, compartments: compartmentIndex };
-}
-
-async function processItem(item: string, compartment: number, idx: number) {
-  "use step";
-  // Each item is isolated — a failure here won't affect other items
-  const result = await callExternalService(item);
-  return { item, compartment, ok: true, ...result };
-}
-```
+`Promise.allSettled()` over durable steps gives you isolation and a per-item outcome map.
 
 <!-- split -->
 
-Each item runs in its own `"use step"`, isolated and retried independently. `Promise.allSettled()` waits for every result, success or failure.
+Each item runs in its own `"use step"` — failures stay contained. `Promise.allSettled()` collects every result, successes and failures alike.
 
-Item 7 throws? Items 1-6 and 8-20 are untouched. You get a full report of what succeeded and what didn't.
+`sleep()` between groups paces throughput. The sleep is durable, so a crash just resumes on schedule.
 
 <!-- split -->
 
-No thread pool configuration. No process isolation. No manual error boundaries. `allSettled` gives you bulkheads for free.
+No thread pools. No process isolation. No dead letter queues. No manual error boundaries. Each item is isolated by the step boundary itself, and you get a complete outcome map for free.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Failure isolation without infrastructure"
+## Variant B — "Pacing without a rate limiter"
 
-In ship design, a bulkhead stops water from flooding the entire hull. In software, the same idea keeps one failure from cascading.
+You have 200 items and a downstream API that chokes past 20 concurrent requests. Skip the rate limiter — chunk items into compartments.
 
-Traditional: thread pools, process workers, or queue-based isolation with per-item dead letter queues.
-
-WDK gives you isolation with `Promise.allSettled()`:
-
-```ts
-export async function bulkhead(
-  jobId: string,
-  items: string[],
-  maxConcurrency: number
-) {
-  "use workflow";
-
-  const results = [];
-  let compartmentIndex = 0;
-
-  for (let i = 0; i < items.length; i += maxConcurrency) {
-    compartmentIndex++;
-    const batch = items.slice(i, i + maxConcurrency);
-
-    // Run compartment in parallel — failures are isolated
-    const outcomes = await Promise.allSettled(
-      batch.map((item, idx) => processItem(item, compartmentIndex, idx))
-    );
-
-    for (const outcome of outcomes) {
-      results.push(
-        outcome.status === "fulfilled"
-          ? outcome.value
-          : { ok: false, error: String(outcome.reason) }
-      );
-    }
-
-    // Durable pacing between compartments
-    if (i + maxConcurrency < items.length) {
-      await sleep("1s");
-    }
-  }
-
-  return { results, compartments: compartmentIndex };
-}
-
-async function processItem(item: string, compartment: number, idx: number) {
-  "use step";
-  // Each item is isolated — a failure here won't affect other items
-  const result = await callExternalService(item);
-  return { item, compartment, ok: true, ...result };
-}
-```
+Run each group through `Promise.allSettled()`, then `sleep()` between batches.
 
 <!-- split -->
 
-Each compartment is a durable step. Steps run in parallel. A failure in one step doesn't cancel or affect the others.
+Each compartment runs items as parallel durable steps. When it finishes, the workflow sleeps before the next batch. Crash between compartments? It wakes on schedule.
 
-Add `sleep()` between compartment groups to control throughput. The sleep is durable. Crash between groups and it picks up on schedule.
+Every item is tracked individually regardless of which compartment ran it.
 
 <!-- split -->
 
-No thread pools. No dead letter queues. No process boundaries. Each item is isolated by the step boundary itself.
+No external rate limiter. No token bucket. No queue manager. Just chunked parallel execution with durable pauses between batches.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Parallel, isolated, durable"
+## Variant C — "The complete outcome map"
 
-Process items in parallel. Isolate failures. Retry individually. Resume after crashes.
+You processed 50 items. Three failed. Which three? When you catch errors globally, you lose the per-item detail. When you fail fast, you lose the other 47 results.
 
-That's four requirements. Traditionally, four different pieces of infrastructure.
-
-With WDK, it's one pattern:
-
-```ts
-export async function bulkhead(
-  jobId: string,
-  items: string[],
-  maxConcurrency: number
-) {
-  "use workflow";
-
-  const results = [];
-  let compartmentIndex = 0;
-
-  for (let i = 0; i < items.length; i += maxConcurrency) {
-    compartmentIndex++;
-    const batch = items.slice(i, i + maxConcurrency);
-
-    // Run compartment in parallel — failures are isolated
-    const outcomes = await Promise.allSettled(
-      batch.map((item, idx) => processItem(item, compartmentIndex, idx))
-    );
-
-    for (const outcome of outcomes) {
-      results.push(
-        outcome.status === "fulfilled"
-          ? outcome.value
-          : { ok: false, error: String(outcome.reason) }
-      );
-    }
-
-    // Durable pacing between compartments
-    if (i + maxConcurrency < items.length) {
-      await sleep("1s");
-    }
-  }
-
-  return { results, compartments: compartmentIndex };
-}
-
-async function processItem(item: string, compartment: number, idx: number) {
-  "use step";
-  // Each item is isolated — a failure here won't affect other items
-  const result = await callExternalService(item);
-  return { item, compartment, ok: true, ...result };
-}
-```
+`Promise.allSettled()` gives you the full picture — every item reports its own success or failure.
 
 <!-- split -->
 
-`Promise.allSettled()` runs all compartments in parallel. Each is a `"use step"`, durable and independently retriable. Failures are captured, not thrown.
+Each item is its own durable step inside `Promise.allSettled()`. Failures stay in the step that threw. Successes complete independently. The settled array is your outcome map.
 
-`sleep()` between batches of compartments adds backpressure. Durable backpressure that survives restarts.
+`sleep()` between batches paces throughput — no external rate limiter needed.
 
 <!-- split -->
 
-No orchestrator. No worker pools. No error boundary frameworks. Parallel steps, settled results, full isolation.
+No dead letter queue to drain. No error log to correlate. No manual retry list to build. The settled results are the outcome map, and every item's fate is accounted for.
 
 Explore the interactive demo on v0: {v0_link}

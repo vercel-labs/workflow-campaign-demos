@@ -1,8 +1,7 @@
 ---
 slug: approval-chain
 day: null
-status: draft
-v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-approval-chain
+v0_url: https://v0.app/chat/X3M2W5yZP1O
 primitive: Promise.race() + defineHook() + sleep()
 pick: null
 ---
@@ -11,144 +10,56 @@ pick: null
 
 Route approval through multiple levels, manager, director, VP, with per-level timeouts that escalate automatically.
 
-## Variant A — "Three approvals, three deadlines"
+## Variant A — "A race between a human and a clock"
 
+A purchase order needs manager, director, and VP sign-off. Each level gets 24 hours before it escalates.
 
-A purchase order needs manager → director → VP sign-off. Each level has 24 hours. If nobody responds, it escalates or times out.
-
-Traditional: a state machine in a database, polling workers, and external webhook handlers.
-
-With WDK, each level is a `Promise.race()` between a hook and a `sleep()`:
-
-```ts
-import { defineHook, sleep } from "workflow";
-
-async function approvalChain(expenseId, amount) {
-  "use workflow";
-
-  const levels = getApprovalLevelsForAmount(amount);
-
-  for (const level of levels) {
-    const hook = defineHook().create({
-      token: `approval:${expenseId}:${level.role}`,
-    });
-
-    const result = await Promise.race([
-      hook.then((p) => ({ type: "decision", payload: p })),
-      sleep(level.timeout).then(() => ({ type: "timeout" })),
-    ]);
-
-    if (result.type === "timeout") continue; // escalate
-    if (!result.payload.approved) return { status: "rejected" };
-    return { status: "approved", decidedBy: level.role };
-  }
-
-  return { status: "expired" };
-}
-```
+`defineHook()` creates an approval endpoint per level. `Promise.race()` pits the approval against `sleep("24h")`.
 
 <!-- split -->
 
-`defineHook()` creates an approval endpoint for each level. `Promise.race()` pits the approval against `sleep("24h")`.
+Approval arrives? Next level. Timeout wins? Auto-escalate. Each transition is durable — crash mid-chain and it resumes at the right level.
 
-Approval arrives? Move to the next level. Timeout wins? Escalate or reject. Each transition is a durable step. Crash mid-chain and it resumes at the right level.
+`sleep("24h")` is a real 24h pause, zero compute. `defineHook()` lets the human respond whenever. First one wins.
 
 <!-- split -->
 
-No state machine table. No polling worker. No webhook retry logic. A loop, a hook, and a race at each level.
+No state machine table. No polling worker. No webhook retry logic. No cron to check expiry. Each level is a race between a human and a clock, all in one file.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "The escalation ladder"
+## Variant B — "Escalation that costs nothing while it waits"
 
-Manager didn't respond in 24 hours. Now the director needs to see it. Director is out? VP gets it with a shorter deadline.
+Director hasn't responded. Wait 24h, then escalate to VP. Usually that means a worker polling the clock and a DB row tracking the deadline.
 
-Building this traditionally means a state column, a cron to check expiry, and a notification service watching for transitions.
-
-WDK makes escalation a for-loop:
-
-```ts
-import { defineHook, sleep } from "workflow";
-
-async function approvalChain(expenseId, amount) {
-  "use workflow";
-
-  const levels = getApprovalLevelsForAmount(amount);
-
-  for (const level of levels) {
-    const hook = defineHook().create({
-      token: `approval:${expenseId}:${level.role}`,
-    });
-
-    const result = await Promise.race([
-      hook.then((p) => ({ type: "decision", payload: p })),
-      sleep(level.timeout).then(() => ({ type: "timeout" })),
-    ]);
-
-    if (result.type === "timeout") continue; // escalate
-    if (!result.payload.approved) return { status: "rejected" };
-    return { status: "approved", decidedBy: level.role };
-  }
-
-  return { status: "expired" };
-}
-```
+`sleep("24h")` pauses 24 hours using zero compute. When it wakes, the next step escalates. The workflow was off the entire time.
 
 <!-- split -->
 
-Each approval level is an iteration. `defineHook()` gives the approver a unique URL. `sleep()` sets the deadline. `Promise.race()` picks the winner.
+`Promise.race()` between `defineHook()` and `sleep()` at each level. Hook creates the approval URL, sleep sets the deadline. First to resolve wins.
 
-The entire escalation ladder is visible in one file. No state transitions hidden in database triggers or queue handlers.
+Loop through levels: manager approves → director. Director times out → VP. Each transition is a durable step.
 
 <!-- split -->
 
-No cron. No state column. No notification microservice. Each level is a race between a human and a clock.
+No cron jobs polling for expired approvals. No background workers burning compute while humans think. No deadline tracking table. The sleep is the deadline, and it costs nothing until it fires.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "Human-in-the-loop, durably"
+## Variant C — "Three approvers, one file, zero infrastructure"
 
-Most approval workflows break when they hit real humans. People are slow. Systems restart. Deadlines span days.
+Manager → director → VP. Each gets a unique approval URL and a timeout. Rejection at any level stops the chain.
 
-Traditional tools struggle with long waits: persistent state, polling, and careful timeout management.
-
-WDK waits as long as it takes:
-
-```ts
-import { defineHook, sleep } from "workflow";
-
-async function approvalChain(expenseId, amount) {
-  "use workflow";
-
-  const levels = getApprovalLevelsForAmount(amount);
-
-  for (const level of levels) {
-    const hook = defineHook().create({
-      token: `approval:${expenseId}:${level.role}`,
-    });
-
-    const result = await Promise.race([
-      hook.then((p) => ({ type: "decision", payload: p })),
-      sleep(level.timeout).then(() => ({ type: "timeout" })),
-    ]);
-
-    if (result.type === "timeout") continue; // escalate
-    if (!result.payload.approved) return { status: "rejected" };
-    return { status: "approved", decidedBy: level.role };
-  }
-
-  return { status: "expired" };
-}
-```
+`defineHook()` generates the URL. `sleep()` sets the deadline. `Promise.race()` picks the winner. Loop through levels and it builds itself.
 
 <!-- split -->
 
-`sleep("24h")` is a real 24-hour pause. Zero compute. Zero cost. The workflow resumes exactly on the deadline.
+Each level: create a hook, race it against a sleep, check the result. Approved → continue. Rejected or timed out → exit early.
 
-`defineHook()` lets the human respond at any time. Whichever happens first, human or clock, the `Promise.race()` resolves.
+Crash between director approval and VP notification? Workflow resumes at the VP step. Earlier approvals are already checkpointed.
 
 <!-- split -->
 
-Manager → Director → VP. Each with a deadline. Each durable across restarts. One file, readable top to bottom.
+No webhook endpoint configuration. No timeout scheduler. No approval state table. Three levels of approval in a loop, each a race between a human action and a durable timer.
 
 Explore the interactive demo on v0: {v0_link}

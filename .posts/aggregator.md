@@ -1,142 +1,79 @@
 ---
 slug: aggregator
 day: null
-status: draft
-v0_url: https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-aggregator
+v0_url: https://v0.app/chat/fFETdq66hvt
 primitive: Promise.race() + defineHook() + sleep()
 pick: null
 ---
 
 # Aggregator — Collect Signals with Timeout
 
-Collect signals from distributed sources, release when all arrive or a timeout fires, whichever comes first.
+Collect signals from three distributed sources, release when all arrive or a timeout fires, whichever comes first.
 
-## Variant A — "Wait for everyone, but not forever"
+## Variant A — "Wait for all, but not forever"
 
+Three warehouses report inventory. One might never respond. Waiting forever blocks the pipeline. Ignoring stragglers loses data.
 
-Three services need to report in before you can proceed. One might never respond.
+`Promise.race()` between `defineHook()` endpoints and a `sleep()` deadline solves both.
 
-Traditional: polling loops, message queues, and timeout handling spread across services.
+<!-- split -->
 
-With WDK, it's `Promise.race()` against a `sleep()`:
+Durable hook per source. `Promise.all()` waits for every signal. `Promise.race()` pits completion against the `sleep()` timeout.
 
 ```ts
-import { defineHook, sleep } from "workflow";
+const received = new Map<string, SignalPayload>();
+const hooks = SOURCES.map((source) => {
+  const hook = aggregatorSignal.create({ token: `${source}:${batchId}` });
+  return hook.then((payload) => { received.set(source, payload); });
+});
 
-async function aggregator(batchId, timeoutMs = 8000) {
-  "use workflow";
-
-  const sources = ["warehouse-a", "warehouse-b", "warehouse-c"];
-  const signal = defineHook();
-
-  const hooks = sources.map((source) =>
-    signal.create({ token: `${source}:${batchId}` })
-  );
-
-  const outcome = await Promise.race([
-    Promise.all(hooks).then((results) => ({ type: "ready", results })),
-    sleep(`${timeoutMs}ms`).then(() => ({ type: "timeout" })),
-  ]);
-
-  // All arrived? Full aggregate. Timeout? Proceed with partial data.
-  return processBatch(batchId, outcome);
-}
+const outcome = await Promise.race([
+  Promise.all(hooks).then(() => ({ type: "ready" as const })),
+  sleep(`${timeoutMs}ms`).then(() => ({ type: "timeout" as const })),
+]);
+const snapshot = new Map(received);
 ```
 
-<!-- split -->
-
-`defineHook()` creates a webhook for each source. `Promise.race()` pits the collection against a `sleep("60s")` deadline.
-
-All signals arrive? Proceed with full data. Timeout fires first? Proceed with what you have. The workflow handles both paths.
+Timeout fires first? Snapshot what arrived and proceed with partial data. Every received signal is already persisted.
 
 <!-- split -->
 
-No polling loop. No message queue. No timeout sweep job. Hooks, a race, and a sleep.
+No polling loop. No correlation table. No timeout sweep job. Hooks, a race, and a sleep — all durable.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant B — "Partial data is better than no data"
+## Variant B — "Proceed with partial data"
 
-You're aggregating inventory counts from 5 warehouses. Four respond in seconds. One is offline.
+Two warehouses report in. The third times out. You still need to move forward with what you have.
 
-Do you wait forever? Block the whole pipeline? Traditional aggregators need a correlation table, a TTL, and a fallback worker.
-
-WDK gives you `Promise.race()`:
-
-```ts
-import { defineHook, sleep } from "workflow";
-
-async function aggregator(batchId, timeoutMs = 8000) {
-  "use workflow";
-
-  const sources = ["warehouse-a", "warehouse-b", "warehouse-c"];
-  const signal = defineHook();
-
-  const hooks = sources.map((source) =>
-    signal.create({ token: `${source}:${batchId}` })
-  );
-
-  const outcome = await Promise.race([
-    Promise.all(hooks).then((results) => ({ type: "ready", results })),
-    sleep(`${timeoutMs}ms`).then(() => ({ type: "timeout" })),
-  ]);
-
-  // All arrived? Full aggregate. Timeout? Proceed with partial data.
-  return processBatch(batchId, outcome);
-}
-```
+`Promise.race()` between completion and a deadline means you always proceed.
 
 <!-- split -->
 
-Each warehouse posts to a `defineHook()` endpoint. The workflow collects results as they arrive. Meanwhile, `sleep("30s")` is ticking.
+Durable hook per source. A `Map` tracks arrivals. When the race resolves, the workflow snapshots the map so late arrivals can't mutate the summary.
 
-Timeout wins the race? You proceed with 4 out of 5. Every signal that arrived is already persisted in durable steps.
+Timeout wins? Every signal that arrived is safe. You know exactly who responded.
 
 <!-- split -->
 
-No correlation table. No TTL keys. No fallback worker. Webhooks, a race, and a deadline that actually works.
+No polling for stragglers. No dead letter queue for missing signals. The race resolves, you snapshot what arrived, and move forward.
 
 Explore the interactive demo on v0: {v0_link}
 
-## Variant C — "The collector pattern"
+## Variant C — "Durable hooks that survive crashes"
 
-Distributed systems produce events at different times. An aggregator collects them and decides when to release.
+Two signals arrive. Process crashes. When it restarts, are those signals gone?
 
-Traditionally: a message broker, a stateful consumer, a database for partial results, and a cron for timeouts.
-
-WDK replaces all four:
-
-```ts
-import { defineHook, sleep } from "workflow";
-
-async function aggregator(batchId, timeoutMs = 8000) {
-  "use workflow";
-
-  const sources = ["warehouse-a", "warehouse-b", "warehouse-c"];
-  const signal = defineHook();
-
-  const hooks = sources.map((source) =>
-    signal.create({ token: `${source}:${batchId}` })
-  );
-
-  const outcome = await Promise.race([
-    Promise.all(hooks).then((results) => ({ type: "ready", results })),
-    sleep(`${timeoutMs}ms`).then(() => ({ type: "timeout" })),
-  ]);
-
-  // All arrived? Full aggregate. Timeout? Proceed with partial data.
-  return processBatch(batchId, outcome);
-}
-```
+`defineHook()` persists each signal on arrival. The workflow resumes with both intact and keeps waiting for the third — or the `sleep()` deadline.
 
 <!-- split -->
 
-`defineHook()` for ingestion. `Promise.race()` for the deadline. `sleep()` for the timeout. Each piece is a durable primitive that survives crashes.
+Each hook is a durable endpoint. Payloads persist immediately. `Promise.race()` against `sleep()` ensures it never waits forever.
 
-The aggregation logic is just a loop accumulating results. No external state. No consumer group offsets.
+Crash at any point — resume with all received data and the remaining deadline.
 
 <!-- split -->
 
-Collect from any number of sources. Release on completion or timeout. One file. All durable.
+No write-ahead log. No signal persistence layer. No recovery logic. Durable hooks, surviving signals, and a ticking timeout.
 
 Explore the interactive demo on v0: {v0_link}
