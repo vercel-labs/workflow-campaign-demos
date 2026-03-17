@@ -60,7 +60,10 @@ describe("incident fan-out workflow", () => {
 
   test("test_incidentFanOut_writes_failure_event_when_channel_errors", async () => {
     const { incidentFanOut } = await loadWorkflow();
-    const report = await incidentFanOut("INC-2041", "DB alert", ["pagerduty"]);
+    const report = await incidentFanOut("INC-2041", "DB alert", {
+      transient: [],
+      permanent: ["pagerduty"],
+    });
 
     const pagerDutyDelivery = report.deliveries.find(
       (delivery) => delivery.channel === "pagerduty"
@@ -72,15 +75,14 @@ describe("incident fan-out workflow", () => {
     );
     expect(report.summary).toEqual({ ok: 3, failed: 1 });
 
-    // On attempt 1, channel_failed is NOT emitted (the platform will retry).
-    // Verify no premature channel_failed event was written for pagerduty.
+    // Permanent failures emit channel_failed immediately (FatalError prevents retry).
     const pagerDutyFailureOnAttempt1 = writtenEvents.find(
       (event) =>
         event.type === "channel_failed" &&
         event.channel === "pagerduty" &&
         event.attempt === 1
     );
-    expect(pagerDutyFailureOnAttempt1).toBeFalsy();
+    expect(pagerDutyFailureOnAttempt1).toBeTruthy();
   });
 
   test("test_incidentFanOut_writes_retrying_event_when_step_attempt_is_greater_than_one", async () => {

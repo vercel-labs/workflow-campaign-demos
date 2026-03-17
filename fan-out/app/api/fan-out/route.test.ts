@@ -26,7 +26,10 @@ describe("fan-out real route", () => {
         body: JSON.stringify({
           incidentId: "INC-200",
           message: "Payment API latency spike",
-          failChannels: ["slack", "sms", "invalid-channel"],
+          failures: {
+            transient: ["slack"],
+            permanent: ["sms"],
+          },
         }),
       })
     );
@@ -36,20 +39,23 @@ describe("fan-out real route", () => {
       runId: "run-fanout-123",
       incidentId: "INC-200",
       message: "Payment API latency spike",
-      failChannels: ["slack", "sms"],
+      failures: {
+        transient: ["slack"],
+        permanent: ["sms"],
+      },
       status: "fan_out",
     });
 
     expect(startMock).toHaveBeenCalledTimes(1);
     const [workflowFn, args] = startMock.mock.calls[0] as [
       typeof incidentFanOut,
-      [string, string, string[]],
+      [string, string, { transient: string[]; permanent: string[] }],
     ];
     expect(workflowFn).toBe(incidentFanOut);
     expect(args).toEqual([
       "INC-200",
       "Payment API latency spike",
-      ["slack", "sms"],
+      { transient: ["slack"], permanent: ["sms"] },
     ]);
   });
 });

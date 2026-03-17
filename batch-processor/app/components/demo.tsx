@@ -236,6 +236,7 @@ export function BatchProcessorDemo({
 }: BatchProcessorDemoProps) {
   const [crashMode, setCrashMode] = useState<CrashMode>("after-5000");
   const [lifecycle, setLifecycle] = useState<LifecycleState>("idle");
+  const [isStarting, setIsStarting] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -246,6 +247,7 @@ export function BatchProcessorDemo({
   const [elapsedMs, setElapsedMs] = useState(0);
 
   const abortRef = useRef<AbortController | null>(null);
+  const startInFlightRef = useRef(false);
   const startButtonRef = useRef<HTMLButtonElement>(null);
   const accumulatorRef = useRef<BatchAccumulator | null>(null);
   const startedAtRef = useRef<number | null>(null);
@@ -361,6 +363,9 @@ export function BatchProcessorDemo({
   );
 
   const handleStart = useCallback(async () => {
+    if (startInFlightRef.current) return;
+    startInFlightRef.current = true;
+    setIsStarting(true);
     setError(null);
     stopElapsedTicker();
     abortRef.current?.abort();
@@ -384,9 +389,26 @@ export function BatchProcessorDemo({
         signal,
       });
 
-      const payload = (await res.json()) as StartResponse & { error?: string };
-      if (!res.ok) {
-        throw new Error(payload.error ?? `Request failed (${res.status})`);
+      const raw = await res.text();
+      let payload: (StartResponse & { error?: string }) | null = null;
+      try {
+        payload = raw ? (JSON.parse(raw) as StartResponse & { error?: string }) : null;
+      } catch {
+        throw new Error(
+          res.ok
+            ? "Invalid response from server"
+            : `Request failed (${res.status}): ${raw.slice(0, 200)}`
+        );
+      }
+      if (!res.ok || !payload) {
+        const msg =
+          payload && typeof payload.error === "string"
+            ? payload.error
+            : `Request failed (${res.status})`;
+        throw new Error(msg);
+      }
+      if (typeof payload.runId !== "string" || typeof payload.totalBatches !== "number") {
+        throw new Error("Invalid start response from server");
       }
 
       if (signal.aborted) return;
@@ -411,6 +433,9 @@ export function BatchProcessorDemo({
       if (signal.aborted || (err instanceof Error && err.name === "AbortError")) return;
       setError(err instanceof Error ? err.message : "Failed to start run");
       setLifecycle("idle");
+    } finally {
+      startInFlightRef.current = false;
+      setIsStarting(false);
     }
   }, [crashMode, connectToReadable, stopElapsedTicker, startElapsedTicker, syncFromAccumulator]);
 
@@ -434,12 +459,14 @@ export function BatchProcessorDemo({
   }, [stopElapsedTicker]);
 
   const primaryLabel = useMemo(() => {
+    if (isStarting) return "Starting\u2026";
     if (lifecycle === "running" || lifecycle === "crashed" || lifecycle === "resuming") return "Running\u2026";
     if (lifecycle === "completed") return "Run Again";
     return "Start Backfill";
-  }, [lifecycle]);
+  }, [lifecycle, isStarting]);
 
-  const isRunning = lifecycle === "running" || lifecycle === "crashed" || lifecycle === "resuming";
+  const isRunning =
+    lifecycle === "running" || lifecycle === "crashed" || lifecycle === "resuming";
 
   const explainer = useMemo(() => {
     if (lifecycle === "idle") return "Start a run to see durable batching.";
@@ -531,7 +558,7 @@ export function BatchProcessorDemo({
             ref={startButtonRef}
             type="button"
             onClick={() => void handleStart()}
-            disabled={isRunning}
+            disabled={isRunning || isStarting}
             className="min-h-10 rounded-md bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {primaryLabel}

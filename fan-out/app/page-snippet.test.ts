@@ -7,11 +7,10 @@ const workflowSource = await Bun.file(
 ).text();
 
 describe("fan-out page workflow snippet parity", () => {
-  test("test_workflowSnippet_includes_channel_aware_formatChannelError_helper_when_displayed", () => {
-    expect(workflowSource).toContain("function formatChannelError(");
-    expect(workflowSource).toContain("channel: NotificationChannel");
-    expect(workflowSource).toContain("error: formatChannelError(channel, result.reason)");
-    expect(workflowSource).toContain("return `${channel}: ${message}`;");
+  test("test_workflowSnippet_includes_errorMessage_helper_and_CHANNEL_ERROR_MESSAGES_record", () => {
+    expect(workflowSource).toContain("function errorMessage(");
+    expect(workflowSource).toContain("CHANNEL_ERROR_MESSAGES");
+    expect(workflowSource).toContain("error: `${channel}: ${errorMessage(result.reason)}`");
   });
 
   test("test_workflowSnippet_uses_deliveries_and_alert_step_function_names_for_workflow_parity", () => {

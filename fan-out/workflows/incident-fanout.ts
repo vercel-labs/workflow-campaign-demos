@@ -1,6 +1,15 @@
 // getWritable + getStepMetadata are used here to stream demo UI events.
 // A production workflow wouldn't need these unless it has its own streaming UI.
-import { FatalError, getStepMetadata, getWritable } from "workflow";
+import { getStepMetadata, getWritable } from "workflow";
+
+// Local FatalError — prevents the SDK's automatic retry for permanent failures.
+// The workflow package does not export this class, so we define it here.
+class FatalError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FatalError";
+  }
+}
 
 export type NotificationChannel = "slack" | "email" | "sms" | "pagerduty";
 

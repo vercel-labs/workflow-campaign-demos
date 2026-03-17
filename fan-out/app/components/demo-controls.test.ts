@@ -5,28 +5,31 @@ import {
   applyChannelEvent,
   createAccumulator,
   parseChannelEvent,
-  toggleFailChannel,
+  cycleFailureMode,
 } from "./demo";
 
 describe("fan-out compact demo controls", () => {
-  test("test_FAN_OUT_DEMO_DEFAULTS_starts_with_implicit_alert_values_and_no_failures", () => {
+  test("test_FAN_OUT_DEMO_DEFAULTS_starts_with_implicit_alert_values", () => {
     expect(FAN_OUT_DEMO_DEFAULTS.incidentId).toBe("INC-2041");
     expect(FAN_OUT_DEMO_DEFAULTS.message.length).toBeGreaterThan(0);
-    expect(FAN_OUT_DEMO_DEFAULTS.failChannels).toEqual([]);
   });
 
-  test("test_toggleFailChannel_adds_channel_when_checkbox_is_checked", () => {
-    expect(toggleFailChannel([], "email", true)).toEqual(["email"]);
+  test("test_cycleFailureMode_cycles_channel_from_none_to_transient", () => {
+    const initial = { slack: "none" as const, email: "none" as const, sms: "none" as const, pagerduty: "none" as const };
+    const result = cycleFailureMode(initial, "email");
+    expect(result.email).toBe("transient");
   });
 
-  test("test_toggleFailChannel_preserves_existing_selection_when_checkbox_is_rechecked", () => {
-    expect(toggleFailChannel(["sms"], "sms", true)).toEqual(["sms"]);
+  test("test_cycleFailureMode_cycles_channel_from_transient_to_permanent", () => {
+    const initial = { slack: "none" as const, email: "transient" as const, sms: "none" as const, pagerduty: "none" as const };
+    const result = cycleFailureMode(initial, "email");
+    expect(result.email).toBe("permanent");
   });
 
-  test("test_toggleFailChannel_removes_channel_when_checkbox_is_cleared", () => {
-    expect(toggleFailChannel(["slack", "pagerduty"], "slack", false)).toEqual([
-      "pagerduty",
-    ]);
+  test("test_cycleFailureMode_cycles_channel_from_permanent_to_none", () => {
+    const initial = { slack: "none" as const, email: "permanent" as const, sms: "none" as const, pagerduty: "none" as const };
+    const result = cycleFailureMode(initial, "email");
+    expect(result.email).toBe("none");
   });
 
   test("test_parseChannelEvent_parses_done_event_summary_from_sse_chunk", () => {
@@ -45,7 +48,7 @@ describe("fan-out compact demo controls", () => {
       runId: "run-1",
       incidentId: "INC-77",
       message: "Latency spike",
-      failChannels: [],
+      failures: { transient: [], permanent: [] },
       status: "fan_out" as const,
     };
 

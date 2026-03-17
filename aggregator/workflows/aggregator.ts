@@ -75,6 +75,10 @@ export async function aggregator(
     })),
   ]);
 
+  // Snapshot received signals at the timeout boundary so late arrivals
+  // cannot mutate the summary or trigger additional events.
+  const receivedSnapshot = new Map(received);
+
   // Emit signal_received events for signals that arrived
   for (const { source, payload } of outcome.results) {
     await emit<AggregatorEvent>({
@@ -82,37 +86,38 @@ export async function aggregator(
       batchId,
       source,
       value: payload.value,
-      receivedCount: received.size,
+      receivedCount: receivedSnapshot.size,
       expectedCount: SOURCES.length,
     });
   }
 
   if (outcome.type === "timeout") {
-    const receivedSources = [...received.keys()];
-    const missing = SOURCES.filter((s) => !received.has(s));
+    const receivedSources = [...receivedSnapshot.keys()];
+    const missing = SOURCES.filter((s) => !receivedSnapshot.has(s));
 
-    // Also emit any signals that arrived before timeout (via received map)
-    for (const [source, payload] of received) {
+    // Emit signal_received for signals that arrived before timeout but
+    // were not part of the Promise.all resolution (partial arrivals).
+    for (const [source, payload] of receivedSnapshot) {
       if (!outcome.results.some((r) => r.source === source)) {
         await emit<AggregatorEvent>({
           type: "signal_received",
           batchId,
           source,
           value: payload.value,
-          receivedCount: received.size,
+          receivedCount: receivedSnapshot.size,
           expectedCount: SOURCES.length,
         });
       }
     }
 
     await emit<AggregatorEvent>({ type: "timeout", batchId, missing, received: receivedSources });
-    const summary = await processBatch(batchId, received);
+    const summary = await processBatch(batchId, receivedSnapshot);
     await emit<AggregatorEvent>({ type: "done", batchId, status: "partial", summary });
     return { batchId, status: "partial" as const, summary };
   }
 
   await emit<AggregatorEvent>({ type: "all_collected", batchId });
-  const summary = await processBatch(batchId, received);
+  const summary = await processBatch(batchId, receivedSnapshot);
   await emit<AggregatorEvent>({ type: "done", batchId, status: "aggregated", summary });
   return { batchId, status: "aggregated" as const, summary };
 }
@@ -135,7 +140,7 @@ async function emit<T>(event: T): Promise<void> {
 // ---------------------------------------------------------------------------
 async function processBatch(
   batchId: string,
-  received: Map<string, SignalPayload>
+  received: ReadonlyMap<string, SignalPayload>
 ): Promise<AggregatorSummary> {
   "use step";
 
@@ -153,7 +158,7 @@ async function processBatch(
   const totalValue = [...received.values()].reduce((sum, p) => sum + p.value, 0);
 
   return {
-    totalSignals: 3,
+    totalSignals: SOURCES.length,
     receivedSignals: received.size,
     totalValue,
     sources,
