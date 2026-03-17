@@ -60,6 +60,16 @@ function hasRemote(slug: string): boolean {
   return run(["git", "remote", "get-url", `workflow-${slug}`]).ok;
 }
 
+/** Duplicate subtree join commits break plain `subtree push` (git cache error). */
+const SUBTREE_PUSH_EXTRA: Record<string, string[]> = {
+  "async-request-reply": ["--ignore-joins"],
+};
+
+function subtreePushArgs(slug: string): string[] {
+  const extra = SUBTREE_PUSH_EXTRA[slug] ?? [];
+  return ["subtree", "push", `--prefix=${slug}`, ...extra, `workflow-${slug}`, "main"];
+}
+
 function prompt(question: string): string {
   process.stdout.write(question);
   const buf = new Uint8Array(256);
@@ -87,7 +97,7 @@ function cmdPush() {
       continue;
     }
     info(`Pushing ${slug}...`);
-    const result = run(["git", "subtree", "push", `--prefix=${slug}`, `workflow-${slug}`, "main"]);
+    const result = run(["git", ...subtreePushArgs(slug)]);
     if (result.ok) {
       success(`${slug} pushed.`);
       count++;
@@ -136,7 +146,7 @@ function cmdPushOne() {
   }
 
   info(`Pushing ${slug}...`);
-  const result = run(["git", "subtree", "push", `--prefix=${slug}`, `workflow-${slug}`, "main"]);
+  const result = run(["git", ...subtreePushArgs(slug)]);
   if (result.ok) success(`${slug} pushed.`);
   else {
     fail(`Push failed: ${result.stderr}`);
@@ -223,7 +233,7 @@ function cmdInitNew() {
 
     // Push subtree
     info(`Pushing subtree ${slug}...`);
-    const push = run(["git", "subtree", "push", `--prefix=${slug}`, remote, "main"]);
+    const push = run(["git", ...subtreePushArgs(slug)]);
     if (push.ok) {
       success(`${slug} pushed.`);
       created++;
@@ -282,7 +292,7 @@ function cmdAdd() {
   try {
     statSync(join(PROJECT_ROOT, slug));
     info("Directory exists — pushing as subtree...");
-    run(["git", "subtree", "push", `--prefix=${slug}`, remote, "main"]);
+    run(["git", ...subtreePushArgs(slug)]);
     success("Subtree pushed.");
   } catch {
     warn(`No ${slug}/ directory found. Create the demo first, commit it, then run 'bun .scripts/sync.ts push-one'.`);

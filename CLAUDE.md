@@ -58,6 +58,8 @@ Each demo has a named remote: `workflow-{slug}` → `vercel-labs/workflow-{slug}
 # Edit files, commit normally, then push to both repos:
 git push origin main
 git subtree push --prefix=fan-out workflow-fan-out main
+
+`async-request-reply` needs `--ignore-joins` (duplicate subtree history); `bun .scripts/sync.ts push` applies it automatically.
 ```
 
 ### Pull changes made in the individual repo
