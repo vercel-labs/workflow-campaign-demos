@@ -76,7 +76,7 @@ bun .scripts/typefully-publish.ts fan-out --variant A
 # Typefully drafts only (set v0_url in .posts/<slug>.md frontmatter first)
 bun .scripts/typefully-publish.ts aggregator approval-chain --skip-v0
 
-# 5-day Slack draft links: .posts/DRAFT-SLACK-PICKER.md
+# 5-day Typefully + v0 links: .posts/DRAFT-SLACK-PICKER.md
 
 # Generate code snippet images from post markdown
 bun .scripts/generate-snippet-image.ts fan-out --all
