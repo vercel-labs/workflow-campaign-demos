@@ -11,9 +11,11 @@
  *   bun .scripts/sync.ts status            # show remote status
  *   bun .scripts/sync.ts add               # add a new demo
  *   bun .scripts/sync.ts init-new          # create repos for unconfigured demos
+ *   bun .scripts/sync.ts repair <slug>      # re-link as real subtree (clean tree required)
+ *   bun .scripts/sync.ts repair-all --yes   # batch re-link demos missing subtree history
  */
 
-import { readdirSync, statSync } from "fs";
+import { existsSync, readdirSync, rmSync, statSync } from "fs";
 import { join } from "path";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
@@ -91,6 +93,9 @@ function cmdPush() {
       count++;
     } else {
       fail(`${slug} failed to push.`);
+      if (result.stderr.includes("no new revisions") || result.stdout.includes("no new revisions")) {
+        warn(`  Run: bun .scripts/sync.ts repair ${slug}`);
+      }
       failed++;
     }
   }
@@ -133,7 +138,15 @@ function cmdPushOne() {
   info(`Pushing ${slug}...`);
   const result = run(["git", "subtree", "push", `--prefix=${slug}`, `workflow-${slug}`, "main"]);
   if (result.ok) success(`${slug} pushed.`);
-  else fail(`Push failed: ${result.stderr}`);
+  else {
+    fail(`Push failed: ${result.stderr}`);
+    if (
+      result.stderr.includes("no new revisions") ||
+      (result.stdout && result.stdout.includes("no new revisions"))
+    ) {
+      warn(`Try: bun .scripts/sync.ts repair ${slug}`);
+    }
+  }
 }
 
 function cmdSync() {
@@ -216,6 +229,7 @@ function cmdInitNew() {
       created++;
     } else {
       fail(`${slug} subtree push failed.`);
+      warn(`  If this is "no new revisions", run: bun .scripts/sync.ts repair ${slug}`);
       failed++;
     }
   }
@@ -279,6 +293,169 @@ function cmdAdd() {
   info(`v0 URL: https://v0.app/chat/api/open?url=https://github.com/${repo}`);
 }
 
+/** Demos that were mirrored without subtree merge history (rsync / plain commits). */
+const REPAIR_ALL_SLUGS = [
+  "choreography",
+  "competing-consumers",
+  "content-based-router",
+  "correlation-identifier",
+  "detour",
+  "event-sourcing",
+  "guaranteed-delivery",
+  "hedge-request",
+  "idempotent-receiver",
+  "map-reduce",
+  "message-filter",
+  "message-history",
+  "message-translator",
+  "normalizer",
+  "priority-queue",
+  "process-manager",
+  "publish-subscribe",
+  "recipient-list",
+  "request-reply",
+  "resequencer",
+  "splitter",
+  "throttle",
+  "transactional-outbox",
+  "wire-tap",
+];
+
+function subtreeAddFromRemote(slug: string): boolean {
+  const add = run(
+    [
+      "git",
+      "subtree",
+      "add",
+      `--prefix=${slug}`,
+      `workflow-${slug}`,
+      "main",
+      "-m",
+      `git subtree: add ${slug} from vercel-labs/workflow-${slug}`,
+    ],
+    PROJECT_ROOT
+  );
+  if (!add.ok) {
+    fail(`subtree add failed (${slug}): ${add.stderr}`);
+    return false;
+  }
+  return true;
+}
+
+function repairOneSlug(slug: string, opts: { skipPrompt: boolean }): boolean {
+  if (!hasRemote(slug)) {
+    warn(`Skipping ${slug} — no remote workflow-${slug}`);
+    return false;
+  }
+
+  const tracked =
+    run(["git", "ls-files", "-z", slug], PROJECT_ROOT).stdout.split("\0").filter(Boolean).length > 0;
+  const dir = join(PROJECT_ROOT, slug);
+
+  if (!opts.skipPrompt) {
+    console.log("");
+    warn(`Re-link ${slug}/ as a real git subtree (fixes subtree push).`);
+    warn(`After this, ${slug}/ will match workflow-${slug}/main exactly.`);
+    warn(`If monorepo has newer code than GitHub, update the repo first, then run repair.`);
+    const c = prompt("Continue? [y/N] ");
+    if (c.toLowerCase() !== "y") {
+      info("Aborted.");
+      return false;
+    }
+  }
+
+  if (!run(["git", "fetch", `workflow-${slug}`, "main"]).ok) {
+    fail(`git fetch workflow-${slug} main failed`);
+    return false;
+  }
+
+  if (tracked) {
+    const rm = run(["git", "rm", "-rf", `${slug}/`], PROJECT_ROOT);
+    if (!rm.ok) {
+      fail(`git rm failed (${slug}): ${rm.stderr}`);
+      return false;
+    }
+    if (!run(["git", "commit", "-m", `chore: remove ${slug} for subtree re-link`]).ok) {
+      fail(`commit failed (${slug})`);
+      run(["git", "reset", "--hard", "HEAD"], PROJECT_ROOT);
+      return false;
+    }
+  }
+
+  if (existsSync(dir)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  if (!subtreeAddFromRemote(slug)) {
+    if (tracked) {
+      warn(`Rollback: git reset --hard HEAD~1 for ${slug}`);
+      run(["git", "reset", "--hard", "HEAD~1"], PROJECT_ROOT);
+    }
+    return false;
+  }
+
+  if (!opts.skipPrompt) {
+    console.log("");
+    success(`${slug} is now a real subtree.`);
+    info(`Push: git subtree push --prefix=${slug} workflow-${slug} main`);
+  } else {
+    success(`${slug} ✓`);
+  }
+  return true;
+}
+
+function cmdRepair(slug: string) {
+  if (!slug) {
+    fail("Usage: bun .scripts/sync.ts repair <slug>");
+    process.exit(1);
+  }
+  try {
+    statSync(join(PROJECT_ROOT, slug, "package.json"));
+  } catch {
+    fail(`No directory ${slug}/ with package.json`);
+    process.exit(1);
+  }
+
+  const porcel = run(["git", "status", "--porcelain"]);
+  if (porcel.stdout.length > 0) {
+    fail("Working tree must be clean. Commit or stash, then retry.");
+    process.exit(1);
+  }
+
+  if (!repairOneSlug(slug, { skipPrompt: false })) {
+    process.exit(1);
+  }
+}
+
+function cmdRepairAll(yes: boolean) {
+  if (!yes) {
+    fail("Usage: bun .scripts/sync.ts repair-all --yes");
+    fail("(Replaces each listed demo with workflow-*/main; requires clean working tree.)");
+    process.exit(1);
+  }
+  const porcel = run(["git", "status", "--porcelain"]);
+  if (porcel.stdout.length > 0) {
+    fail("Working tree must be clean. Run: git stash push -u -m 'pre-repair-all'");
+    process.exit(1);
+  }
+
+  console.log("");
+  warn(`repair-all: ${REPAIR_ALL_SLUGS.length} demos → subtree from workflow-*/main`);
+  let ok = 0;
+  let skip = 0;
+  for (const slug of REPAIR_ALL_SLUGS) {
+    if (!hasRemote(slug)) {
+      warn(`skip ${slug} (no remote)`);
+      skip++;
+      continue;
+    }
+    if (repairOneSlug(slug, { skipPrompt: true })) ok++;
+    else skip++;
+  }
+  console.log("");
+  success(`Done: ${ok} repaired, ${skip} skipped/failed.`);
+}
+
 // --- Menu / Dispatch ---------------------------------------------------------
 
 function showMenu() {
@@ -290,9 +467,11 @@ function showMenu() {
   console.log(`  ${CYAN}5)${RESET} status    — Show remote status for all demos`);
   console.log(`  ${CYAN}6)${RESET} add       — Add a new demo as a subtree`);
   console.log(`  ${CYAN}7)${RESET} init-new  — Create repos & push all unconfigured demos`);
+  console.log(`  ${CYAN}8)${RESET} repair    — Re-link one demo as real subtree (see CLAUDE.md)`);
+  console.log(`     repair-all --yes — Batch re-link (clean tree; see REPAIR_ALL_SLUGS)`);
   console.log("");
 
-  const choice = prompt("Choose [1-7]: ");
+  const choice = prompt("Choose [1-8]: ");
 
   switch (choice) {
     case "1": cmdSync(); break;
@@ -302,6 +481,11 @@ function showMenu() {
     case "5": cmdStatus(); break;
     case "6": cmdAdd(); break;
     case "7": cmdInitNew(); break;
+    case "8": {
+      const s = prompt("Demo slug: ");
+      cmdRepair(s);
+      break;
+    }
     default: fail("Invalid choice."); process.exit(1);
   }
 }
@@ -318,9 +502,19 @@ switch (command) {
   case "status": cmdStatus(); break;
   case "add": cmdAdd(); break;
   case "init-new": cmdInitNew(); break;
+  case "repair": {
+    const slug = Bun.argv[3] ?? "";
+    cmdRepair(slug);
+    break;
+  }
+  case "repair-all":
+    cmdRepairAll(Bun.argv.includes("--yes"));
+    break;
   case "": showMenu(); break;
   default:
     fail(`Unknown command: ${command}`);
-    console.log("Usage: bun .scripts/sync.ts [sync|pull|push|push-one|status|add|init-new]");
+    console.log(
+      "Usage: bun .scripts/sync.ts [sync|pull|push|push-one|status|add|init-new|repair <slug>|repair-all --yes]"
+    );
     process.exit(1);
 }
