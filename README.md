@@ -1,10 +1,10 @@
-# 30 Days of Workflow DevKit
+# Workflow DevKit Demos
 
-A collection of standalone Next.js demos showcasing the [Vercel Workflow DevKit](https://vercel.com/docs/workflow). Each subdirectory is a complete app that also lives in its own repo under `vercel-labs/` for [v0](https://v0.dev) import.
+48 standalone Next.js apps showcasing the [Vercel Workflow DevKit](https://vercel.com/docs/workflow) — from classic enterprise integration patterns (saga, fan-out, dead-letter queue) to everyday scenarios (approval gates, onboarding drips, cancellable exports). Each demo is a complete app that also lives in its own repo under `vercel-labs/` for [v0](https://v0.dev) import.
 
 ## Demos
 
-Each directory is a standalone Next.js app named after a common **enterprise integration / workflow pattern**. Demos use the Workflow DevKit (`"use workflow"`, `"use step"`, durable `sleep`, streaming) to show how that pattern behaves with retries, pauses, and real-time UI.
+Every directory is an independent Next.js app implementing a **workflow or integration pattern** with the Workflow DevKit (`"use workflow"`, `"use step"`, durable `sleep`, streaming). Each one includes a real-time UI so you can watch the pattern execute step by step.
 
 | Demo | What it demonstrates |
 |------|----------------------|
