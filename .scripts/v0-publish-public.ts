@@ -15,6 +15,7 @@ import { createClient } from "v0-sdk";
 import { readdirSync, statSync } from "fs";
 import { join } from "path";
 import { parseArgs } from "util";
+import { getSubtreeArgs } from "./sync";
 
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
@@ -68,7 +69,7 @@ function isSubtreeSynced(slug: string): { synced: boolean; reason: string } {
   }
 
   // Split the local subtree to get its synthetic commit SHA
-  const split = run(["git", "subtree", "split", `--prefix=${slug}`]);
+  const split = run(["git", "subtree", "split", ...getSubtreeArgs(slug)]);
   if (!split.ok) {
     return { synced: false, reason: `subtree split failed: ${split.stderr}` };
   }
