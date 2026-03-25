@@ -19,6 +19,11 @@ import { existsSync, readdirSync, rmSync, statSync } from "fs";
 import { join } from "path";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
+type RunResult = { ok: boolean; stdout: string; stderr: string };
+type SubtreePushResult =
+  | { status: "pushed"; splitSha: string }
+  | { status: "skipped"; splitSha: string }
+  | { status: "failed"; step: "split" | "remote" | "push"; error: string };
 
 // Colors
 const RED = "\x1b[0;31m";
@@ -47,7 +52,7 @@ function getDemos(): string[] {
     .sort();
 }
 
-function run(cmd: string[], cwd = PROJECT_ROOT): { ok: boolean; stdout: string; stderr: string } {
+function run(cmd: string[], cwd = PROJECT_ROOT): RunResult {
   const proc = Bun.spawnSync(cmd, { cwd, env: process.env });
   return {
     ok: proc.exitCode === 0,
@@ -65,30 +70,119 @@ const SUBTREE_PUSH_EXTRA: Record<string, string[]> = {
   "async-request-reply": ["--ignore-joins"],
 };
 
-function subtreePushArgs(slug: string): string[] {
+export function getSubtreeArgs(slug: string): string[] {
   const extra = SUBTREE_PUSH_EXTRA[slug] ?? [];
-  return ["subtree", "push", `--prefix=${slug}`, ...extra, `workflow-${slug}`, "main"];
+  return [`--prefix=${slug}`, ...extra];
+}
+
+function extractLastToken(stdout: string): string {
+  const line = stdout
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .at(-1);
+  return line?.split(/\s+/)[0] ?? "";
+}
+
+function describeRunFailure(result: RunResult, fallback: string): string {
+  return result.stderr || result.stdout || fallback;
+}
+
+function shouldSuggestRepair(error: string): boolean {
+  return error.includes("no new revisions");
+}
+
+function getSubtreeSplitSha(slug: string): { ok: true; splitSha: string } | { ok: false; error: string } {
+  const split = run(["git", "subtree", "split", ...getSubtreeArgs(slug)]);
+  if (!split.ok) {
+    return {
+      ok: false,
+      error: describeRunFailure(split, `git subtree split failed for ${slug}`),
+    };
+  }
+
+  const splitSha = extractLastToken(split.stdout);
+  if (!splitSha) {
+    return {
+      ok: false,
+      error: `git subtree split returned no SHA for ${slug}`,
+    };
+  }
+
+  return { ok: true, splitSha };
+}
+
+function getRemoteMainSha(slug: string): { ok: true; remoteSha: string | null } | { ok: false; error: string } {
+  const remote = run(["git", "ls-remote", `workflow-${slug}`, "refs/heads/main"]);
+  if (!remote.ok) {
+    return {
+      ok: false,
+      error: describeRunFailure(remote, `git ls-remote failed for workflow-${slug}`),
+    };
+  }
+
+  const remoteSha = extractLastToken(remote.stdout);
+  return { ok: true, remoteSha: remoteSha || null };
+}
+
+export function pushSubtreeIfChanged(slug: string): SubtreePushResult {
+  const split = getSubtreeSplitSha(slug);
+  if (!split.ok) {
+    return { status: "failed", step: "split", error: split.error };
+  }
+
+  const remote = getRemoteMainSha(slug);
+  if (!remote.ok) {
+    return { status: "failed", step: "remote", error: remote.error };
+  }
+
+  if (remote.remoteSha === split.splitSha) {
+    return { status: "skipped", splitSha: split.splitSha };
+  }
+
+  const push = run([
+    "git",
+    "push",
+    `workflow-${slug}`,
+    `${split.splitSha}:refs/heads/main`,
+  ]);
+  if (!push.ok) {
+    return {
+      status: "failed",
+      step: "push",
+      error: describeRunFailure(push, `git push failed for ${slug}`),
+    };
+  }
+
+  return { status: "pushed", splitSha: split.splitSha };
 }
 
 function prompt(question: string): string {
   process.stdout.write(question);
   const buf = new Uint8Array(256);
-  const n = require("fs").readSync(0, buf);
+  const fsModule = globalThis.require("fs") as { readSync: (fd: number, buffer: Uint8Array) => number };
+  const n = fsModule.readSync(0, buf);
   return new TextDecoder().decode(buf.slice(0, n)).trim();
 }
 
 // --- Commands ----------------------------------------------------------------
 
-function cmdPull() {
+export function cmdPull(): boolean {
   info("Pulling latest from origin main...");
   const result = run(["git", "pull", "origin", "main"]);
-  if (result.ok) success("Pull complete.");
-  else fail(`Pull failed: ${result.stderr}`);
+  if (result.ok) {
+    success("Pull complete.");
+    return true;
+  }
+
+  fail(`Pull failed: ${describeRunFailure(result, "git pull origin main failed")}`);
+  process.exitCode = 1;
+  return false;
 }
 
-function cmdPush() {
+export function cmdPush() {
   info("Pushing all subtrees to their individual repos...");
-  let count = 0, skipped = 0, failed = 0;
+  let pushed = 0, skipped = 0, failed = 0;
 
   for (const slug of getDemos()) {
     if (!hasRemote(slug)) {
@@ -96,25 +190,39 @@ function cmdPush() {
       skipped++;
       continue;
     }
-    info(`Pushing ${slug}...`);
-    const result = run(["git", ...subtreePushArgs(slug)]);
-    if (result.ok) {
-      success(`${slug} pushed.`);
-      count++;
-    } else {
-      fail(`${slug} failed to push.`);
-      if (result.stderr.includes("no new revisions") || result.stdout.includes("no new revisions")) {
-        warn(`  Run: bun .scripts/sync.ts repair ${slug}`);
-      }
-      failed++;
+
+    info(`Checking ${slug}...`);
+    const result = pushSubtreeIfChanged(slug);
+    if (result.status === "pushed") {
+      success(`${slug} pushed (${result.splitSha.slice(0, 12)}).`);
+      pushed++;
+      continue;
     }
+
+    if (result.status === "skipped") {
+      info(`${slug} unchanged — remote main already matches ${result.splitSha.slice(0, 12)}.`);
+      skipped++;
+      continue;
+    }
+
+    fail(`${slug} failed during ${result.step}: ${result.error}`);
+    if (shouldSuggestRepair(result.error)) {
+      warn(`  Run: bun .scripts/sync.ts repair ${slug}`);
+    }
+    failed++;
   }
 
   console.log("");
-  success(`Done. Pushed: ${count}  Skipped: ${skipped}  Failed: ${failed}`);
+  if (failed > 0) {
+    fail(`Done. Pushed: ${pushed}  Skipped: ${skipped}  Failed: ${failed}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  success(`Done. Pushed: ${pushed}  Skipped: ${skipped}  Failed: ${failed}`);
 }
 
-function cmdPushOne() {
+export function cmdPushOne() {
   const demos = getDemos();
   if (demos.length === 0) {
     fail("No demos found.");
@@ -146,21 +254,31 @@ function cmdPushOne() {
   }
 
   info(`Pushing ${slug}...`);
-  const result = run(["git", ...subtreePushArgs(slug)]);
-  if (result.ok) success(`${slug} pushed.`);
-  else {
-    fail(`Push failed: ${result.stderr}`);
-    if (
-      result.stderr.includes("no new revisions") ||
-      (result.stdout && result.stdout.includes("no new revisions"))
-    ) {
-      warn(`Try: bun .scripts/sync.ts repair ${slug}`);
-    }
+  const result = pushSubtreeIfChanged(slug);
+  if (result.status === "pushed") {
+    success(`${slug} pushed (${result.splitSha.slice(0, 12)}).`);
+    return;
   }
+
+  if (result.status === "skipped") {
+    info(`${slug} is already up to date (${result.splitSha.slice(0, 12)}).`);
+    return;
+  }
+
+  fail(`Push failed during ${result.step}: ${result.error}`);
+  if (shouldSuggestRepair(result.error)) {
+    warn(`Try: bun .scripts/sync.ts repair ${slug}`);
+  }
+  process.exitCode = 1;
 }
 
-function cmdSync() {
-  cmdPull();
+export function cmdSync() {
+  const pulled = cmdPull();
+  if (!pulled) {
+    warn("Sync aborted because pull failed.");
+    return;
+  }
+
   console.log("");
   cmdPush();
 }
@@ -184,7 +302,7 @@ function cmdStatus() {
   info(`Total: ${total}  Configured: ${configured}  Missing: ${missing}`);
 }
 
-function cmdInitNew() {
+export function cmdInitNew() {
   console.log(`\n${BOLD}Checking for demos without remotes...${RESET}\n`);
   const newDemos = getDemos().filter((slug) => !hasRemote(slug));
 
@@ -219,7 +337,7 @@ function cmdInitNew() {
       if (create.ok) {
         success(`Created ${repo}.`);
       } else {
-        fail(`Failed to create ${repo}. Skipping.`);
+        fail(`Failed to create ${repo}: ${describeRunFailure(create, "gh repo create failed")}`);
         failed++;
         continue;
       }
@@ -227,28 +345,49 @@ function cmdInitNew() {
 
     // Add remote
     if (!hasRemote(slug)) {
-      run(["git", "remote", "add", remote, `https://github.com/${repo}.git`]);
+      const addRemote = run(["git", "remote", "add", remote, `https://github.com/${repo}.git`]);
+      if (!addRemote.ok) {
+        fail(`Failed to add remote ${remote}: ${describeRunFailure(addRemote, "git remote add failed")}`);
+        failed++;
+        continue;
+      }
+
       success(`Remote ${remote} added.`);
     }
 
     // Push subtree
     info(`Pushing subtree ${slug}...`);
-    const push = run(["git", ...subtreePushArgs(slug)]);
-    if (push.ok) {
-      success(`${slug} pushed.`);
+    const push = pushSubtreeIfChanged(slug);
+    if (push.status === "pushed") {
+      success(`${slug} pushed (${push.splitSha.slice(0, 12)}).`);
       created++;
-    } else {
-      fail(`${slug} subtree push failed.`);
-      warn(`  If this is "no new revisions", run: bun .scripts/sync.ts repair ${slug}`);
-      failed++;
+      continue;
     }
+
+    if (push.status === "skipped") {
+      info(`${slug} already matches remote main (${push.splitSha.slice(0, 12)}).`);
+      created++;
+      continue;
+    }
+
+    fail(`${slug} subtree push failed during ${push.step}: ${push.error}`);
+    if (shouldSuggestRepair(push.error)) {
+      warn(`  If this is "no new revisions", run: bun .scripts/sync.ts repair ${slug}`);
+    }
+    failed++;
   }
 
   console.log("");
+  if (failed > 0) {
+    fail(`Done. Created: ${created}  Failed: ${failed}`);
+    process.exitCode = 1;
+    return;
+  }
+
   success(`Done. Created: ${created}  Failed: ${failed}`);
 }
 
-function cmdAdd() {
+export function cmdAdd() {
   console.log(`\n${BOLD}Add a new demo as a subtree${RESET}\n`);
   const slug = prompt("Demo slug (directory name): ");
 
@@ -271,36 +410,76 @@ function cmdAdd() {
     if (confirm.toLowerCase() !== "y") process.exit(0);
   }
 
+  let repoReady = false;
+  let remoteReady = hasRemote(slug);
+  let hadFailure = false;
+
   // Create GitHub repo
   info(`Creating GitHub repo ${repo}...`);
   const exists = run(["gh", "repo", "view", repo]);
   if (exists.ok) {
     warn(`Repo ${repo} already exists on GitHub.`);
+    repoReady = true;
   } else {
-    run(["gh", "repo", "create", repo, "--public", "--confirm"]);
-    success(`Created ${repo}.`);
+    const create = run(["gh", "repo", "create", repo, "--public", "--confirm"]);
+    if (!create.ok) {
+      fail(`Failed to create ${repo}: ${describeRunFailure(create, "gh repo create failed")}`);
+      hadFailure = true;
+    } else {
+      success(`Created ${repo}.`);
+      repoReady = true;
+    }
   }
 
   // Add remote
-  if (!hasRemote(slug)) {
+  if (!remoteReady && repoReady) {
     info(`Adding remote ${remote}...`);
-    run(["git", "remote", "add", remote, `https://github.com/${repo}.git`]);
-    success("Remote added.");
+    const addRemote = run(["git", "remote", "add", remote, `https://github.com/${repo}.git`]);
+    if (!addRemote.ok) {
+      fail(`Failed to add remote ${remote}: ${describeRunFailure(addRemote, "git remote add failed")}`);
+      hadFailure = true;
+    } else {
+      success("Remote added.");
+      remoteReady = true;
+    }
   }
 
   // Subtree push
   try {
     statSync(join(PROJECT_ROOT, slug));
-    info("Directory exists — pushing as subtree...");
-    run(["git", ...subtreePushArgs(slug)]);
-    success("Subtree pushed.");
+    if (!remoteReady) {
+      warn(`Remote ${remote} is not configured. Skipping subtree push.`);
+      hadFailure = true;
+    } else {
+      info("Directory exists — pushing as subtree...");
+      const push = pushSubtreeIfChanged(slug);
+      if (push.status === "pushed") {
+        success(`Subtree pushed (${push.splitSha.slice(0, 12)}).`);
+      } else if (push.status === "skipped") {
+        info(`Subtree already matches remote main (${push.splitSha.slice(0, 12)}).`);
+      } else {
+        fail(`Subtree push failed during ${push.step}: ${push.error}`);
+        if (shouldSuggestRepair(push.error)) {
+          warn(`  Run: bun .scripts/sync.ts repair ${slug}`);
+        }
+        hadFailure = true;
+      }
+    }
   } catch {
     warn(`No ${slug}/ directory found. Create the demo first, commit it, then run 'bun .scripts/sync.ts push-one'.`);
   }
 
   console.log("");
+  if (hadFailure) {
+    fail(`Demo ${slug} was not fully configured.`);
+    process.exitCode = 1;
+    return;
+  }
+
   success(`Done! Demo ${slug} is configured.`);
-  info(`v0 URL: https://v0.app/chat/api/open?url=https://github.com/${repo}`);
+  if (repoReady) {
+    info(`v0 URL: https://v0.app/chat/api/open?url=https://github.com/${repo}`);
+  }
 }
 
 /** Demos that were mirrored without subtree merge history (rsync / plain commits). */
@@ -407,7 +586,7 @@ function repairOneSlug(slug: string, opts: { skipPrompt: boolean }): boolean {
   if (!opts.skipPrompt) {
     console.log("");
     success(`${slug} is now a real subtree.`);
-    info(`Push: git subtree push --prefix=${slug} workflow-${slug} main`);
+    info("Push: bun .scripts/sync.ts push-one");
   } else {
     success(`${slug} ✓`);
   }
@@ -502,29 +681,37 @@ function showMenu() {
 
 // --- Entry -------------------------------------------------------------------
 
-const command = Bun.argv[2] ?? "";
+export function main() {
+  const command = Bun.argv[2] ?? "";
 
-switch (command) {
-  case "sync": cmdSync(); break;
-  case "pull": cmdPull(); break;
-  case "push": cmdPush(); break;
-  case "push-one": cmdPushOne(); break;
-  case "status": cmdStatus(); break;
-  case "add": cmdAdd(); break;
-  case "init-new": cmdInitNew(); break;
-  case "repair": {
-    const slug = Bun.argv[3] ?? "";
-    cmdRepair(slug);
-    break;
+  switch (command) {
+    case "sync": cmdSync(); break;
+    case "pull": cmdPull(); break;
+    case "push": cmdPush(); break;
+    case "push-one": cmdPushOne(); break;
+    case "status": cmdStatus(); break;
+    case "add": cmdAdd(); break;
+    case "init-new": cmdInitNew(); break;
+    case "repair": {
+      const slug = Bun.argv[3] ?? "";
+      cmdRepair(slug);
+      break;
+    }
+    case "repair-all":
+      cmdRepairAll(Bun.argv.includes("--yes"));
+      break;
+    case "":
+      showMenu();
+      break;
+    default:
+      fail(`Unknown command: ${command}`);
+      console.log(
+        "Usage: bun .scripts/sync.ts [sync|pull|push|push-one|status|add|init-new|repair <slug>|repair-all --yes]"
+      );
+      process.exit(1);
   }
-  case "repair-all":
-    cmdRepairAll(Bun.argv.includes("--yes"));
-    break;
-  case "": showMenu(); break;
-  default:
-    fail(`Unknown command: ${command}`);
-    console.log(
-      "Usage: bun .scripts/sync.ts [sync|pull|push|push-one|status|add|init-new|repair <slug>|repair-all --yes]"
-    );
-    process.exit(1);
+}
+
+if (import.meta.main) {
+  main();
 }
