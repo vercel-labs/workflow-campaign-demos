@@ -1,6 +1,6 @@
 # Workflow DevKit Demos
 
-48 standalone Next.js apps showcasing the [Vercel Workflow DevKit](https://vercel.com/docs/workflow) — from classic enterprise integration patterns (saga, fan-out, dead-letter queue) to everyday scenarios (approval gates, onboarding drips, cancellable exports). Each demo is a complete app that also lives in its own repo under `vercel-labs/` for [v0](https://v0.dev) import.
+50 standalone Next.js apps showcasing the [Vercel Workflow DevKit](https://vercel.com/docs/workflow) — from classic enterprise integration patterns (saga, fan-out, dead-letter queue) to everyday scenarios (approval gates, onboarding drips, cancellable exports). Each demo is a complete app that also lives in its own repo under `vercel-labs/` for [v0](https://v0.dev) import.
 
 ## Demos
 

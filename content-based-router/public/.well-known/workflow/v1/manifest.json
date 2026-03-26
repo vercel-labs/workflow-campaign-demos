@@ -1,0 +1,91 @@
+{
+  "version": "1.0.0",
+  "steps": {
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    },
+    "workflows/content-based-router.ts": {
+      "classifyTicket": {
+        "stepId": "step//./workflows/content-based-router//classifyTicket"
+      },
+      "emitEvent": {
+        "stepId": "step//./workflows/content-based-router//emitEvent"
+      },
+      "handleAccount": {
+        "stepId": "step//./workflows/content-based-router//handleAccount"
+      },
+      "handleBilling": {
+        "stepId": "step//./workflows/content-based-router//handleBilling"
+      },
+      "handleFeedback": {
+        "stepId": "step//./workflows/content-based-router//handleFeedback"
+      },
+      "handleTechnical": {
+        "stepId": "step//./workflows/content-based-router//handleTechnical"
+      }
+    }
+  },
+  "workflows": {
+    "workflows/content-based-router.ts": {
+      "contentBasedRouterFlow": {
+        "workflowId": "workflow//./workflows/content-based-router//contentBasedRouterFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: contentBasedRouterFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "node_0",
+              "type": "primitive",
+              "data": {
+                "label": "sleep",
+                "nodeKind": "primitive"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_node_0",
+              "source": "start",
+              "target": "node_0",
+              "type": "default"
+            },
+            {
+              "id": "e_node_0_end",
+              "source": "node_0",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "classes": {}
+}

@@ -1,0 +1,108 @@
+{
+  "version": "1.0.0",
+  "steps": {
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    },
+    "workflows/circuit-breaker.ts": {
+      "callPaymentService": {
+        "stepId": "step//./workflows/circuit-breaker//callPaymentService"
+      },
+      "emitEvent": {
+        "stepId": "step//./workflows/circuit-breaker//emitEvent"
+      }
+    }
+  },
+  "workflows": {
+    "workflows/circuit-breaker.ts": {
+      "circuitBreakerFlow": {
+        "workflowId": "workflow//./workflows/circuit-breaker//circuitBreakerFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: circuitBreakerFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "cond_0_node",
+              "type": "conditional",
+              "data": {
+                "label": "state === \"open\"",
+                "nodeKind": "conditional"
+              },
+              "metadata": {
+                "loopId": "loop_0"
+              }
+            },
+            {
+              "id": "node_0",
+              "type": "primitive",
+              "data": {
+                "label": "sleep",
+                "nodeKind": "primitive"
+              },
+              "metadata": {
+                "loopId": "loop_0",
+                "conditionalId": "cond_0",
+                "conditionalBranch": "Then"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_cond_0_node_node_0_true",
+              "source": "cond_0_node",
+              "target": "node_0",
+              "type": "conditional",
+              "label": "true"
+            },
+            {
+              "id": "e_node_0_back_cond_0_node",
+              "source": "node_0",
+              "target": "cond_0_node",
+              "type": "loop"
+            },
+            {
+              "id": "e_start_cond_0_node",
+              "source": "start",
+              "target": "cond_0_node",
+              "type": "default"
+            },
+            {
+              "id": "e_node_0_end",
+              "source": "node_0",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "classes": {}
+}

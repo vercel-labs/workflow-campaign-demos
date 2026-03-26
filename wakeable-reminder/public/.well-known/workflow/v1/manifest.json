@@ -1,0 +1,117 @@
+{
+  "version": "1.0.0",
+  "steps": {
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "workflows/wakeable-reminder.ts": {
+      "emit": {
+        "stepId": "step//./workflows/wakeable-reminder//emit"
+      },
+      "sendReminderEmail": {
+        "stepId": "step//./workflows/wakeable-reminder//sendReminderEmail"
+      }
+    },
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    }
+  },
+  "workflows": {
+    "workflows/wakeable-reminder.ts": {
+      "scheduleReminder": {
+        "workflowId": "workflow//./workflows/wakeable-reminder//scheduleReminder",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: scheduleReminder",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "cond_0_node",
+              "type": "conditional",
+              "data": {
+                "label": "outcome.kind === \"action\"",
+                "nodeKind": "conditional"
+              }
+            },
+            {
+              "id": "cond_2_node",
+              "type": "conditional",
+              "data": {
+                "label": "outcome.payload.type === \"snooze\"",
+                "nodeKind": "conditional"
+              },
+              "metadata": {
+                "conditionalId": "cond_0",
+                "conditionalBranch": "Then"
+              }
+            },
+            {
+              "id": "node_0",
+              "type": "primitive",
+              "data": {
+                "label": "sleep",
+                "nodeKind": "primitive"
+              },
+              "metadata": {
+                "conditionalId": "cond_0",
+                "conditionalBranch": "Then"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_cond_2_node_node_0_true",
+              "source": "cond_2_node",
+              "target": "node_0",
+              "type": "conditional",
+              "label": "true"
+            },
+            {
+              "id": "e_cond_0_node_cond_2_node_true",
+              "source": "cond_0_node",
+              "target": "cond_2_node",
+              "type": "conditional",
+              "label": "true"
+            },
+            {
+              "id": "e_start_cond_0_node",
+              "source": "start",
+              "target": "cond_0_node",
+              "type": "default"
+            },
+            {
+              "id": "e_node_0_end",
+              "source": "node_0",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "classes": {}
+}

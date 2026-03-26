@@ -1,0 +1,79 @@
+{
+  "version": "1.0.0",
+  "steps": {
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    },
+    "workflows/payment-webhook.ts": {
+      "emit": {
+        "stepId": "step//./workflows/payment-webhook//emit"
+      },
+      "processPaymentEvent": {
+        "stepId": "step//./workflows/payment-webhook//processPaymentEvent"
+      }
+    }
+  },
+  "workflows": {
+    "workflows/payment-webhook.ts": {
+      "paymentWebhook": {
+        "workflowId": "workflow//./workflows/payment-webhook//paymentWebhook",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: paymentWebhook",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "node_0",
+              "type": "primitive",
+              "data": {
+                "label": "createWebhook",
+                "nodeKind": "primitive"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_node_0",
+              "source": "start",
+              "target": "node_0",
+              "type": "default"
+            },
+            {
+              "id": "e_node_0_end",
+              "source": "node_0",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "classes": {}
+}

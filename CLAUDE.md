@@ -165,3 +165,15 @@ done
 - `readFileSync(join(process.cwd(), "workflows/..."))` is used at build time to read workflow source for code panes — don't move workflow files without updating page.tsx
 - `extractFunctionBlock()` in page.tsx finds functions by string marker matching — renaming exported functions requires updating the markers
 - Demo workflows use simulated delays and `getWritable()` for UI streaming; production workflows wouldn't need these
+
+## Design Context
+
+Full design context lives in `.impeccable.md` at project root. Key principles:
+
+1. **Code is the interface.** Workflow source code is the primary UI element. Design serves code readability and execution visualization above all.
+2. **Show, don't explain.** Demos are self-documenting through color-coded state transitions, gutter marks, and real-time SSE streaming.
+3. **Consistent color vocabulary.** Green = success, amber = retry, red = failure, cyan = processing, blue = accent/action. Universal across all demos.
+4. **Restrained polish.** Intentional and considered, never decorative. No gradients, no gratuitous animation. Subtract until only the essential remains.
+5. **Campaign-worthy at a glance.** Must look compelling in screenshots and social embeds at thumbnail scale.
+
+Brand personality: **Clean, modern, approachable** — the Vercel aesthetic. Dark-mode only, Geist type, semantic status colors. See `.impeccable.md` for full color tokens, typography specs, and anti-references.

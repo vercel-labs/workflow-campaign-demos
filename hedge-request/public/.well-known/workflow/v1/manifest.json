@@ -1,0 +1,65 @@
+{
+  "version": "1.0.0",
+  "steps": {
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    },
+    "workflows/hedge-request.ts": {
+      "callProvider": {
+        "stepId": "step//./workflows/hedge-request//callProvider"
+      },
+      "emitEvent": {
+        "stepId": "step//./workflows/hedge-request//emitEvent"
+      }
+    }
+  },
+  "workflows": {
+    "workflows/hedge-request.ts": {
+      "hedgeRequestFlow": {
+        "workflowId": "workflow//./workflows/hedge-request//hedgeRequestFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: hedgeRequestFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "classes": {}
+}

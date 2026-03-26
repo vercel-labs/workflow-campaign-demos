@@ -1,0 +1,1033 @@
+[
+  {
+    "slug": "aggregator",
+    "title": "Aggregator",
+    "description": "Merge many parallel outcomes into one combined result (pair with scatter-gather / fan-out).",
+    "whenToUse": "Collect inventory from multiple warehouses with a timeout so stragglers don’t block checkout.",
+    "reviewedBy": "",
+    "tags": [
+      "data-processing",
+      "messaging"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "aggregator/workflows/aggregator.ts"
+    ],
+    "apiRoutes": [
+      "aggregator/app/api/aggregator/route.ts",
+      "aggregator/app/api/readable/[runId]/route.ts",
+      "aggregator/app/api/signal/route.ts"
+    ],
+    "extraRoutes": [
+      "aggregator/app/api/signal/route.ts"
+    ]
+  },
+  {
+    "slug": "approval-chain",
+    "title": "Approval-Chain",
+    "description": "Route work through a sequence of approvers; advance only when each step signs off.",
+    "whenToUse": "Purchase orders needing manager → director → VP sign-off with per-level escalation timeouts.",
+    "reviewedBy": "",
+    "tags": [
+      "human-in-the-loop",
+      "orchestration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "approval-chain/workflows/approval-chain.ts"
+    ],
+    "apiRoutes": [
+      "approval-chain/app/api/approval-chain/route.ts",
+      "approval-chain/app/api/approve/route.ts",
+      "approval-chain/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "approval-chain/app/api/approve/route.ts"
+    ]
+  },
+  {
+    "slug": "approval-gate",
+    "title": "Approval-Gate",
+    "description": "Pause the workflow until a human approves or rejects, then resume or fail.",
+    "whenToUse": "Content moderation hold: pause publishing until a reviewer clicks approve or reject.",
+    "reviewedBy": "",
+    "tags": [
+      "human-in-the-loop",
+      "orchestration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "approval-gate/workflows/approval-gate.ts"
+    ],
+    "apiRoutes": [
+      "approval-gate/app/api/approval-gate/route.ts",
+      "approval-gate/app/api/approve/route.ts",
+      "approval-gate/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "approval-gate/app/api/approve/route.ts"
+    ]
+  },
+  {
+    "slug": "async-request-reply",
+    "title": "Async-Request-Reply",
+    "description": "Start work, wait off-thread, and continue when an async callback or signal arrives.",
+    "whenToUse": "Submit a request to a vendor API and resume when the webhook callback arrives.",
+    "reviewedBy": "",
+    "tags": [
+      "async",
+      "integration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "async-request-reply/workflows/async-request-reply.ts"
+    ],
+    "apiRoutes": [
+      "async-request-reply/app/api/async-request-reply/route.ts",
+      "async-request-reply/app/api/readable/[runId]/route.ts",
+      "async-request-reply/app/api/run/[runId]/route.ts",
+      "async-request-reply/app/api/webhook/[token]/route.ts"
+    ],
+    "extraRoutes": [
+      "async-request-reply/app/api/run/[runId]/route.ts",
+      "async-request-reply/app/api/webhook/[token]/route.ts"
+    ]
+  },
+  {
+    "slug": "batch-processor",
+    "title": "Batch-Processor",
+    "description": "Collect items over time or up to a size, then process them as a single batch.",
+    "whenToUse": "Process a large CSV import in batches, auto-resuming from the last completed batch after a crash.",
+    "reviewedBy": "",
+    "tags": [
+      "data-processing",
+      "scheduling"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "batch-processor/workflows/batch-processor.ts"
+    ],
+    "apiRoutes": [
+      "batch-processor/app/api/batch-processor/route.ts",
+      "batch-processor/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "bulkhead",
+    "title": "Bulkhead",
+    "description": "Isolate capacity or failure domains so one overloaded path doesn’t sink the whole system.",
+    "whenToUse": "Partition order items into isolated groups so one bad SKU doesn’t block the rest of the shipment.",
+    "reviewedBy": "",
+    "tags": [
+      "resilience"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "bulkhead/workflows/bulkhead.ts"
+    ],
+    "apiRoutes": [
+      "bulkhead/app/api/bulkhead/route.ts",
+      "bulkhead/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "cancellable-export",
+    "title": "Cancellable-Export",
+    "description": "Long-running job (e.g. export) that the user can cancel while steps are in flight.",
+    "whenToUse": "User starts a 100k-row data export and hits “Cancel” mid-flight without waiting for completion.",
+    "reviewedBy": "",
+    "tags": [
+      "human-in-the-loop"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "cancellable-export/workflows/report-generator.ts"
+    ],
+    "apiRoutes": [
+      "cancellable-export/app/api/cancellable-export/route.ts",
+      "cancellable-export/app/api/readable/[runId]/route.ts",
+      "cancellable-export/app/api/run/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "cancellable-export/app/api/run/[runId]/route.ts"
+    ]
+  },
+  {
+    "slug": "choreography",
+    "title": "Choreography",
+    "description": "Peers react to events independently—no central orchestrator (vs. saga / process manager).",
+    "whenToUse": "Order flow where inventory, payment, and shipping react to events with automatic compensation on failure.",
+    "reviewedBy": "",
+    "tags": [
+      "orchestration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "choreography/workflows/choreography.ts"
+    ],
+    "apiRoutes": [
+      "choreography/app/api/choreography/route.ts",
+      "choreography/app/api/readable/[runId]/route.ts",
+      "choreography/app/api/run/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "choreography/app/api/run/[runId]/route.ts"
+    ]
+  },
+  {
+    "slug": "circuit-breaker",
+    "title": "Circuit-Breaker",
+    "description": "Stop calling a failing dependency for a cooldown, then probe for recovery.",
+    "whenToUse": "Stop hammering a down payment gateway after 3 failures, wait 30s, then test with one probe request.",
+    "reviewedBy": "",
+    "tags": [
+      "resilience"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "circuit-breaker/workflows/circuit-breaker.ts"
+    ],
+    "apiRoutes": [
+      "circuit-breaker/app/api/circuit-breaker/route.ts",
+      "circuit-breaker/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "claim-check",
+    "title": "Claim-Check",
+    "description": "Pass a small reference through the workflow; store or fetch the heavy payload elsewhere.",
+    "whenToUse": "Accept a lightweight token instead of passing a 50 MB file through every workflow step.",
+    "reviewedBy": "",
+    "tags": [
+      "integration",
+      "messaging"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "claim-check/workflows/claim-check.ts"
+    ],
+    "apiRoutes": [
+      "claim-check/app/api/claim-check/route.ts",
+      "claim-check/app/api/claim-check/upload/route.ts",
+      "claim-check/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "claim-check/app/api/claim-check/upload/route.ts"
+    ]
+  },
+  {
+    "slug": "competing-consumers",
+    "title": "Competing-Consumers",
+    "description": "Multiple workers consume the same kind of work for throughput and scale-out.",
+    "whenToUse": "Multiple workflow instances race to claim items from a shared queue — only one wins each item.",
+    "reviewedBy": "",
+    "tags": [
+      "async"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "competing-consumers/workflows/competing-consumers.ts"
+    ],
+    "apiRoutes": [
+      "competing-consumers/app/api/competing-consumers/route.ts",
+      "competing-consumers/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "content-based-router",
+    "title": "Content-Based-Router",
+    "description": "Branch to different handlers based on fields inside the message or payload.",
+    "whenToUse": "Classify a support ticket and route it to billing, technical, account, or feedback handlers.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging",
+      "routing"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "content-based-router/workflows/content-based-router.ts"
+    ],
+    "apiRoutes": [
+      "content-based-router/app/api/content-based-router/route.ts",
+      "content-based-router/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "content-enricher",
+    "title": "Content-Enricher",
+    "description": "Look up extra data and attach it before the next step sees the message.",
+    "whenToUse": "Enrich a sales lead by querying CRM, social, and Clearbit in parallel before routing to sales.",
+    "reviewedBy": "",
+    "tags": [
+      "data-processing",
+      "messaging"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "content-enricher/workflows/content-enricher.ts"
+    ],
+    "apiRoutes": [
+      "content-enricher/app/api/enrich/route.ts",
+      "content-enricher/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "content-enricher/app/api/enrich/route.ts"
+    ]
+  },
+  {
+    "slug": "correlation-identifier",
+    "title": "Correlation-Identifier",
+    "description": "Tie outbound requests to the right workflow run when async replies arrive.",
+    "whenToUse": "Tag outbound API calls with a correlation ID so async responses match back to the right order.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging",
+      "observability"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "correlation-identifier/workflows/correlation-identifier.ts"
+    ],
+    "apiRoutes": [
+      "correlation-identifier/app/api/correlation-identifier/route.ts",
+      "correlation-identifier/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "dead-letter-queue",
+    "title": "Dead-Letter-Queue",
+    "description": "After repeated failure, move a message aside for inspection instead of infinite retry.",
+    "whenToUse": "Route undeliverable messages to a dead-letter queue after 3 retries for ops review.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging",
+      "resilience"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "dead-letter-queue/workflows/dead-letter-queue.ts"
+    ],
+    "apiRoutes": [
+      "dead-letter-queue/app/api/dead-letter-queue/route.ts",
+      "dead-letter-queue/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "detour",
+    "title": "Detour",
+    "description": "Temporarily bypass or replace a step (e.g. maintenance, A/B, fallback path).",
+    "whenToUse": "Toggle a QA review stage on/off in a deploy pipeline based on a runtime feature flag.",
+    "reviewedBy": "",
+    "tags": [
+      "routing"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "detour/workflows/detour.ts"
+    ],
+    "apiRoutes": [
+      "detour/app/api/detour/route.ts",
+      "detour/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "event-gateway",
+    "title": "Event-Gateway",
+    "description": "Normalize many external event shapes into one internal representation.",
+    "whenToUse": "Wait for payment, inventory, and fraud-check signals to all arrive before shipping an order.",
+    "reviewedBy": "",
+    "tags": [
+      "integration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "event-gateway/workflows/event-gateway.ts"
+    ],
+    "apiRoutes": [
+      "event-gateway/app/api/event-gateway/route.ts",
+      "event-gateway/app/api/readable/[runId]/route.ts",
+      "event-gateway/app/api/signal/route.ts"
+    ],
+    "extraRoutes": [
+      "event-gateway/app/api/signal/route.ts"
+    ]
+  },
+  {
+    "slug": "event-sourcing",
+    "title": "Event-Sourcing",
+    "description": "Drive behavior from an append-only event log; rebuild or audit state from history.",
+    "whenToUse": "Append domain events to an immutable log and replay them to detect bugs or migrate projections.",
+    "reviewedBy": "",
+    "tags": [
+      "observability"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "event-sourcing/workflows/event-sourcing.ts"
+    ],
+    "apiRoutes": [
+      "event-sourcing/app/api/event-sourcing/route.ts",
+      "event-sourcing/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "fan-out",
+    "title": "Fan-Out",
+    "description": "One trigger fans out to parallel branches (often paired with gather/aggregate).",
+    "whenToUse": "Broadcast an incident alert to Slack, email, SMS, and PagerDuty in parallel.",
+    "reviewedBy": "Pranay",
+    "tags": [
+      "async",
+      "orchestration"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "fan-out/workflows/incident-fanout.ts"
+    ],
+    "apiRoutes": [
+      "fan-out/app/api/fan-out/route.ts",
+      "fan-out/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "guaranteed-delivery",
+    "title": "Guaranteed-Delivery",
+    "description": "Persist-and-retry semantics so work isn’t lost across crashes or restarts.",
+    "whenToUse": "Ensure a payment confirmation is delivered even if the server restarts mid-send.",
+    "reviewedBy": "",
+    "tags": [
+      "resilience"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "guaranteed-delivery/workflows/guaranteed-delivery.ts"
+    ],
+    "apiRoutes": [
+      "guaranteed-delivery/app/api/guaranteed-delivery/route.ts",
+      "guaranteed-delivery/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "hedge-request",
+    "title": "Hedge-Request",
+    "description": "Send duplicate requests; take the first successful response to cut tail latency.",
+    "whenToUse": "Fire the same search query to two replicas and use whichever responds first.",
+    "reviewedBy": "",
+    "tags": [
+      "resilience"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "hedge-request/workflows/hedge-request.ts"
+    ],
+    "apiRoutes": [
+      "hedge-request/app/api/hedge-request/route.ts",
+      "hedge-request/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "idempotent-receiver",
+    "title": "Idempotent-Receiver",
+    "description": "Handle duplicate deliveries safely (same logical operation, same outcome).",
+    "whenToUse": "Detect duplicate payment webhooks with an idempotency key and return the cached result.",
+    "reviewedBy": "",
+    "tags": [
+      "resilience"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "idempotent-receiver/workflows/idempotent-receiver.ts"
+    ],
+    "apiRoutes": [
+      "idempotent-receiver/app/api/idempotent-receiver/route.ts",
+      "idempotent-receiver/app/api/readable/[runId]/route.ts",
+      "idempotent-receiver/app/api/run/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "idempotent-receiver/app/api/run/[runId]/route.ts"
+    ]
+  },
+  {
+    "slug": "map-reduce",
+    "title": "Map-Reduce",
+    "description": "Map work in parallel, then reduce partial results into a single answer.",
+    "whenToUse": "Partition a large analytics dataset into chunks, process in parallel, and merge into one report.",
+    "reviewedBy": "",
+    "tags": [
+      "data-processing",
+      "orchestration"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "map-reduce/workflows/map-reduce.ts"
+    ],
+    "apiRoutes": [
+      "map-reduce/app/api/map-reduce/route.ts",
+      "map-reduce/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "message-filter",
+    "title": "Message-Filter",
+    "description": "Drop or accept messages based on rules before downstream processing.",
+    "whenToUse": "Drop low-priority log events before they hit the expensive analytics pipeline.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging",
+      "routing"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "message-filter/workflows/order-filter.ts"
+    ],
+    "apiRoutes": [
+      "message-filter/app/api/message-filter/route.ts",
+      "message-filter/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "message-history",
+    "title": "Message-History",
+    "description": "Keep an audit trail of what passed through the flow and in what order.",
+    "whenToUse": "Track a support ticket through normalize → classify → route → dispatch with full history at each step.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging",
+      "observability"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "message-history/workflows/message-history.ts",
+      "message-history/workflows/support-ticket-routing.ts"
+    ],
+    "apiRoutes": [
+      "message-history/app/api/message-history/route.ts",
+      "message-history/app/api/readable/[runId]/route.ts",
+      "message-history/app/api/run/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "message-history/app/api/run/[runId]/route.ts"
+    ]
+  },
+  {
+    "slug": "message-translator",
+    "title": "Message-Translator",
+    "description": "Convert between external and internal message formats at the boundary.",
+    "whenToUse": "Convert partner XML orders into your internal JSON schema at the API boundary.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "message-translator/workflows/message-translator.ts"
+    ],
+    "apiRoutes": [
+      "message-translator/app/api/message-translator/route.ts",
+      "message-translator/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "namespaced-streams",
+    "title": "Namespaced-Streams",
+    "description": "Separate streams (e.g. per tenant or topic) so clients only see relevant events.",
+    "whenToUse": "Emit workflow events to separate UI and ops-telemetry streams simultaneously.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "namespaced-streams/workflows/namespaced-streams.ts"
+    ],
+    "apiRoutes": [
+      "namespaced-streams/app/api/namespaced-streams/route.ts",
+      "namespaced-streams/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "normalizer",
+    "title": "Normalizer",
+    "description": "Map heterogeneous inputs into one canonical shape before routing.",
+    "whenToUse": "Accept orders as XML, CSV, or legacy JSON and transform them into a single canonical shape.",
+    "reviewedBy": "",
+    "tags": [
+      "data-processing",
+      "messaging"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "normalizer/workflows/normalizer.ts"
+    ],
+    "apiRoutes": [
+      "normalizer/app/api/normalizer/route.ts",
+      "normalizer/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "onboarding-drip",
+    "title": "Onboarding-Drip",
+    "description": "Time-delayed sequence (e.g. emails or nudges) with durable waits between steps.",
+    "whenToUse": "Send a welcome email on signup, a tips email after 2 days, and a check-in after a week.",
+    "reviewedBy": "",
+    "tags": [
+      "scheduling"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "onboarding-drip/workflows/onboarding-drip.ts"
+    ],
+    "apiRoutes": [
+      "onboarding-drip/app/api/onboarding/route.ts",
+      "onboarding-drip/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "onboarding-drip/app/api/onboarding/route.ts"
+    ]
+  },
+  {
+    "slug": "pipeline",
+    "title": "Pipeline",
+    "description": "Linear chain of stages—each step’s output feeds the next.",
+    "whenToUse": "Run a 4-stage ETL (extract → transform → validate → load) with live progress streaming.",
+    "reviewedBy": "",
+    "tags": [
+      "data-processing",
+      "orchestration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "pipeline/workflows/pipeline.ts"
+    ],
+    "apiRoutes": [
+      "pipeline/app/api/pipeline/route.ts",
+      "pipeline/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "priority-queue",
+    "title": "Priority-Queue",
+    "description": "Prefer higher-priority work when multiple items are waiting.",
+    "whenToUse": "Process enterprise-tier jobs before free-tier jobs when the queue is backed up.",
+    "reviewedBy": "",
+    "tags": [
+      "async"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "priority-queue/workflows/priority-queue.ts"
+    ],
+    "apiRoutes": [
+      "priority-queue/app/api/priority-queue/route.ts",
+      "priority-queue/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "process-manager",
+    "title": "Process-Manager",
+    "description": "Track a multi-step business process and react to events until it completes.",
+    "whenToUse": "Orchestrate payment → inventory → backorder → shipping → delivery with branching logic.",
+    "reviewedBy": "",
+    "tags": [
+      "orchestration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "process-manager/workflows/process-manager.ts"
+    ],
+    "apiRoutes": [
+      "process-manager/app/api/process-manager/route.ts",
+      "process-manager/app/api/readable/[runId]/route.ts",
+      "process-manager/app/api/run/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "process-manager/app/api/run/[runId]/route.ts"
+    ]
+  },
+  {
+    "slug": "publish-subscribe",
+    "title": "Publish-Subscribe",
+    "description": "One publisher, many subscribers—broadcast-style distribution.",
+    "whenToUse": "A product-update event triggers email, push notification, and analytics subscribers independently.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "publish-subscribe/workflows/publish-subscribe.ts"
+    ],
+    "apiRoutes": [
+      "publish-subscribe/app/api/publish-subscribe/route.ts",
+      "publish-subscribe/app/api/readable/[runId]/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "recipient-list",
+    "title": "Recipient-List",
+    "description": "Same logical message delivered to a list of recipients (static or dynamic).",
+    "whenToUse": "Evaluate severity rules at runtime and alert matching channels (Slack, email, PagerDuty).",
+    "reviewedBy": "",
+    "tags": [
+      "messaging",
+      "routing"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "recipient-list/workflows/recipient-list.ts"
+    ],
+    "apiRoutes": [
+      "recipient-list/app/api/readable/[runId]/route.ts",
+      "recipient-list/app/api/recipient-list/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "request-reply",
+    "title": "Request-Reply",
+    "description": "Call/response style interaction modeled inside a durable workflow.",
+    "whenToUse": "Send a request to a service, wait for a correlated reply with a deadline, and retry on timeout.",
+    "reviewedBy": "",
+    "tags": [
+      "async",
+      "integration"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "request-reply/workflows/request-reply.ts"
+    ],
+    "apiRoutes": [
+      "request-reply/app/api/readable/[runId]/route.ts",
+      "request-reply/app/api/request-reply/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "resequencer",
+    "title": "Resequencer",
+    "description": "Buffer and reorder out-of-order messages before the next stage.",
+    "whenToUse": "Buffer out-of-order webhook fragments and release them in the correct sequence.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "resequencer/workflows/resequencer.ts"
+    ],
+    "apiRoutes": [
+      "resequencer/app/api/readable/[runId]/route.ts",
+      "resequencer/app/api/resequencer/event/route.ts",
+      "resequencer/app/api/resequencer/route.ts",
+      "resequencer/app/api/run/[runId]/route.ts"
+    ],
+    "extraRoutes": [
+      "resequencer/app/api/resequencer/event/route.ts",
+      "resequencer/app/api/run/[runId]/route.ts"
+    ]
+  },
+  {
+    "slug": "retry-backoff",
+    "title": "Retry-Backoff",
+    "description": "Retry failed steps with increasing delay to avoid hammering flaky dependencies.",
+    "whenToUse": "Retry a flaky email API with 1s → 2s → 4s backoff instead of failing on the first hiccup.",
+    "reviewedBy": "",
+    "tags": [
+      "resilience"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "retry-backoff/workflows/retry-backoff.ts"
+    ],
+    "apiRoutes": [
+      "retry-backoff/app/api/readable/[runId]/route.ts",
+      "retry-backoff/app/api/retry-backoff/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "retryable-rate-limit",
+    "title": "Retryable-Rate-Limit",
+    "description": "On 429 / rate limits, back off and retry instead of failing immediately.",
+    "whenToUse": "Sync contacts to an external CRM and auto-retry when the API returns 429 with retry-after.",
+    "reviewedBy": "",
+    "tags": [
+      "resilience"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "retryable-rate-limit/workflows/retryable-rate-limit.ts"
+    ],
+    "apiRoutes": [
+      "retryable-rate-limit/app/api/readable/[runId]/route.ts",
+      "retryable-rate-limit/app/api/start/route.ts"
+    ],
+    "extraRoutes": [
+      "retryable-rate-limit/app/api/start/route.ts"
+    ]
+  },
+  {
+    "slug": "routing-slip",
+    "title": "Routing-Slip",
+    "description": "Attach an itinerary to the message so each hop knows where to send it next.",
+    "whenToUse": "Execute a flexible sequence of processing stages defined per-request in a routing slip.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging",
+      "routing"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "routing-slip/workflows/routing-slip.ts"
+    ],
+    "apiRoutes": [
+      "routing-slip/app/api/readable/[runId]/route.ts",
+      "routing-slip/app/api/routing-slip/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "saga",
+    "title": "Saga",
+    "description": "Long-lived transaction across services using forward steps and compensations.",
+    "whenToUse": "Upgrade a subscription (reserve seats → capture invoice → provision) with auto-rollback on failure.",
+    "reviewedBy": "",
+    "tags": [
+      "orchestration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "saga/workflows/subscription-upgrade-saga.ts"
+    ],
+    "apiRoutes": [
+      "saga/app/api/readable/[runId]/route.ts",
+      "saga/app/api/saga/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "scatter-gather",
+    "title": "Scatter-Gather",
+    "description": "Fan out to many workers, then collect and merge their replies.",
+    "whenToUse": "Query 4 shipping providers for quotes in parallel and pick the cheapest one that responds.",
+    "reviewedBy": "",
+    "tags": [
+      "async",
+      "orchestration"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "scatter-gather/workflows/scatter-gather.ts"
+    ],
+    "apiRoutes": [
+      "scatter-gather/app/api/readable/[runId]/route.ts",
+      "scatter-gather/app/api/scatter-gather/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "scheduled-digest",
+    "title": "Scheduled-Digest",
+    "description": "Accumulate activity and emit a summary on a schedule (e.g. daily digest).",
+    "whenToUse": "Open a 1-hour collection window for events, then email a digest when the window closes.",
+    "reviewedBy": "",
+    "tags": [
+      "scheduling"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "scheduled-digest/workflows/scheduled-digest.ts"
+    ],
+    "apiRoutes": [
+      "scheduled-digest/app/api/event/route.ts",
+      "scheduled-digest/app/api/readable/[runId]/route.ts",
+      "scheduled-digest/app/api/scheduled-digest/route.ts"
+    ],
+    "extraRoutes": [
+      "scheduled-digest/app/api/event/route.ts"
+    ]
+  },
+  {
+    "slug": "scheduler-agent-supervisor",
+    "title": "Scheduler-Agent-Supervisor",
+    "description": "Scheduled triggers plus supervised agent/worker style execution.",
+    "whenToUse": "Dispatch content generation to agents in sequence, checking quality thresholds with escalation.",
+    "reviewedBy": "",
+    "tags": [
+      "orchestration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "scheduler-agent-supervisor/workflows/scheduler-agent-supervisor.ts"
+    ],
+    "apiRoutes": [
+      "scheduler-agent-supervisor/app/api/readable/[runId]/route.ts",
+      "scheduler-agent-supervisor/app/api/scheduler-agent-supervisor/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "splitter",
+    "title": "Splitter",
+    "description": "Break one compound message into many smaller messages for downstream steps.",
+    "whenToUse": "Split a multi-item order into individual line items for independent validation and fulfillment.",
+    "reviewedBy": "",
+    "tags": [
+      "data-processing",
+      "messaging"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "splitter/workflows/order-splitter.ts"
+    ],
+    "apiRoutes": [
+      "splitter/app/api/readable/[runId]/route.ts",
+      "splitter/app/api/splitter/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "status-poller",
+    "title": "Status-Poller",
+    "description": "Poll an external API or job until it reaches a terminal state, with backoff.",
+    "whenToUse": "Poll a video transcoding job until it’s ready, sleeping between checks with a max-poll safety valve.",
+    "reviewedBy": "",
+    "tags": [
+      "scheduling"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "status-poller/workflows/status-poller.ts"
+    ],
+    "apiRoutes": [
+      "status-poller/app/api/readable/[runId]/route.ts",
+      "status-poller/app/api/status-poller/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "throttle",
+    "title": "Throttle",
+    "description": "Limit how often work runs or how many concurrent operations are allowed.",
+    "whenToUse": "Cap outbound API calls to 10/second so you don’t blow your third-party rate limit.",
+    "reviewedBy": "",
+    "tags": [
+      "scheduling"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "throttle/workflows/throttle.ts"
+    ],
+    "apiRoutes": [
+      "throttle/app/api/readable/[runId]/route.ts",
+      "throttle/app/api/throttle/route.ts"
+    ],
+    "extraRoutes": []
+  },
+  {
+    "slug": "transactional-outbox",
+    "title": "Transactional-Outbox",
+    "description": "Write business data and an “outbox” event in one transaction, then publish reliably.",
+    "whenToUse": "Persist an order and relay it to a message broker in one transaction for at-least-once delivery.",
+    "reviewedBy": "",
+    "tags": [
+      "resilience"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "transactional-outbox/workflows/transactional-outbox.ts"
+    ],
+    "apiRoutes": [
+      "transactional-outbox/app/api/readable/[runId]/route.ts",
+      "transactional-outbox/app/api/run/[runId]/route.ts",
+      "transactional-outbox/app/api/transactional-outbox/route.ts"
+    ],
+    "extraRoutes": [
+      "transactional-outbox/app/api/run/[runId]/route.ts"
+    ]
+  },
+  {
+    "slug": "wakeable-reminder",
+    "title": "Wakeable-Reminder",
+    "description": "Sleep until a deadline *or* wake early when an external event arrives.",
+    "whenToUse": "Schedule a payment reminder for 3 days out, but let the user cancel, snooze, or pay early via webhook.",
+    "reviewedBy": "",
+    "tags": [
+      "scheduling"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "wakeable-reminder/workflows/wakeable-reminder.ts"
+    ],
+    "apiRoutes": [
+      "wakeable-reminder/app/api/readable/[runId]/route.ts",
+      "wakeable-reminder/app/api/wake/route.ts",
+      "wakeable-reminder/app/api/wakeable-reminder/route.ts"
+    ],
+    "extraRoutes": [
+      "wakeable-reminder/app/api/wake/route.ts"
+    ]
+  },
+  {
+    "slug": "webhook-basics",
+    "title": "Webhook-Basics",
+    "description": "Ingest HTTP webhooks, validate, and drive workflow steps from external systems.",
+    "whenToUse": "Accept Stripe or GitHub webhooks, validate signatures, and kick off internal workflow steps.",
+    "reviewedBy": "",
+    "tags": [
+      "integration"
+    ],
+    "sourceMode": "inline-page-string",
+    "workflowFiles": [
+      "webhook-basics/workflows/payment-webhook.ts"
+    ],
+    "apiRoutes": [
+      "webhook-basics/app/api/readable/[runId]/route.ts",
+      "webhook-basics/app/api/webhook-basics/route.ts",
+      "webhook-basics/app/api/webhook/[token]/route.ts"
+    ],
+    "extraRoutes": [
+      "webhook-basics/app/api/webhook/[token]/route.ts"
+    ]
+  },
+  {
+    "slug": "wire-tap",
+    "title": "Wire-Tap",
+    "description": "Observe or copy messages in flight for logging/debugging without changing the main path.",
+    "whenToUse": "Mirror production order events to a debug logger without touching the main processing path.",
+    "reviewedBy": "",
+    "tags": [
+      "messaging",
+      "observability"
+    ],
+    "sourceMode": "filesystem",
+    "workflowFiles": [
+      "wire-tap/workflows/wire-tap.ts"
+    ],
+    "apiRoutes": [
+      "wire-tap/app/api/readable/[runId]/route.ts",
+      "wire-tap/app/api/wire-tap/route.ts"
+    ],
+    "extraRoutes": []
+  }
+]

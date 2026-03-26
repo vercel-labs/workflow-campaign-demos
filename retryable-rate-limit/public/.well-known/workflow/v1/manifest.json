@@ -1,0 +1,65 @@
+{
+  "version": "1.0.0",
+  "steps": {
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    },
+    "workflows/retryable-rate-limit.ts": {
+      "fetchContactFromCrm": {
+        "stepId": "step//./workflows/retryable-rate-limit//fetchContactFromCrm"
+      },
+      "upsertIntoWarehouse": {
+        "stepId": "step//./workflows/retryable-rate-limit//upsertIntoWarehouse"
+      }
+    }
+  },
+  "workflows": {
+    "workflows/retryable-rate-limit.ts": {
+      "syncCrmContact": {
+        "workflowId": "workflow//./workflows/retryable-rate-limit//syncCrmContact",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: syncCrmContact",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "classes": {}
+}

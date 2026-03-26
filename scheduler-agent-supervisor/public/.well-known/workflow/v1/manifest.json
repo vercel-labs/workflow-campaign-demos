@@ -1,0 +1,97 @@
+{
+  "version": "1.0.0",
+  "steps": {
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    },
+    "workflows/scheduler-agent-supervisor.ts": {
+      "checkQuality": {
+        "stepId": "step//./workflows/scheduler-agent-supervisor//checkQuality"
+      },
+      "dispatchToAgent": {
+        "stepId": "step//./workflows/scheduler-agent-supervisor//dispatchToAgent"
+      },
+      "emitCooldown": {
+        "stepId": "step//./workflows/scheduler-agent-supervisor//emitCooldown"
+      },
+      "emitFailed": {
+        "stepId": "step//./workflows/scheduler-agent-supervisor//emitFailed"
+      },
+      "publishContent": {
+        "stepId": "step//./workflows/scheduler-agent-supervisor//publishContent"
+      }
+    }
+  },
+  "workflows": {
+    "workflows/scheduler-agent-supervisor.ts": {
+      "schedulerAgentSupervisor": {
+        "workflowId": "workflow//./workflows/scheduler-agent-supervisor//schedulerAgentSupervisor",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: schedulerAgentSupervisor",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "node_0",
+              "type": "primitive",
+              "data": {
+                "label": "sleep",
+                "nodeKind": "primitive"
+              },
+              "metadata": {
+                "loopId": "loop_0"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_node_0_back_node_0",
+              "source": "node_0",
+              "target": "node_0",
+              "type": "loop"
+            },
+            {
+              "id": "e_start_node_0",
+              "source": "start",
+              "target": "node_0",
+              "type": "default"
+            },
+            {
+              "id": "e_node_0_end",
+              "source": "node_0",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "classes": {}
+}
