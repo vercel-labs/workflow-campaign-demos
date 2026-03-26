@@ -5,6 +5,9 @@ export type JsonErrorCode =
   | "RUN_NOT_FOUND"
   | "INVALID_JSON"
   | "INVALID_REQUEST"
+  | "MISSING_ACCOUNT_ID"
+  | "START_FAILED"
+  | "ALREADY_TERMINAL"
   | "INTERNAL_ERROR";
 
 export function jsonError(

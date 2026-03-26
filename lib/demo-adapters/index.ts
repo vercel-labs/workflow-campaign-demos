@@ -8,10 +8,12 @@
 import type { DemoAdapter } from "./types";
 import { fanOutAdapter } from "./fan-out";
 import { approvalChainAdapter } from "./approval-chain";
+import { cancellableExportAdapter } from "./cancellable-export";
 
 const adapters: ReadonlyMap<string, DemoAdapter> = new Map([
   [fanOutAdapter.slug, fanOutAdapter],
   [approvalChainAdapter.slug, approvalChainAdapter],
+  [cancellableExportAdapter.slug, cancellableExportAdapter],
 ]);
 
 /** Resolve an adapter by slug. Returns undefined for unknown slugs. */

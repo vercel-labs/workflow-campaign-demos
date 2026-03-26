@@ -91,11 +91,12 @@ describe("approval-chain adapter", () => {
     expect(approveFile!.role).toBe("api");
   });
 
-  test("renderDemo returns a React element", async () => {
+  test("renderDemo returns a React element (not a placeholder fallback)", async () => {
     const adapter = getAdapter("approval-chain")!;
     const element = await adapter.renderDemo();
     expect(element).toBeDefined();
-    expect(element.type).toBe("section");
+    expect(element.type).not.toBe("section");
+    expect(element.type).not.toBe("pre");
   });
 });
 

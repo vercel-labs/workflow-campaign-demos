@@ -2,6 +2,7 @@ import { createElement } from "react";
 import type { DemoAdapter, DemoCodeFile } from "./types";
 import { readDemoFile } from "./read-demo-file";
 import { logAdapterEvent } from "./adapter-log";
+import { ApprovalChainDemo } from "@/app/components/demos/approval-chain-demo";
 
 const SLUG = "approval-chain";
 
@@ -17,37 +18,7 @@ export const approvalChainAdapter: DemoAdapter = {
       action: "render_demo_started",
     });
 
-    const codeBundle = await this.getCodeBundle();
-    const workflowFile = codeBundle.find((file) => file.role === "workflow");
-
-    return createElement(
-      "section",
-      {
-        className: "rounded-lg border border-gray-400 bg-background-200 p-6",
-      },
-      workflowFile
-        ? createElement(
-            "pre",
-            {
-              className:
-                "max-h-[520px] overflow-auto rounded-md border border-gray-300 bg-background-100 p-4 text-xs leading-relaxed text-gray-1000",
-            },
-            createElement(
-              "code",
-              {
-                className: "font-mono",
-              },
-              workflowFile.contents,
-            ),
-          )
-        : createElement(
-            "p",
-            {
-              className: "text-sm text-red-700",
-            },
-            "Missing workflow source.",
-          ),
-    );
+    return createElement(ApprovalChainDemo);
   },
 
   async getCodeBundle(): Promise<DemoCodeFile[]> {
@@ -56,6 +27,21 @@ export const approvalChainAdapter: DemoAdapter = {
         path: `${SLUG}/workflows/approval-chain.ts`,
         role: "workflow",
         contents: readDemoFile(SLUG, "workflows/approval-chain.ts"),
+      },
+      {
+        path: `${SLUG}/app/page.tsx`,
+        role: "page",
+        contents: readDemoFile(SLUG, "app/page.tsx"),
+      },
+      {
+        path: `${SLUG}/app/components/demo.tsx`,
+        role: "component",
+        contents: readDemoFile(SLUG, "app/components/demo.tsx"),
+      },
+      {
+        path: `${SLUG}/components/approval-chain-code-workbench.tsx`,
+        role: "support",
+        contents: readDemoFile(SLUG, "components/approval-chain-code-workbench.tsx"),
       },
       {
         path: `${SLUG}/app/api/approval-chain/route.ts`,
