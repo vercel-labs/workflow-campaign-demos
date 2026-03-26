@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { getAdapter, getRegisteredSlugs } from "./index";
+import { demos } from "../demos";
 
 describe("demo adapter registry", () => {
   test("known slug 'fan-out' resolves to an adapter", () => {
@@ -21,11 +22,12 @@ describe("demo adapter registry", () => {
     expect(adapter).toBeUndefined();
   });
 
-  test("getRegisteredSlugs returns all mounted slugs", () => {
+  test("every registered slug exists in the catalog", () => {
     const slugs = getRegisteredSlugs();
-    expect(slugs).toContain("fan-out");
-    expect(slugs).toContain("approval-chain");
-    expect(slugs.length).toBe(2);
+    const catalogSlugs = new Set(demos.map((demo) => demo.slug));
+    for (const slug of slugs) {
+      expect(catalogSlugs.has(slug)).toBe(true);
+    }
   });
 });
 
@@ -42,11 +44,22 @@ describe("fan-out adapter", () => {
     expect(workflowFiles[0].contents.length).toBeGreaterThan(0);
   });
 
-  test("apiRoutes includes start and readable", () => {
+  test("apiRoutes includes start and readable with load functions", () => {
     const adapter = getAdapter("fan-out")!;
     const kinds = adapter.apiRoutes.map((r) => r.kind);
     expect(kinds).toContain("start");
     expect(kinds).toContain("readable");
+
+    for (const route of adapter.apiRoutes) {
+      expect(typeof route.load).toBe("function");
+    }
+  });
+
+  test("renderPage returns a React element", async () => {
+    const adapter = getAdapter("fan-out")!;
+    const element = await adapter.renderPage();
+    expect(element).toBeDefined();
+    expect(element.type).toBe("main");
   });
 });
 
@@ -62,11 +75,12 @@ describe("approval-chain adapter", () => {
     expect(workflowFiles[0].contents).toContain("use workflow");
   });
 
-  test("apiRoutes includes extra approve route", () => {
+  test("apiRoutes includes extra approve route with load function", () => {
     const adapter = getAdapter("approval-chain")!;
     const extraRoutes = adapter.apiRoutes.filter((r) => r.kind === "extra");
     expect(extraRoutes.length).toBe(1);
     expect(extraRoutes[0].route).toContain("approve");
+    expect(typeof extraRoutes[0].load).toBe("function");
   });
 
   test("code bundle includes the extra approve route file", async () => {
@@ -75,5 +89,12 @@ describe("approval-chain adapter", () => {
     const approveFile = files.find((f) => f.path.includes("approve/route.ts"));
     expect(approveFile).toBeDefined();
     expect(approveFile!.role).toBe("api");
+  });
+
+  test("renderPage returns a React element", async () => {
+    const adapter = getAdapter("approval-chain")!;
+    const element = await adapter.renderPage();
+    expect(element).toBeDefined();
+    expect(element.type).toBe("main");
   });
 });

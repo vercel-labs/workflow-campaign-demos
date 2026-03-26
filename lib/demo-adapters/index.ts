@@ -24,4 +24,13 @@ export function getRegisteredSlugs(): string[] {
   return [...adapters.keys()];
 }
 
-export type { DemoAdapter, DemoCodeFile, CodeFileRole, ApiRouteKind, DemoApiRoute } from "./types";
+export type {
+  DemoAdapter,
+  DemoCodeFile,
+  CodeFileRole,
+  ApiRouteKind,
+  DemoApiRoute,
+  GalleryRouteContext,
+  GalleryRouteHandler,
+  GalleryRouteModule,
+} from "./types";

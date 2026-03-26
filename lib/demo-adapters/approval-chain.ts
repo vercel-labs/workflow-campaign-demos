@@ -1,47 +1,114 @@
-import { readFileSync } from "fs";
-import { join } from "path";
+import { createElement } from "react";
 import type { DemoAdapter, DemoCodeFile } from "./types";
+import { readDemoFile } from "./read-demo-file";
 
 const SLUG = "approval-chain";
-const DEMO_DIR = join(process.cwd(), SLUG);
 
 export const approvalChainAdapter: DemoAdapter = {
   slug: SLUG,
   title: "Approval Chain",
 
+  async renderPage() {
+    const codeBundle = await this.getCodeBundle();
+    const workflowFile = codeBundle.find((f) => f.role === "workflow");
+
+    return createElement(
+      "main",
+      {
+        className:
+          "min-h-screen bg-[#0a0a0a] text-white px-6 py-12 max-w-4xl mx-auto",
+      },
+      createElement(
+        "header",
+        { className: "mb-8" },
+        createElement(
+          "a",
+          {
+            href: "/",
+            className:
+              "text-sm text-neutral-500 hover:text-neutral-300 transition-colors",
+          },
+          "\u2190 Gallery"
+        ),
+        createElement(
+          "h1",
+          {
+            className:
+              "text-2xl font-semibold mt-4 font-[family-name:var(--font-geist-sans)]",
+          },
+          "Approval Chain"
+        )
+      ),
+      createElement(
+        "section",
+        { className: "mb-8" },
+        createElement(
+          "div",
+          { className: "flex gap-3 flex-wrap" },
+          ...this.apiRoutes.map((r) =>
+            createElement(
+              "span",
+              {
+                key: r.route,
+                className:
+                  "text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-400 font-mono",
+              },
+              `${r.kind}: ${r.route}`
+            )
+          )
+        )
+      ),
+      workflowFile
+        ? createElement(
+            "section",
+            {
+              className:
+                "rounded-lg border border-neutral-800 bg-neutral-900/50 p-6",
+            },
+            createElement(
+              "h2",
+              { className: "text-sm font-medium text-neutral-400 mb-3" },
+              "Workflow Source"
+            ),
+            createElement(
+              "pre",
+              {
+                className:
+                  "text-xs text-neutral-300 overflow-x-auto font-mono leading-relaxed max-h-96 overflow-y-auto",
+              },
+              createElement("code", null, workflowFile.contents)
+            )
+          )
+        : null
+    );
+  },
+
   async getCodeBundle(): Promise<DemoCodeFile[]> {
     const files: DemoCodeFile[] = [];
 
-    const workflowPath = join(DEMO_DIR, "workflows/approval-chain.ts");
     files.push({
       path: `${SLUG}/workflows/approval-chain.ts`,
       role: "workflow",
-      contents: readFileSync(workflowPath, "utf-8"),
+      contents: readDemoFile(SLUG, "workflows/approval-chain.ts"),
     });
 
-    const startRoutePath = join(DEMO_DIR, "app/api/approval-chain/route.ts");
     files.push({
       path: `${SLUG}/app/api/approval-chain/route.ts`,
       role: "api",
-      contents: readFileSync(startRoutePath, "utf-8"),
+      contents: readDemoFile(SLUG, "app/api/approval-chain/route.ts"),
     });
 
-    const readableRoutePath = join(
-      DEMO_DIR,
-      "app/api/readable/[runId]/route.ts"
-    );
     files.push({
       path: `${SLUG}/app/api/readable/[runId]/route.ts`,
       role: "api",
-      contents: readFileSync(readableRoutePath, "utf-8"),
+      contents: readDemoFile(SLUG, "app/api/readable/[runId]/route.ts"),
     });
 
     // Extra route: approval resume endpoint
-    const approveRoutePath = join(DEMO_DIR, "app/api/approve/route.ts");
     files.push({
       path: `${SLUG}/app/api/approve/route.ts`,
       role: "api",
-      contents: readFileSync(approveRoutePath, "utf-8"),
+      contents: readDemoFile(SLUG, "app/api/approve/route.ts"),
     });
 
     console.info(
@@ -57,8 +124,20 @@ export const approvalChainAdapter: DemoAdapter = {
   },
 
   apiRoutes: [
-    { route: "/api/approval-chain", kind: "start" },
-    { route: "/api/readable/[runId]", kind: "readable" },
-    { route: "/api/approve", kind: "extra" },
+    {
+      route: "/api/approval-chain",
+      kind: "start",
+      load: () => import("@/app/api/approval-chain/route"),
+    },
+    {
+      route: "/api/readable/[runId]",
+      kind: "readable",
+      load: () => import("@/app/api/readable/[runId]/route"),
+    },
+    {
+      route: "/api/approve",
+      kind: "extra",
+      load: () => import("@/app/api/approve/route"),
+    },
   ],
 };

@@ -10,6 +10,8 @@
  * or mutate files inside the original demo directory.
  */
 
+import type { ReactElement } from "react";
+
 export type CodeFileRole =
   | "workflow"
   | "page"
@@ -26,17 +28,38 @@ export type DemoCodeFile = {
 
 export type ApiRouteKind = "start" | "readable" | "extra";
 
+export type GalleryRouteContext = {
+  params: Promise<Record<string, string>>;
+};
+
+export type GalleryRouteHandler = (
+  request: Request,
+  context: GalleryRouteContext
+) => Promise<Response> | Response;
+
+export type GalleryRouteModule = Partial<{
+  GET: GalleryRouteHandler;
+  POST: GalleryRouteHandler;
+  PUT: GalleryRouteHandler;
+  PATCH: GalleryRouteHandler;
+  DELETE: GalleryRouteHandler;
+}>;
+
 export type DemoApiRoute = {
   /** Route path relative to the demo (e.g. "/api/fan-out"). */
   route: string;
   kind: ApiRouteKind;
+  /** Lazy loader for the route module. Returns method handlers (GET, POST, etc.). */
+  load: () => Promise<GalleryRouteModule>;
 };
 
 export type DemoAdapter = {
   slug: string;
   title: string;
+  /** Render the full demo page for the gallery route /demos/[slug]. */
+  renderPage: () => Promise<ReactElement>;
   /** Return the code files this demo exposes for the agent-facing code API. */
   getCodeBundle: () => Promise<DemoCodeFile[]>;
-  /** API routes this demo provides. */
+  /** API routes this demo provides, with lazy loaders. */
   apiRoutes: DemoApiRoute[];
 };
