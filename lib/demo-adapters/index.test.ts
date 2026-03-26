@@ -55,11 +55,11 @@ describe("fan-out adapter", () => {
     }
   });
 
-  test("renderPage returns a React element", async () => {
+  test("renderDemo returns a React element", async () => {
     const adapter = getAdapter("fan-out")!;
-    const element = await adapter.renderPage();
+    const element = await adapter.renderDemo();
     expect(element).toBeDefined();
-    expect(element.type).toBe("main");
+    expect(element.type).toBe("section");
   });
 });
 
@@ -91,10 +91,28 @@ describe("approval-chain adapter", () => {
     expect(approveFile!.role).toBe("api");
   });
 
-  test("renderPage returns a React element", async () => {
+  test("renderDemo returns a React element", async () => {
     const adapter = getAdapter("approval-chain")!;
-    const element = await adapter.renderPage();
+    const element = await adapter.renderDemo();
     expect(element).toBeDefined();
-    expect(element.type).toBe("main");
+    expect(element.type).toBe("section");
   });
+});
+
+describe("route loader contract", () => {
+  for (const slug of getRegisteredSlugs()) {
+    test(`${slug} route loaders export at least one HTTP handler`, async () => {
+      const adapter = getAdapter(slug)!;
+
+      for (const route of adapter.apiRoutes) {
+        const mod = await route.load();
+        const hasHandler = ["GET", "POST", "PUT", "PATCH", "DELETE"].some(
+          (method) =>
+            typeof (mod as Record<string, unknown>)[method] === "function",
+        );
+
+        expect(hasHandler).toBe(true);
+      }
+    });
+  }
 });

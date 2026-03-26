@@ -36,15 +36,15 @@ describe("gallery adapter coverage", () => {
     expect(failures).toEqual([]);
   });
 
-  test("every mounted adapter has renderPage and lazy route loaders", async () => {
+  test("every mounted adapter has renderDemo and lazy route loaders", async () => {
     const failures: string[] = [];
 
     for (const demo of demos) {
       const adapter = getAdapter(demo.slug);
       if (!adapter) continue;
 
-      if (typeof adapter.renderPage !== "function") {
-        failures.push(`${demo.slug}: missing renderPage()`);
+      if (typeof adapter.renderDemo !== "function") {
+        failures.push(`${demo.slug}: missing renderDemo()`);
       }
 
       for (const route of adapter.apiRoutes) {

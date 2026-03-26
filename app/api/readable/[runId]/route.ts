@@ -1,5 +1,6 @@
 import { getRun } from "workflow/api";
 import type { GalleryRouteContext } from "@/lib/demo-adapters/types";
+import { jsonError } from "@/lib/http/json-error";
 
 export async function GET(_request: Request, { params }: GalleryRouteContext) {
   const { runId } = await params;
@@ -14,12 +15,12 @@ export async function GET(_request: Request, { params }: GalleryRouteContext) {
         route: "/api/readable/[runId]",
         action: "run_not_found",
         runId,
-      })
+      }),
     );
-    return Response.json(
-      { ok: false, error: { code: "RUN_NOT_FOUND", message: `Run ${runId} not found` } },
-      { status: 404 }
-    );
+
+    return jsonError(404, "RUN_NOT_FOUND", `Run ${runId} not found`, {
+      runId,
+    });
   }
 
   console.info(
@@ -28,19 +29,32 @@ export async function GET(_request: Request, { params }: GalleryRouteContext) {
       route: "/api/readable/[runId]",
       action: "stream_opened",
       runId,
-    })
+    }),
   );
 
   const readable = run.getReadable();
-
   const encoder = new TextEncoder();
+  let eventCount = 0;
+
   const sseStream = (readable as ReadableStream).pipeThrough(
     new TransformStream({
       transform(chunk, controller) {
+        eventCount += 1;
         const data = typeof chunk === "string" ? chunk : JSON.stringify(chunk);
         controller.enqueue(encoder.encode(`data: ${data}\n\n`));
       },
-    })
+      flush() {
+        console.info(
+          JSON.stringify({
+            level: "info",
+            route: "/api/readable/[runId]",
+            action: "stream_closed",
+            runId,
+            eventCount,
+          }),
+        );
+      },
+    }),
   );
 
   return new Response(sseStream, {

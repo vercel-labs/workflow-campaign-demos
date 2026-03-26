@@ -56,8 +56,8 @@ export type DemoApiRoute = {
 export type DemoAdapter = {
   slug: string;
   title: string;
-  /** Render the full demo page for the gallery route /demos/[slug]. */
-  renderPage: () => Promise<ReactElement>;
+  /** Render only the runnable demo body, not the outer page shell. */
+  renderDemo: () => Promise<ReactElement>;
   /** Return the code files this demo exposes for the agent-facing code API. */
   getCodeBundle: () => Promise<DemoCodeFile[]>;
   /** API routes this demo provides, with lazy loaders. */

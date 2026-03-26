@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import type { DemoAdapter, DemoCodeFile } from "./types";
 import { readDemoFile } from "./read-demo-file";
+import { logAdapterEvent } from "./adapter-log";
 
 const SLUG = "approval-chain";
 
@@ -8,117 +9,78 @@ export const approvalChainAdapter: DemoAdapter = {
   slug: SLUG,
   title: "Approval Chain",
 
-  async renderPage() {
+  async renderDemo() {
+    logAdapterEvent({
+      level: "info",
+      scope: "adapter",
+      adapter: SLUG,
+      action: "render_demo_started",
+    });
+
     const codeBundle = await this.getCodeBundle();
-    const workflowFile = codeBundle.find((f) => f.role === "workflow");
+    const workflowFile = codeBundle.find((file) => file.role === "workflow");
 
     return createElement(
-      "main",
+      "section",
       {
-        className:
-          "min-h-screen bg-[#0a0a0a] text-white px-6 py-12 max-w-4xl mx-auto",
+        className: "rounded-lg border border-gray-400 bg-background-200 p-6",
       },
-      createElement(
-        "header",
-        { className: "mb-8" },
-        createElement(
-          "a",
-          {
-            href: "/",
-            className:
-              "text-sm text-neutral-500 hover:text-neutral-300 transition-colors",
-          },
-          "\u2190 Gallery"
-        ),
-        createElement(
-          "h1",
-          {
-            className:
-              "text-2xl font-semibold mt-4 font-[family-name:var(--font-geist-sans)]",
-          },
-          "Approval Chain"
-        )
-      ),
-      createElement(
-        "section",
-        { className: "mb-8" },
-        createElement(
-          "div",
-          { className: "flex gap-3 flex-wrap" },
-          ...this.apiRoutes.map((r) =>
-            createElement(
-              "span",
-              {
-                key: r.route,
-                className:
-                  "text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-400 font-mono",
-              },
-              `${r.kind}: ${r.route}`
-            )
-          )
-        )
-      ),
       workflowFile
         ? createElement(
-            "section",
+            "pre",
             {
               className:
-                "rounded-lg border border-neutral-800 bg-neutral-900/50 p-6",
+                "max-h-[520px] overflow-auto rounded-md border border-gray-300 bg-background-100 p-4 text-xs leading-relaxed text-gray-1000",
             },
             createElement(
-              "h2",
-              { className: "text-sm font-medium text-neutral-400 mb-3" },
-              "Workflow Source"
-            ),
-            createElement(
-              "pre",
+              "code",
               {
-                className:
-                  "text-xs text-neutral-300 overflow-x-auto font-mono leading-relaxed max-h-96 overflow-y-auto",
+                className: "font-mono",
               },
-              createElement("code", null, workflowFile.contents)
-            )
+              workflowFile.contents,
+            ),
           )
-        : null
+        : createElement(
+            "p",
+            {
+              className: "text-sm text-red-700",
+            },
+            "Missing workflow source.",
+          ),
     );
   },
 
   async getCodeBundle(): Promise<DemoCodeFile[]> {
-    const files: DemoCodeFile[] = [];
+    const files: DemoCodeFile[] = [
+      {
+        path: `${SLUG}/workflows/approval-chain.ts`,
+        role: "workflow",
+        contents: readDemoFile(SLUG, "workflows/approval-chain.ts"),
+      },
+      {
+        path: `${SLUG}/app/api/approval-chain/route.ts`,
+        role: "api",
+        contents: readDemoFile(SLUG, "app/api/approval-chain/route.ts"),
+      },
+      {
+        path: `${SLUG}/app/api/readable/[runId]/route.ts`,
+        role: "api",
+        contents: readDemoFile(SLUG, "app/api/readable/[runId]/route.ts"),
+      },
+      {
+        path: `${SLUG}/app/api/approve/route.ts`,
+        role: "api",
+        contents: readDemoFile(SLUG, "app/api/approve/route.ts"),
+      },
+    ];
 
-    files.push({
-      path: `${SLUG}/workflows/approval-chain.ts`,
-      role: "workflow",
-      contents: readDemoFile(SLUG, "workflows/approval-chain.ts"),
+    logAdapterEvent({
+      level: "info",
+      scope: "adapter",
+      adapter: SLUG,
+      action: "get_code_bundle_succeeded",
+      fileCount: files.length,
     });
-
-    files.push({
-      path: `${SLUG}/app/api/approval-chain/route.ts`,
-      role: "api",
-      contents: readDemoFile(SLUG, "app/api/approval-chain/route.ts"),
-    });
-
-    files.push({
-      path: `${SLUG}/app/api/readable/[runId]/route.ts`,
-      role: "api",
-      contents: readDemoFile(SLUG, "app/api/readable/[runId]/route.ts"),
-    });
-
-    // Extra route: approval resume endpoint
-    files.push({
-      path: `${SLUG}/app/api/approve/route.ts`,
-      role: "api",
-      contents: readDemoFile(SLUG, "app/api/approve/route.ts"),
-    });
-
-    console.info(
-      JSON.stringify({
-        level: "info",
-        adapter: SLUG,
-        action: "getCodeBundle",
-        fileCount: files.length,
-      })
-    );
 
     return files;
   },
