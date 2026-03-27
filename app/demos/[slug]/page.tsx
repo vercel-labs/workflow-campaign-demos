@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { getAdapter } from "@/lib/demo-adapters";
 import { getDemo } from "@/lib/demos";
-import { DemoDetailShell } from "@/app/components/demos/demo-detail-shell";
+import { getDemoOrigin } from "@/lib/demo-runtime";
+import { StandaloneDemoFrame } from "@/app/components/demos/standalone-demo-frame";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -9,23 +9,12 @@ type Props = {
 
 export default async function DemoDetailPage({ params }: Props) {
   const { slug } = await params;
-  const adapter = getAdapter(slug);
+  const demo = getDemo(slug);
+  const origin = getDemoOrigin(slug);
 
-  if (!adapter) {
+  if (!demo || !origin) {
     notFound();
   }
 
-  const catalogEntry = getDemo(slug);
-  const demo = await adapter.renderDemo();
-
-  return (
-    <DemoDetailShell
-      slug={slug}
-      title={adapter.title}
-      catalogEntry={catalogEntry}
-      apiRoutes={adapter.apiRoutes}
-    >
-      {demo}
-    </DemoDetailShell>
-  );
+  return <StandaloneDemoFrame title={demo.title} src={origin} />;
 }

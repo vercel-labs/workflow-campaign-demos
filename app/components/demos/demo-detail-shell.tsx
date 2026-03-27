@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import type { DemoCatalogEntry } from "@/lib/demos";
-import type { DemoApiRoute } from "@/lib/demo-adapters";
+
+type DemoApiRoute = {
+  route: string;
+  kind: "start" | "readable" | "extra";
+};
 
 export function DemoDetailShell({
   slug,
