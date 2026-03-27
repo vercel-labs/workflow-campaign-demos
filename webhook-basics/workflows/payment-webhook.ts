@@ -12,11 +12,10 @@ export async function paymentWebhook(orderId: string) {
   "use workflow";
 
   const webhook = createWebhook({
-    token: `order:${orderId}`,
     respondWith: "manual",
   });
 
-  await emit<WebhookEvent>({ type: "webhook_ready", token: `order:${orderId}` });
+  await emit<WebhookEvent>({ type: "webhook_ready", token: webhook.token });
 
   const ledger: { type: string; amount?: number; processedAt: string }[] = [];
 
