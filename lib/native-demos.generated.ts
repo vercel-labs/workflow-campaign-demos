@@ -23,8 +23,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "aggregator": {
     title: "Aggregator",
     workflowId: "aggregator/workflows/aggregator.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props","hardcoded_extra_route:/api/signal->/api/aggregator/signal"],
+    uiStatus: "native-ready",
+    uiReasons: ["hardcoded_extra_route:/api/signal->/api/aggregator/signal"],
     routeMap: {
       "start": {
         "original": "/api/aggregator",
@@ -57,8 +57,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "approval-chain": {
     title: "Approval-Chain",
     workflowId: "approval-chain/workflows/approval-chain.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props","hardcoded_extra_route:/api/approve->/api/approval-chain/approve"],
+    uiStatus: "native-ready",
+    uiReasons: ["hardcoded_extra_route:/api/approve->/api/approval-chain/approve"],
     routeMap: {
       "start": {
         "original": "/api/approval-chain",
@@ -91,7 +91,7 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "approval-gate": {
     title: "Approval-Gate",
     workflowId: "approval-gate/workflows/approval-gate.ts",
-    uiStatus: "adapter-required",
+    uiStatus: "native-ready",
     uiReasons: ["hardcoded_extra_route:/api/approve->/api/approval-gate/approve"],
     routeMap: {
       "start": {
@@ -125,8 +125,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "async-request-reply": {
     title: "Async-Request-Reply",
     workflowId: "async-request-reply/workflows/async-request-reply.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/async-request-reply",
@@ -164,8 +164,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "batch-processor": {
     title: "Batch-Processor",
     workflowId: "batch-processor/workflows/batch-processor.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/batch-processor",
@@ -192,8 +192,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "bulkhead": {
     title: "Bulkhead",
     workflowId: "bulkhead/workflows/bulkhead.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/bulkhead",
@@ -220,8 +220,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "cancellable-export": {
     title: "Cancellable-Export",
     workflowId: "cancellable-export/workflows/report-generator.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/cancellable-export",
@@ -254,8 +254,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "choreography": {
     title: "Choreography",
     workflowId: "choreography/workflows/choreography.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/choreography",
@@ -288,8 +288,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "circuit-breaker": {
     title: "Circuit-Breaker",
     workflowId: "circuit-breaker/workflows/circuit-breaker.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/circuit-breaker",
@@ -316,8 +316,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "claim-check": {
     title: "Claim-Check",
     workflowId: "claim-check/workflows/claim-check.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/claim-check",
@@ -350,8 +350,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "competing-consumers": {
     title: "Competing-Consumers",
     workflowId: "competing-consumers/workflows/competing-consumers.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/competing-consumers",
@@ -378,8 +378,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "content-based-router": {
     title: "Content-Based-Router",
     workflowId: "content-based-router/workflows/content-based-router.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/content-based-router",
@@ -406,8 +406,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "content-enricher": {
     title: "Content-Enricher",
     workflowId: "content-enricher/workflows/content-enricher.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props","hardcoded_start_route:/api/enrich->/api/content-enricher"],
+    uiStatus: "native-ready",
+    uiReasons: ["hardcoded_start_route:/api/enrich->/api/content-enricher"],
     routeMap: {
       "start": {
         "original": "/api/enrich",
@@ -440,8 +440,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "correlation-identifier": {
     title: "Correlation-Identifier",
     workflowId: "correlation-identifier/workflows/correlation-identifier.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/correlation-identifier",
@@ -468,8 +468,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "dead-letter-queue": {
     title: "Dead-Letter-Queue",
     workflowId: "dead-letter-queue/workflows/dead-letter-queue.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/dead-letter-queue",
@@ -496,8 +496,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "detour": {
     title: "Detour",
     workflowId: "detour/workflows/detour.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_export_missing","component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/detour",
@@ -524,8 +524,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "event-gateway": {
     title: "Event-Gateway",
     workflowId: "event-gateway/workflows/event-gateway.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props","hardcoded_extra_route:/api/signal->/api/event-gateway/signal"],
+    uiStatus: "native-ready",
+    uiReasons: ["hardcoded_extra_route:/api/signal->/api/event-gateway/signal"],
     routeMap: {
       "start": {
         "original": "/api/event-gateway",
@@ -558,8 +558,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "event-sourcing": {
     title: "Event-Sourcing",
     workflowId: "event-sourcing/workflows/event-sourcing.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/event-sourcing",
@@ -586,8 +586,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "fan-out": {
     title: "Fan-Out",
     workflowId: "fan-out/workflows/incident-fanout.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/fan-out",
@@ -614,8 +614,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "guaranteed-delivery": {
     title: "Guaranteed-Delivery",
     workflowId: "guaranteed-delivery/workflows/guaranteed-delivery.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/guaranteed-delivery",
@@ -642,8 +642,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "hedge-request": {
     title: "Hedge-Request",
     workflowId: "hedge-request/workflows/hedge-request.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/hedge-request",
@@ -670,8 +670,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "idempotent-receiver": {
     title: "Idempotent-Receiver",
     workflowId: "idempotent-receiver/workflows/idempotent-receiver.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/idempotent-receiver",
@@ -704,8 +704,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "map-reduce": {
     title: "Map-Reduce",
     workflowId: "map-reduce/workflows/map-reduce.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/map-reduce",
@@ -732,8 +732,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "message-filter": {
     title: "Message-Filter",
     workflowId: "message-filter/workflows/order-filter.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/message-filter",
@@ -760,8 +760,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "message-history": {
     title: "Message-History",
     workflowId: "message-history/workflows/message-history.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/message-history",
@@ -794,8 +794,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "message-translator": {
     title: "Message-Translator",
     workflowId: "message-translator/workflows/message-translator.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/message-translator",
@@ -822,8 +822,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "namespaced-streams": {
     title: "Namespaced-Streams",
     workflowId: "namespaced-streams/workflows/namespaced-streams.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/namespaced-streams",
@@ -850,8 +850,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "normalizer": {
     title: "Normalizer",
     workflowId: "normalizer/workflows/normalizer.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/normalizer",
@@ -878,8 +878,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "onboarding-drip": {
     title: "Onboarding-Drip",
     workflowId: "onboarding-drip/workflows/onboarding-drip.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_export_missing","component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/onboarding",
@@ -912,8 +912,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "pipeline": {
     title: "Pipeline",
     workflowId: "pipeline/workflows/pipeline.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/pipeline",
@@ -940,8 +940,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "priority-queue": {
     title: "Priority-Queue",
     workflowId: "priority-queue/workflows/priority-queue.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/priority-queue",
@@ -968,8 +968,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "process-manager": {
     title: "Process-Manager",
     workflowId: "process-manager/workflows/process-manager.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/process-manager",
@@ -1002,8 +1002,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "publish-subscribe": {
     title: "Publish-Subscribe",
     workflowId: "publish-subscribe/workflows/publish-subscribe.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/publish-subscribe",
@@ -1030,8 +1030,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "recipient-list": {
     title: "Recipient-List",
     workflowId: "recipient-list/workflows/recipient-list.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/recipient-list",
@@ -1058,8 +1058,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "request-reply": {
     title: "Request-Reply",
     workflowId: "request-reply/workflows/request-reply.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/request-reply",
@@ -1086,8 +1086,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "resequencer": {
     title: "Resequencer",
     workflowId: "resequencer/workflows/resequencer.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/resequencer",
@@ -1125,8 +1125,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "retry-backoff": {
     title: "Retry-Backoff",
     workflowId: "retry-backoff/workflows/retry-backoff.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/retry-backoff",
@@ -1153,8 +1153,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "retryable-rate-limit": {
     title: "Retryable-Rate-Limit",
     workflowId: "retryable-rate-limit/workflows/retryable-rate-limit.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props","hardcoded_start_route:/api/start->/api/retryable-rate-limit"],
+    uiStatus: "native-ready",
+    uiReasons: ["hardcoded_start_route:/api/start->/api/retryable-rate-limit"],
     routeMap: {
       "start": {
         "original": "/api/start",
@@ -1187,8 +1187,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "routing-slip": {
     title: "Routing-Slip",
     workflowId: "routing-slip/workflows/routing-slip.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/routing-slip",
@@ -1215,8 +1215,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "saga": {
     title: "Saga",
     workflowId: "saga/workflows/subscription-upgrade-saga.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/saga",
@@ -1243,8 +1243,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "scatter-gather": {
     title: "Scatter-Gather",
     workflowId: "scatter-gather/workflows/scatter-gather.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/scatter-gather",
@@ -1271,8 +1271,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "scheduled-digest": {
     title: "Scheduled-Digest",
     workflowId: "scheduled-digest/workflows/scheduled-digest.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props","hardcoded_extra_route:/api/event->/api/scheduled-digest/event"],
+    uiStatus: "native-ready",
+    uiReasons: ["hardcoded_extra_route:/api/event->/api/scheduled-digest/event"],
     routeMap: {
       "start": {
         "original": "/api/scheduled-digest",
@@ -1305,8 +1305,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "scheduler-agent-supervisor": {
     title: "Scheduler-Agent-Supervisor",
     workflowId: "scheduler-agent-supervisor/workflows/scheduler-agent-supervisor.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/scheduler-agent-supervisor",
@@ -1333,8 +1333,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "splitter": {
     title: "Splitter",
     workflowId: "splitter/workflows/order-splitter.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/splitter",
@@ -1361,8 +1361,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "status-poller": {
     title: "Status-Poller",
     workflowId: "status-poller/workflows/status-poller.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/status-poller",
@@ -1389,8 +1389,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "throttle": {
     title: "Throttle",
     workflowId: "throttle/workflows/throttle.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/throttle",
@@ -1417,8 +1417,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "transactional-outbox": {
     title: "Transactional-Outbox",
     workflowId: "transactional-outbox/workflows/transactional-outbox.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/transactional-outbox",
@@ -1451,8 +1451,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "wakeable-reminder": {
     title: "Wakeable-Reminder",
     workflowId: "wakeable-reminder/workflows/wakeable-reminder.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props","hardcoded_extra_route:/api/wake->/api/wakeable-reminder/wake"],
+    uiStatus: "native-ready",
+    uiReasons: ["hardcoded_extra_route:/api/wake->/api/wakeable-reminder/wake"],
     routeMap: {
       "start": {
         "original": "/api/wakeable-reminder",
@@ -1485,8 +1485,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "webhook-basics": {
     title: "Webhook-Basics",
     workflowId: "webhook-basics/workflows/payment-webhook.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/webhook-basics",
@@ -1519,8 +1519,8 @@ export const nativeDemos: Record<string, NativeDemo> = {
   "wire-tap": {
     title: "Wire-Tap",
     workflowId: "wire-tap/workflows/wire-tap.ts",
-    uiStatus: "placeholder",
-    uiReasons: ["component_requires_props"],
+    uiStatus: "native-ready",
+    uiReasons: [],
     routeMap: {
       "start": {
         "original": "/api/wire-tap",

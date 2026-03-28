@@ -17,6 +17,7 @@
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import * as ts from "typescript";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,15 +59,32 @@ type UiAnalysis = {
   fetchPaths: string[];
 };
 
+type DemoPropValueKind = "string" | "array" | "object";
+
+type DemoComponentProp = {
+  name: string;
+  valueKind: DemoPropValueKind;
+};
+
+type DemoComponentMetadata = {
+  exportName: string | null;
+  importPath: string | null;
+  sourcePath: string | null;
+  props: DemoComponentProp[];
+  requiresInlineWrapper: boolean;
+};
+
 type SupportedDemo = {
   slug: string;
   title: string;
   workflows: WorkflowInfo[];
   extraRoutes: string[];
-  /** Whether the client component is self-contained (no code-pane props) */
-  selfContained: boolean;
   /** The exported component name from the demo's app/components/demo.tsx */
   componentExportName: string | null;
+  componentImportPath: string | null;
+  componentSourcePath: string | null;
+  componentProps: DemoComponentProp[];
+  componentRequiresInlineWrapper: boolean;
   ui: UiAnalysis;
   routeMap: RouteMap;
 };
@@ -281,28 +299,325 @@ function readAndRewriteRoute(originalPath: string, slug: string): { contents: st
   return { contents: HEADER + rewritten, rewriteCount };
 }
 
-/**
- * Detects if a demo's client component is self-contained (no props).
- * Looks for `export function XxxDemo()` with empty parens.
- */
-function detectSelfContained(slug: string): boolean {
-  const demoPath = join(ROOT, slug, "app/components/demo.tsx");
-  if (!existsSync(demoPath)) return false;
-  const source = readFileSync(demoPath, "utf8");
-  // Match export function XxxDemo() — no params
-  return /export\s+function\s+\w+Demo\s*\(\s*\)/.test(source);
+function isExportedDemoFunction(node: ts.FunctionDeclaration): boolean {
+  if (!node.name || !node.modifiers) return false;
+  return (
+    (node.name.text.endsWith("Demo") || node.name.text.endsWith("DemoClient")) &&
+    node.modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)
+  );
 }
 
-/**
- * Extracts the primary exported component name from a demo's client component.
- * Returns null if the file doesn't exist or no matching export is found.
- */
-function extractComponentExportName(slug: string): string | null {
-  const demoPath = join(ROOT, slug, "app/components/demo.tsx");
-  if (!existsSync(demoPath)) return null;
+function collectLocalTypeDeclarations(sourceFile: ts.SourceFile): Map<string, ts.TypeNode> {
+  const declarations = new Map<string, ts.TypeNode>();
+
+  for (const statement of sourceFile.statements) {
+    if (ts.isTypeAliasDeclaration(statement)) {
+      declarations.set(statement.name.text, statement.type);
+      continue;
+    }
+
+    if (ts.isInterfaceDeclaration(statement)) {
+      declarations.set(statement.name.text, ts.factory.createTypeLiteralNode([...statement.members]));
+    }
+  }
+
+  return declarations;
+}
+
+function inferValueKindFromName(name: string): DemoPropValueKind | null {
+  if (
+    name.endsWith("Code") ||
+    name.endsWith("Directive")
+  ) {
+    return "string";
+  }
+
+  if (
+    name.endsWith("LinesHtml") ||
+    name.endsWith("HtmlLines") ||
+    name.endsWith("Codes") ||
+    name.endsWith("Names") ||
+    name.endsWith("Content")
+  ) {
+    return "array";
+  }
+
+  if (name === "lineMap" || name.endsWith("LineMap")) {
+    return "object";
+  }
+
+  return null;
+}
+
+function resolveTypeNode(
+  typeNode: ts.TypeNode | undefined,
+  declarations: Map<string, ts.TypeNode>,
+  seen = new Set<string>(),
+): ts.TypeNode | undefined {
+  if (!typeNode) return undefined;
+
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return resolveTypeNode(typeNode.type, declarations, seen);
+  }
+
+  if (!ts.isTypeReferenceNode(typeNode) || !ts.isIdentifier(typeNode.typeName)) {
+    return typeNode;
+  }
+
+  const typeName = typeNode.typeName.text;
+  if (seen.has(typeName)) return typeNode;
+
+  const declaration = declarations.get(typeName);
+  if (!declaration) return typeNode;
+
+  const nextSeen = new Set(seen);
+  nextSeen.add(typeName);
+  return resolveTypeNode(declaration, declarations, nextSeen) ?? declaration;
+}
+
+function inferValueKindFromTypeNode(
+  typeNode: ts.TypeNode | undefined,
+  declarations: Map<string, ts.TypeNode>,
+): DemoPropValueKind {
+  const resolved = resolveTypeNode(typeNode, declarations);
+  if (!resolved) return "object";
+
+  if (resolved.kind === ts.SyntaxKind.StringKeyword) {
+    return "string";
+  }
+
+  if (ts.isArrayTypeNode(resolved) || ts.isTupleTypeNode(resolved)) {
+    return "array";
+  }
+
+  if (ts.isUnionTypeNode(resolved)) {
+    const hasString = resolved.types.some((type) => type.kind === ts.SyntaxKind.StringKeyword);
+    if (hasString) return "string";
+  }
+
+  if (ts.isTypeReferenceNode(resolved) && ts.isIdentifier(resolved.typeName)) {
+    const typeName = resolved.typeName.text;
+    if (typeName === "Array" || typeName === "ReadonlyArray") {
+      return "array";
+    }
+    if (typeName === "Record" || typeName === "Partial") {
+      return "object";
+    }
+  }
+
+  if (
+    ts.isTypeLiteralNode(resolved) ||
+    ts.isIntersectionTypeNode(resolved) ||
+    ts.isMappedTypeNode(resolved) ||
+    ts.isTypeReferenceNode(resolved)
+  ) {
+    return "object";
+  }
+
+  return "object";
+}
+
+function collectTypeMembers(
+  typeNode: ts.TypeNode | undefined,
+  declarations: Map<string, ts.TypeNode>,
+): Map<string, ts.TypeNode | undefined> {
+  const members = new Map<string, ts.TypeNode | undefined>();
+  const resolved = resolveTypeNode(typeNode, declarations);
+  if (!resolved) return members;
+
+  if (ts.isTypeLiteralNode(resolved)) {
+    for (const member of resolved.members) {
+      if (!ts.isPropertySignature(member) || !member.name) continue;
+      if (ts.isIdentifier(member.name) || ts.isStringLiteral(member.name)) {
+        members.set(member.name.text, member.type);
+      }
+    }
+  }
+
+  return members;
+}
+
+function moduleExists(relativePath: string): boolean {
+  const candidates = [
+    relativePath,
+    `${relativePath}.ts`,
+    `${relativePath}.tsx`,
+    join(relativePath, "index.ts"),
+    join(relativePath, "index.tsx"),
+  ];
+
+  return candidates.some((candidate) => existsSync(join(ROOT, candidate)));
+}
+
+function normalizePath(path: string): string {
+  return path
+    .split("/")
+    .reduce((acc: string[], part) => {
+      if (!part || part === ".") return acc;
+      if (part === "..") {
+        acc.pop();
+        return acc;
+      }
+      acc.push(part);
+      return acc;
+    }, [])
+    .join("/");
+}
+
+function rewriteComponentImportSpecifier(
+  specifier: string,
+  importerPath: string,
+  slug: string,
+): string {
+  if (specifier.startsWith("./") || specifier.startsWith("../")) {
+    return `@/${normalizePath(join(dirname(importerPath), specifier))}`;
+  }
+
+  if (specifier.startsWith("@/")) {
+    const aliasedPath = specifier.slice(2);
+
+    if (specifier.startsWith("@/components/")) {
+      const componentPath = specifier.slice("@/components/".length);
+      if (moduleExists(`${slug}/components/${componentPath}`)) {
+        return `@/${slug}/components/${componentPath}`;
+      }
+      if (moduleExists(`${slug}/app/components/${componentPath}`)) {
+        return `@/${slug}/app/components/${componentPath}`;
+      }
+    }
+
+    if (!moduleExists(aliasedPath) && moduleExists(`${slug}/${aliasedPath}`)) {
+      return `@/${slug}/${aliasedPath}`;
+    }
+  }
+
+  return specifier;
+}
+
+function componentNeedsInlineWrapper(
+  sourceFile: ts.SourceFile,
+  importerPath: string,
+  slug: string,
+): boolean {
+  for (const statement of sourceFile.statements) {
+    if (
+      (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) &&
+      statement.moduleSpecifier &&
+      ts.isStringLiteral(statement.moduleSpecifier)
+    ) {
+      const specifier = statement.moduleSpecifier.text;
+      const rewritten = rewriteComponentImportSpecifier(specifier, importerPath, slug);
+      if (rewritten !== specifier) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function rewriteComponentSource(relativePath: string, slug: string): string {
+  const source = readFileSync(join(ROOT, relativePath), "utf8");
+
+  return source.replace(
+    /((?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["'])([^"']+)(["'])/g,
+    (match, prefix, specifier, suffix) => {
+      const rewritten = rewriteComponentImportSpecifier(specifier, relativePath, slug);
+      if (rewritten === specifier) {
+        return match;
+      }
+      return `${prefix}${rewritten}${suffix}`;
+    },
+  );
+}
+
+function resolveComponentSourcePath(slug: string): string | null {
+  const candidates = [
+    `${slug}/app/components/demo.tsx`,
+    `${slug}/app/components/${slug}-demo.tsx`,
+    `${slug}/app/components/${slug}-demo-client.tsx`,
+  ];
+
+  for (const relativePath of candidates) {
+    if (existsSync(join(ROOT, relativePath))) {
+      return relativePath;
+    }
+  }
+
+  return null;
+}
+
+function extractComponentMetadata(slug: string): DemoComponentMetadata {
+  const relativePath = resolveComponentSourcePath(slug);
+  if (!relativePath) {
+    return {
+      exportName: null,
+      importPath: null,
+      sourcePath: null,
+      props: [],
+      requiresInlineWrapper: false,
+    };
+  }
+
+  const demoPath = join(ROOT, relativePath);
   const source = readFileSync(demoPath, "utf8");
-  const match = source.match(/export\s+function\s+(\w+Demo)\s*[({]/);
-  return match ? match[1] : null;
+  const sourceFile = ts.createSourceFile(demoPath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const declarations = collectLocalTypeDeclarations(sourceFile);
+  const requiresInlineWrapper = componentNeedsInlineWrapper(sourceFile, relativePath, slug);
+
+  for (const statement of sourceFile.statements) {
+    if (!ts.isFunctionDeclaration(statement) || !isExportedDemoFunction(statement)) {
+      continue;
+    }
+
+    const exportName = statement.name?.text ?? null;
+    const parameter = statement.parameters[0];
+    if (!parameter || !ts.isObjectBindingPattern(parameter.name)) {
+      return {
+        exportName,
+        importPath: "@/" + relativePath.replace(/\.tsx$/, ""),
+        sourcePath: relativePath,
+        props: [],
+        requiresInlineWrapper,
+      };
+    }
+
+    const typeMembers = collectTypeMembers(parameter.type, declarations);
+    const props: DemoComponentProp[] = [];
+
+    for (const element of parameter.name.elements) {
+      if (!ts.isBindingElement(element) || element.dotDotDotToken) continue;
+      if (!ts.isIdentifier(element.name)) continue;
+
+      const propNameNode = element.propertyName ?? element.name;
+      if (!ts.isIdentifier(propNameNode) && !ts.isStringLiteral(propNameNode)) continue;
+
+      const propName = propNameNode.text;
+      const nameKind = inferValueKindFromName(propName);
+      const typeKind = inferValueKindFromTypeNode(typeMembers.get(propName), declarations);
+
+      props.push({
+        name: propName,
+        valueKind: nameKind ?? typeKind,
+      });
+    }
+
+    return {
+      exportName,
+      importPath: "@/" + relativePath.replace(/\.tsx$/, ""),
+      sourcePath: relativePath,
+      props,
+      requiresInlineWrapper,
+    };
+  }
+
+  return {
+    exportName: null,
+    importPath: null,
+    sourcePath: relativePath,
+    props: [],
+    requiresInlineWrapper,
+  };
 }
 
 /**
@@ -391,14 +706,12 @@ function extractClientApiPaths(slug: string): string[] {
 function analyzeUiCompatibility(
   entry: DemoCatalogEntry,
   componentExportName: string | null,
-  selfContained: boolean,
 ): { ui: UiAnalysis; routeMap: RouteMap } {
   const routeMap = buildRouteMap(entry);
   const fetchPaths = extractClientApiPaths(entry.slug);
   const reasons: string[] = [];
 
   if (!componentExportName) reasons.push("component_export_missing");
-  if (!selfContained) reasons.push("component_requires_props");
 
   for (const path of fetchPaths) {
     if (path.startsWith("/api/readable/")) continue;
@@ -416,12 +729,7 @@ function analyzeUiCompatibility(
     }
   }
 
-  const status: UiStatus =
-    !componentExportName || !selfContained
-      ? "placeholder"
-      : reasons.some((reason) => reason.startsWith("hardcoded_"))
-        ? "adapter-required"
-        : "native-ready";
+  const status: UiStatus = componentExportName ? "native-ready" : "placeholder";
 
   console.log(
     JSON.stringify({
@@ -430,7 +738,6 @@ function analyzeUiCompatibility(
       slug: entry.slug,
       status,
       componentExportName,
-      selfContained,
       fetchPaths,
       reasons,
       routeMap,
@@ -504,13 +811,12 @@ function analyzeCatalog(
       );
     }
 
-    const selfContained = detectSelfContained(entry.slug);
-    const componentExportName = extractComponentExportName(entry.slug);
+    const componentMetadata = extractComponentMetadata(entry.slug);
+    const componentExportName = componentMetadata.exportName;
 
     const { ui, routeMap } = analyzeUiCompatibility(
       entry,
       componentExportName,
-      selfContained,
     );
 
     supported.push({
@@ -518,8 +824,11 @@ function analyzeCatalog(
       title: entry.title,
       workflows,
       extraRoutes: entry.extraRoutes,
-      selfContained,
       componentExportName,
+      componentImportPath: componentMetadata.importPath,
+      componentSourcePath: componentMetadata.sourcePath,
+      componentProps: componentMetadata.props,
+      componentRequiresInlineWrapper: componentMetadata.requiresInlineWrapper,
       ui,
       routeMap,
     });
@@ -531,8 +840,11 @@ function analyzeCatalog(
         slug: entry.slug,
         workflowCount: workflows.length,
         extraRouteCount: entry.extraRoutes.length,
-        selfContained,
         componentExportName,
+        componentImportPath: componentMetadata.importPath,
+        componentSourcePath: componentMetadata.sourcePath,
+        componentProps: componentMetadata.props,
+        componentRequiresInlineWrapper: componentMetadata.requiresInlineWrapper,
         uiStatus: ui.status,
         uiReasons: ui.reasons,
       }),
@@ -759,16 +1071,59 @@ function generateReadableRoute(): string {
 
 /**
  * Generates a wrapper component for a demo.
- * native-ready demos get a direct re-export.
- * Non-ready demos get a metadata placeholder.
+ * Demos with a component export get a thin wrapper that passes empty code-pane props.
+ * Demos without a component export get a metadata placeholder.
  */
 function generateWrapper(demo: SupportedDemo): string {
-  if (demo.ui.status === "native-ready" && demo.componentExportName) {
+  if (demo.componentExportName) {
+    const componentName = `${toPascalCase(demo.slug)}NativeDemo`;
+    const propEntries = demo.componentProps.map((prop) => {
+      const value =
+        prop.valueKind === "string"
+          ? `""`
+          : prop.valueKind === "array"
+            ? `[]`
+            : `{}`;
+      return `  ${prop.name}: ${value},`;
+    });
+
+    if (demo.componentRequiresInlineWrapper && demo.componentSourcePath) {
+      return [
+        HEADER.trimEnd(),
+        rewriteComponentSource(demo.componentSourcePath, demo.slug).trimEnd(),
+        ``,
+        ...(propEntries.length > 0
+          ? [
+              `const demoProps = {`,
+              ...propEntries,
+              `} as unknown as Parameters<typeof ${demo.componentExportName}>[0];`,
+              ``,
+            ]
+          : []),
+        `export default function ${componentName}() {`,
+        `  return <${demo.componentExportName}${propEntries.length > 0 ? " {...demoProps}" : ""} />;`,
+        `}`,
+        ``,
+      ].join("\n");
+    }
+
     return [
       HEADER.trimEnd(),
       `"use client";`,
       ``,
-      `export { ${demo.componentExportName} as default } from "@/${demo.slug}/app/components/demo";`,
+      `import { ${demo.componentExportName} } from ${JSON.stringify(demo.componentImportPath ?? `@/${demo.slug}/app/components/demo`)};`,
+      ``,
+      ...(propEntries.length > 0
+        ? [
+            `const demoProps = {`,
+            ...propEntries,
+            `} as unknown as Parameters<typeof ${demo.componentExportName}>[0];`,
+            ``,
+          ]
+        : []),
+      `export default function ${componentName}() {`,
+      `  return <${demo.componentExportName}${propEntries.length > 0 ? " {...demoProps}" : ""} />;`,
+      `}`,
       ``,
     ].join("\n");
   }

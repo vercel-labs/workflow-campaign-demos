@@ -1,6 +1,444 @@
 {
   "version": "1.0.0",
   "steps": {
+    "approval-gate/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "aggregator/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "aggregator/workflows/aggregator.ts": {
+      "emit": {
+        "stepId": "step//./aggregator/workflows/aggregator//emit"
+      },
+      "processBatch": {
+        "stepId": "step//./aggregator/workflows/aggregator//processBatch"
+      }
+    },
+    "approval-chain/workflows/approval-chain.ts": {
+      "approveExpense": {
+        "stepId": "step//./approval-chain/workflows/approval-chain//approveExpense"
+      },
+      "emitDone": {
+        "stepId": "step//./approval-chain/workflows/approval-chain//emitDone"
+      },
+      "expireExpense": {
+        "stepId": "step//./approval-chain/workflows/approval-chain//expireExpense"
+      },
+      "notifyLevel": {
+        "stepId": "step//./approval-chain/workflows/approval-chain//notifyLevel"
+      },
+      "recordTimeout": {
+        "stepId": "step//./approval-chain/workflows/approval-chain//recordTimeout"
+      },
+      "rejectExpense": {
+        "stepId": "step//./approval-chain/workflows/approval-chain//rejectExpense"
+      },
+      "submitExpense": {
+        "stepId": "step//./approval-chain/workflows/approval-chain//submitExpense"
+      }
+    },
+    "approval-chain/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "batch-processor/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "async-request-reply/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "cancellable-export/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "circuit-breaker/workflows/circuit-breaker.ts": {
+      "callPaymentService": {
+        "stepId": "step//./circuit-breaker/workflows/circuit-breaker//callPaymentService"
+      },
+      "emitEvent": {
+        "stepId": "step//./circuit-breaker/workflows/circuit-breaker//emitEvent"
+      }
+    },
+    "approval-gate/workflows/approval-gate.ts": {
+      "cancelOrder": {
+        "stepId": "step//./approval-gate/workflows/approval-gate//cancelOrder"
+      },
+      "emit": {
+        "stepId": "step//./approval-gate/workflows/approval-gate//emit"
+      },
+      "fulfillOrder": {
+        "stepId": "step//./approval-gate/workflows/approval-gate//fulfillOrder"
+      },
+      "requestApproval": {
+        "stepId": "step//./approval-gate/workflows/approval-gate//requestApproval"
+      }
+    },
+    "claim-check/workflows/claim-check.ts": {
+      "emit": {
+        "stepId": "step//./claim-check/workflows/claim-check//emit"
+      },
+      "processBlob": {
+        "stepId": "step//./claim-check/workflows/claim-check//processBlob"
+      }
+    },
+    "cancellable-export/workflows/report-generator.ts": {
+      "emitDone": {
+        "stepId": "step//./cancellable-export/workflows/report-generator//emitDone"
+      },
+      "generateSection": {
+        "stepId": "step//./cancellable-export/workflows/report-generator//generateSection"
+      }
+    },
+    "async-request-reply/workflows/async-request-reply.ts": {
+      "emit": {
+        "stepId": "step//./async-request-reply/workflows/async-request-reply//emit"
+      },
+      "finalizeResult": {
+        "stepId": "step//./async-request-reply/workflows/async-request-reply//finalizeResult"
+      },
+      "processCallback": {
+        "stepId": "step//./async-request-reply/workflows/async-request-reply//processCallback"
+      },
+      "submitVerification": {
+        "stepId": "step//./async-request-reply/workflows/async-request-reply//submitVerification"
+      }
+    },
+    "circuit-breaker/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "claim-check/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "content-based-router/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "choreography/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "bulkhead/workflows/bulkhead.ts": {
+      "processItem": {
+        "stepId": "step//./bulkhead/workflows/bulkhead//processItem"
+      },
+      "summarizeResults": {
+        "stepId": "step//./bulkhead/workflows/bulkhead//summarizeResults"
+      }
+    },
+    "choreography/workflows/choreography.ts": {
+      "emitSleeping": {
+        "stepId": "step//./choreography/workflows/choreography//emitSleeping"
+      },
+      "finalizeOutcome": {
+        "stepId": "step//./choreography/workflows/choreography//finalizeOutcome"
+      },
+      "inventoryServiceCompensate": {
+        "stepId": "step//./choreography/workflows/choreography//inventoryServiceCompensate"
+      },
+      "inventoryServiceReserve": {
+        "stepId": "step//./choreography/workflows/choreography//inventoryServiceReserve"
+      },
+      "orderServiceCompensate": {
+        "stepId": "step//./choreography/workflows/choreography//orderServiceCompensate"
+      },
+      "orderServicePlaceOrder": {
+        "stepId": "step//./choreography/workflows/choreography//orderServicePlaceOrder"
+      },
+      "paymentServiceCharge": {
+        "stepId": "step//./choreography/workflows/choreography//paymentServiceCharge"
+      },
+      "paymentServiceCompensate": {
+        "stepId": "step//./choreography/workflows/choreography//paymentServiceCompensate"
+      },
+      "shippingServiceShip": {
+        "stepId": "step//./choreography/workflows/choreography//shippingServiceShip"
+      }
+    },
+    "batch-processor/workflows/batch-processor.ts": {
+      "emitComplete": {
+        "stepId": "step//./batch-processor/workflows/batch-processor//emitComplete"
+      },
+      "emitCrashAndResume": {
+        "stepId": "step//./batch-processor/workflows/batch-processor//emitCrashAndResume"
+      },
+      "emitDone": {
+        "stepId": "step//./batch-processor/workflows/batch-processor//emitDone"
+      },
+      "processBatch": {
+        "stepId": "step//./batch-processor/workflows/batch-processor//processBatch"
+      }
+    },
+    "bulkhead/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "competing-consumers/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "content-enricher/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "competing-consumers/workflows/competing-consumers.ts": {
+      "processItem": {
+        "stepId": "step//./competing-consumers/workflows/competing-consumers//processItem"
+      },
+      "recordResults": {
+        "stepId": "step//./competing-consumers/workflows/competing-consumers//recordResults"
+      }
+    },
+    "correlation-identifier/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "content-based-router/workflows/content-based-router.ts": {
+      "classifyTicket": {
+        "stepId": "step//./content-based-router/workflows/content-based-router//classifyTicket"
+      },
+      "emitEvent": {
+        "stepId": "step//./content-based-router/workflows/content-based-router//emitEvent"
+      },
+      "handleAccount": {
+        "stepId": "step//./content-based-router/workflows/content-based-router//handleAccount"
+      },
+      "handleBilling": {
+        "stepId": "step//./content-based-router/workflows/content-based-router//handleBilling"
+      },
+      "handleFeedback": {
+        "stepId": "step//./content-based-router/workflows/content-based-router//handleFeedback"
+      },
+      "handleTechnical": {
+        "stepId": "step//./content-based-router/workflows/content-based-router//handleTechnical"
+      }
+    },
+    "detour/workflows/detour.ts": {
+      "emitEvent": {
+        "stepId": "step//./detour/workflows/detour//emitEvent"
+      },
+      "runBuild": {
+        "stepId": "step//./detour/workflows/detour//runBuild"
+      },
+      "runDeploy": {
+        "stepId": "step//./detour/workflows/detour//runDeploy"
+      },
+      "runLint": {
+        "stepId": "step//./detour/workflows/detour//runLint"
+      },
+      "runQaDetour": {
+        "stepId": "step//./detour/workflows/detour//runQaDetour"
+      }
+    },
+    "correlation-identifier/workflows/correlation-identifier.ts": {
+      "awaitResponse": {
+        "stepId": "step//./correlation-identifier/workflows/correlation-identifier//awaitResponse"
+      },
+      "emitEvent": {
+        "stepId": "step//./correlation-identifier/workflows/correlation-identifier//emitEvent"
+      },
+      "generateCorrelationId": {
+        "stepId": "step//./correlation-identifier/workflows/correlation-identifier//generateCorrelationId"
+      },
+      "matchAndDeliver": {
+        "stepId": "step//./correlation-identifier/workflows/correlation-identifier//matchAndDeliver"
+      },
+      "sendRequest": {
+        "stepId": "step//./correlation-identifier/workflows/correlation-identifier//sendRequest"
+      }
+    },
+    "content-enricher/workflows/content-enricher.ts": {
+      "fetchClearbitEnrichment": {
+        "stepId": "step//./content-enricher/workflows/content-enricher//fetchClearbitEnrichment"
+      },
+      "fetchCrmEnrichment": {
+        "stepId": "step//./content-enricher/workflows/content-enricher//fetchCrmEnrichment"
+      },
+      "fetchGitHubEnrichment": {
+        "stepId": "step//./content-enricher/workflows/content-enricher//fetchGitHubEnrichment"
+      },
+      "fetchSocialEnrichment": {
+        "stepId": "step//./content-enricher/workflows/content-enricher//fetchSocialEnrichment"
+      },
+      "lookupBaseContact": {
+        "stepId": "step//./content-enricher/workflows/content-enricher//lookupBaseContact"
+      },
+      "mergeEnrichmentProfile": {
+        "stepId": "step//./content-enricher/workflows/content-enricher//mergeEnrichmentProfile"
+      }
+    },
+    "dead-letter-queue/workflows/dead-letter-queue.ts": {
+      "processMessage": {
+        "stepId": "step//./dead-letter-queue/workflows/dead-letter-queue//processMessage"
+      },
+      "recordResults": {
+        "stepId": "step//./dead-letter-queue/workflows/dead-letter-queue//recordResults"
+      }
+    },
+    "dead-letter-queue/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "detour/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "event-gateway/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "event-sourcing/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "event-gateway/workflows/event-gateway.ts": {
+      "emit": {
+        "stepId": "step//./event-gateway/workflows/event-gateway//emit"
+      },
+      "shipOrder": {
+        "stepId": "step//./event-gateway/workflows/event-gateway//shipOrder"
+      }
+    },
+    "guaranteed-delivery/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "guaranteed-delivery/workflows/guaranteed-delivery.ts": {
+      "deliverMessage": {
+        "stepId": "step//./guaranteed-delivery/workflows/guaranteed-delivery//deliverMessage"
+      },
+      "finalizeDelivery": {
+        "stepId": "step//./guaranteed-delivery/workflows/guaranteed-delivery//finalizeDelivery"
+      }
+    },
+    "hedge-request/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "fan-out/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "fan-out/workflows/incident-fanout.ts": {
+      "aggregateResults": {
+        "stepId": "step//./fan-out/workflows/incident-fanout//aggregateResults"
+      },
+      "sendEmailAlert": {
+        "stepId": "step//./fan-out/workflows/incident-fanout//sendEmailAlert"
+      },
+      "sendPagerDutyAlert": {
+        "stepId": "step//./fan-out/workflows/incident-fanout//sendPagerDutyAlert"
+      },
+      "sendSlackAlert": {
+        "stepId": "step//./fan-out/workflows/incident-fanout//sendSlackAlert"
+      },
+      "sendSmsAlert": {
+        "stepId": "step//./fan-out/workflows/incident-fanout//sendSmsAlert"
+      }
+    },
+    "event-sourcing/workflows/event-sourcing.ts": {
+      "finalizeAggregate": {
+        "stepId": "step//./event-sourcing/workflows/event-sourcing//finalizeAggregate"
+      },
+      "processCommands": {
+        "stepId": "step//./event-sourcing/workflows/event-sourcing//processCommands"
+      },
+      "replayEventLog": {
+        "stepId": "step//./event-sourcing/workflows/event-sourcing//replayEventLog"
+      }
+    },
+    "idempotent-receiver/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "map-reduce/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "hedge-request/workflows/hedge-request.ts": {
+      "callProvider": {
+        "stepId": "step//./hedge-request/workflows/hedge-request//callProvider"
+      },
+      "emitEvent": {
+        "stepId": "step//./hedge-request/workflows/hedge-request//emitEvent"
+      }
+    },
+    "idempotent-receiver/workflows/idempotent-receiver.ts": {
+      "checkIdempotencyKey": {
+        "stepId": "step//./idempotent-receiver/workflows/idempotent-receiver//checkIdempotencyKey"
+      },
+      "emitCompletion": {
+        "stepId": "step//./idempotent-receiver/workflows/idempotent-receiver//emitCompletion"
+      },
+      "emitDuplicateDetected": {
+        "stepId": "step//./idempotent-receiver/workflows/idempotent-receiver//emitDuplicateDetected"
+      },
+      "processPayment": {
+        "stepId": "step//./idempotent-receiver/workflows/idempotent-receiver//processPayment"
+      }
+    },
+    "message-filter/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "map-reduce/workflows/map-reduce.ts": {
+      "mapPartition": {
+        "stepId": "step//./map-reduce/workflows/map-reduce//mapPartition"
+      },
+      "reduceResults": {
+        "stepId": "step//./map-reduce/workflows/map-reduce//reduceResults"
+      }
+    },
+    "namespaced-streams/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "message-translator/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "message-history/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "onboarding-drip/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
     "node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.17_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_234e2a449b4df728bf72ddf6e97b7cf5/node_modules/workflow/dist/internal/builtins.js": {
       "__builtin_response_array_buffer": {
         "stepId": "__builtin_response_array_buffer"
@@ -11,8 +449,2123 @@
       "__builtin_response_text": {
         "stepId": "__builtin_response_text"
       }
+    },
+    "message-filter/workflows/order-filter.ts": {
+      "applyAmountThreshold": {
+        "stepId": "step//./message-filter/workflows/order-filter//applyAmountThreshold"
+      },
+      "applyFraudCheck": {
+        "stepId": "step//./message-filter/workflows/order-filter//applyFraudCheck"
+      },
+      "applyRegionFilter": {
+        "stepId": "step//./message-filter/workflows/order-filter//applyRegionFilter"
+      },
+      "emitResults": {
+        "stepId": "step//./message-filter/workflows/order-filter//emitResults"
+      }
+    },
+    "normalizer/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "message-history/workflows/support-ticket-routing.ts": {
+      "chooseRoute": {
+        "stepId": "step//./message-history/workflows/support-ticket-routing//chooseRoute"
+      },
+      "classifySeverity": {
+        "stepId": "step//./message-history/workflows/support-ticket-routing//classifySeverity"
+      },
+      "createEnvelope": {
+        "stepId": "step//./message-history/workflows/support-ticket-routing//createEnvelope"
+      },
+      "dispatchTicket": {
+        "stepId": "step//./message-history/workflows/support-ticket-routing//dispatchTicket"
+      },
+      "finalizeFailure": {
+        "stepId": "step//./message-history/workflows/support-ticket-routing//finalizeFailure"
+      },
+      "finalizeSuccess": {
+        "stepId": "step//./message-history/workflows/support-ticket-routing//finalizeSuccess"
+      },
+      "normalizeTicket": {
+        "stepId": "step//./message-history/workflows/support-ticket-routing//normalizeTicket"
+      }
+    },
+    "onboarding-drip/workflows/onboarding-drip.ts": {
+      "sendFeatureHighlightsEmail": {
+        "stepId": "step//./onboarding-drip/workflows/onboarding-drip//sendFeatureHighlightsEmail"
+      },
+      "sendFollowUpEmail": {
+        "stepId": "step//./onboarding-drip/workflows/onboarding-drip//sendFollowUpEmail"
+      },
+      "sendGettingStartedEmail": {
+        "stepId": "step//./onboarding-drip/workflows/onboarding-drip//sendGettingStartedEmail"
+      },
+      "sendWelcomeEmail": {
+        "stepId": "step//./onboarding-drip/workflows/onboarding-drip//sendWelcomeEmail"
+      }
+    },
+    "process-manager/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "message-translator/workflows/message-translator.ts": {
+      "deliverMessage": {
+        "stepId": "step//./message-translator/workflows/message-translator//deliverMessage"
+      },
+      "detectSourceFormat": {
+        "stepId": "step//./message-translator/workflows/message-translator//detectSourceFormat"
+      },
+      "emitEvent": {
+        "stepId": "step//./message-translator/workflows/message-translator//emitEvent"
+      },
+      "translateFields": {
+        "stepId": "step//./message-translator/workflows/message-translator//translateFields"
+      },
+      "validateOutput": {
+        "stepId": "step//./message-translator/workflows/message-translator//validateOutput"
+      }
+    },
+    "namespaced-streams/workflows/namespaced-streams.ts": {
+      "buildOutline": {
+        "stepId": "step//./namespaced-streams/workflows/namespaced-streams//buildOutline"
+      },
+      "writeSections": {
+        "stepId": "step//./namespaced-streams/workflows/namespaced-streams//writeSections"
+      }
+    },
+    "normalizer/workflows/normalizer.ts": {
+      "detectFormats": {
+        "stepId": "step//./normalizer/workflows/normalizer//detectFormats"
+      },
+      "emitNormalized": {
+        "stepId": "step//./normalizer/workflows/normalizer//emitNormalized"
+      },
+      "parseToCanonical": {
+        "stepId": "step//./normalizer/workflows/normalizer//parseToCanonical"
+      }
+    },
+    "pipeline/workflows/pipeline.ts": {
+      "emitPipelineDone": {
+        "stepId": "step//./pipeline/workflows/pipeline//emitPipelineDone"
+      },
+      "runPipelineStep": {
+        "stepId": "step//./pipeline/workflows/pipeline//runPipelineStep"
+      }
+    },
+    "pipeline/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "publish-subscribe/workflows/publish-subscribe.ts": {
+      "deliverToSubscribers": {
+        "stepId": "step//./publish-subscribe/workflows/publish-subscribe//deliverToSubscribers"
+      },
+      "filterSubscribers": {
+        "stepId": "step//./publish-subscribe/workflows/publish-subscribe//filterSubscribers"
+      },
+      "registerSubscribers": {
+        "stepId": "step//./publish-subscribe/workflows/publish-subscribe//registerSubscribers"
+      },
+      "summarizeDelivery": {
+        "stepId": "step//./publish-subscribe/workflows/publish-subscribe//summarizeDelivery"
+      }
+    },
+    "priority-queue/workflows/priority-queue.ts": {
+      "emitEvent": {
+        "stepId": "step//./priority-queue/workflows/priority-queue//emitEvent"
+      },
+      "processTask": {
+        "stepId": "step//./priority-queue/workflows/priority-queue//processTask"
+      },
+      "sortTasks": {
+        "stepId": "step//./priority-queue/workflows/priority-queue//sortTasks"
+      }
+    },
+    "priority-queue/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "publish-subscribe/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "recipient-list/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "recipient-list/workflows/recipient-list.ts": {
+      "aggregateResults": {
+        "stepId": "step//./recipient-list/workflows/recipient-list//aggregateResults"
+      },
+      "deliverToRecipient": {
+        "stepId": "step//./recipient-list/workflows/recipient-list//deliverToRecipient"
+      }
+    },
+    "request-reply/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "retry-backoff/workflows/retry-backoff.ts": {
+      "emitDone": {
+        "stepId": "step//./retry-backoff/workflows/retry-backoff//emitDone"
+      },
+      "syncContactToCrm": {
+        "stepId": "step//./retry-backoff/workflows/retry-backoff//syncContactToCrm"
+      }
+    },
+    "request-reply/workflows/request-reply.ts": {
+      "emitEvent": {
+        "stepId": "step//./request-reply/workflows/request-reply//emitEvent"
+      },
+      "sendRequest": {
+        "stepId": "step//./request-reply/workflows/request-reply//sendRequest"
+      }
+    },
+    "resequencer/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "retryable-rate-limit/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "retry-backoff/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "resequencer/workflows/resequencer.ts": {
+      "emit": {
+        "stepId": "step//./resequencer/workflows/resequencer//emit"
+      }
+    },
+    "retryable-rate-limit/workflows/retryable-rate-limit.ts": {
+      "fetchContactFromCrm": {
+        "stepId": "step//./retryable-rate-limit/workflows/retryable-rate-limit//fetchContactFromCrm"
+      },
+      "upsertIntoWarehouse": {
+        "stepId": "step//./retryable-rate-limit/workflows/retryable-rate-limit//upsertIntoWarehouse"
+      }
+    },
+    "routing-slip/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "process-manager/workflows/process-manager.ts": {
+      "cancelOrder": {
+        "stepId": "step//./process-manager/workflows/process-manager//cancelOrder"
+      },
+      "checkInventory": {
+        "stepId": "step//./process-manager/workflows/process-manager//checkInventory"
+      },
+      "completeOrder": {
+        "stepId": "step//./process-manager/workflows/process-manager//completeOrder"
+      },
+      "confirmDelivery": {
+        "stepId": "step//./process-manager/workflows/process-manager//confirmDelivery"
+      },
+      "emitSleeping": {
+        "stepId": "step//./process-manager/workflows/process-manager//emitSleeping"
+      },
+      "initializeOrder": {
+        "stepId": "step//./process-manager/workflows/process-manager//initializeOrder"
+      },
+      "recheckInventory": {
+        "stepId": "step//./process-manager/workflows/process-manager//recheckInventory"
+      },
+      "reserveInventory": {
+        "stepId": "step//./process-manager/workflows/process-manager//reserveInventory"
+      },
+      "shipOrder": {
+        "stepId": "step//./process-manager/workflows/process-manager//shipOrder"
+      },
+      "validatePayment": {
+        "stepId": "step//./process-manager/workflows/process-manager//validatePayment"
+      }
+    },
+    "routing-slip/workflows/routing-slip.ts": {
+      "emitDone": {
+        "stepId": "step//./routing-slip/workflows/routing-slip//emitDone"
+      },
+      "processStage": {
+        "stepId": "step//./routing-slip/workflows/routing-slip//processStage"
+      }
+    },
+    "saga/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "scheduled-digest/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "scheduled-digest/workflows/scheduled-digest.ts": {
+      "emitDigestEmpty": {
+        "stepId": "step//./scheduled-digest/workflows/scheduled-digest//emitDigestEmpty"
+      },
+      "emitDone": {
+        "stepId": "step//./scheduled-digest/workflows/scheduled-digest//emitDone"
+      },
+      "emitEventReceived": {
+        "stepId": "step//./scheduled-digest/workflows/scheduled-digest//emitEventReceived"
+      },
+      "emitWindowClosed": {
+        "stepId": "step//./scheduled-digest/workflows/scheduled-digest//emitWindowClosed"
+      },
+      "emitWindowOpen": {
+        "stepId": "step//./scheduled-digest/workflows/scheduled-digest//emitWindowOpen"
+      },
+      "sendDigestEmail": {
+        "stepId": "step//./scheduled-digest/workflows/scheduled-digest//sendDigestEmail"
+      }
+    },
+    "scatter-gather/workflows/scatter-gather.ts": {
+      "fetchDhlQuote": {
+        "stepId": "step//./scatter-gather/workflows/scatter-gather//fetchDhlQuote"
+      },
+      "fetchFedExQuote": {
+        "stepId": "step//./scatter-gather/workflows/scatter-gather//fetchFedExQuote"
+      },
+      "fetchUpsQuote": {
+        "stepId": "step//./scatter-gather/workflows/scatter-gather//fetchUpsQuote"
+      },
+      "fetchUspsQuote": {
+        "stepId": "step//./scatter-gather/workflows/scatter-gather//fetchUspsQuote"
+      },
+      "gatherBestQuote": {
+        "stepId": "step//./scatter-gather/workflows/scatter-gather//gatherBestQuote"
+      }
+    },
+    "saga/workflows/subscription-upgrade-saga.ts": {
+      "captureInvoice": {
+        "stepId": "step//./saga/workflows/subscription-upgrade-saga//captureInvoice"
+      },
+      "deprovisionSeats": {
+        "stepId": "step//./saga/workflows/subscription-upgrade-saga//deprovisionSeats"
+      },
+      "emitDone": {
+        "stepId": "step//./saga/workflows/subscription-upgrade-saga//emitDone"
+      },
+      "provisionSeats": {
+        "stepId": "step//./saga/workflows/subscription-upgrade-saga//provisionSeats"
+      },
+      "refundInvoice": {
+        "stepId": "step//./saga/workflows/subscription-upgrade-saga//refundInvoice"
+      },
+      "releaseSeats": {
+        "stepId": "step//./saga/workflows/subscription-upgrade-saga//releaseSeats"
+      },
+      "reserveSeats": {
+        "stepId": "step//./saga/workflows/subscription-upgrade-saga//reserveSeats"
+      },
+      "sendConfirmation": {
+        "stepId": "step//./saga/workflows/subscription-upgrade-saga//sendConfirmation"
+      }
+    },
+    "scatter-gather/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "scheduler-agent-supervisor/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "splitter/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "splitter/workflows/order-splitter.ts": {
+      "processLineItem": {
+        "stepId": "step//./splitter/workflows/order-splitter//processLineItem"
+      }
+    },
+    "throttle/workflows/throttle.ts": {
+      "emitEvent": {
+        "stepId": "step//./throttle/workflows/throttle//emitEvent"
+      },
+      "evaluateRequest": {
+        "stepId": "step//./throttle/workflows/throttle//evaluateRequest"
+      }
+    },
+    "transactional-outbox/workflows/transactional-outbox.ts": {
+      "markSent": {
+        "stepId": "step//./transactional-outbox/workflows/transactional-outbox//markSent"
+      },
+      "persistOrder": {
+        "stepId": "step//./transactional-outbox/workflows/transactional-outbox//persistOrder"
+      },
+      "pollRelay": {
+        "stepId": "step//./transactional-outbox/workflows/transactional-outbox//pollRelay"
+      },
+      "publishEvent": {
+        "stepId": "step//./transactional-outbox/workflows/transactional-outbox//publishEvent"
+      }
+    },
+    "status-poller/workflows/status-poller.ts": {
+      "checkTranscodeJob": {
+        "stepId": "step//./status-poller/workflows/status-poller//checkTranscodeJob"
+      },
+      "emitDone": {
+        "stepId": "step//./status-poller/workflows/status-poller//emitDone"
+      },
+      "emitSleepEnd": {
+        "stepId": "step//./status-poller/workflows/status-poller//emitSleepEnd"
+      },
+      "emitSleepStart": {
+        "stepId": "step//./status-poller/workflows/status-poller//emitSleepStart"
+      },
+      "emitTimeout": {
+        "stepId": "step//./status-poller/workflows/status-poller//emitTimeout"
+      }
+    },
+    "scheduler-agent-supervisor/workflows/scheduler-agent-supervisor.ts": {
+      "checkQuality": {
+        "stepId": "step//./scheduler-agent-supervisor/workflows/scheduler-agent-supervisor//checkQuality"
+      },
+      "dispatchToAgent": {
+        "stepId": "step//./scheduler-agent-supervisor/workflows/scheduler-agent-supervisor//dispatchToAgent"
+      },
+      "emitCooldown": {
+        "stepId": "step//./scheduler-agent-supervisor/workflows/scheduler-agent-supervisor//emitCooldown"
+      },
+      "emitFailed": {
+        "stepId": "step//./scheduler-agent-supervisor/workflows/scheduler-agent-supervisor//emitFailed"
+      },
+      "publishContent": {
+        "stepId": "step//./scheduler-agent-supervisor/workflows/scheduler-agent-supervisor//publishContent"
+      }
+    },
+    "wakeable-reminder/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.14_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_a36f20580a03edb2e50a198f1e3e5ef3/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "throttle/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "transactional-outbox/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "webhook-basics/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "wakeable-reminder/workflows/wakeable-reminder.ts": {
+      "emit": {
+        "stepId": "step//./wakeable-reminder/workflows/wakeable-reminder//emit"
+      },
+      "sendReminderEmail": {
+        "stepId": "step//./wakeable-reminder/workflows/wakeable-reminder//sendReminderEmail"
+      }
+    },
+    "wire-tap/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.16_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_dcdf2a61f493ff4b830eef1d280af203/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "status-poller/node_modules/.pnpm/workflow@4.2.0-beta.72_@nestjs+common@11.1.13_reflect-metadata@0.2.2_rxjs@7.8.2__@nestj_6db63ac0e945bc613dd3c627f527c41b/node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.72//fetch"
+      }
+    },
+    "webhook-basics/workflows/payment-webhook.ts": {
+      "emit": {
+        "stepId": "step//./webhook-basics/workflows/payment-webhook//emit"
+      },
+      "processPaymentEvent": {
+        "stepId": "step//./webhook-basics/workflows/payment-webhook//processPaymentEvent"
+      }
+    },
+    "wire-tap/workflows/wire-tap.ts": {
+      "deliverOrder": {
+        "stepId": "step//./wire-tap/workflows/wire-tap//deliverOrder"
+      },
+      "emitDone": {
+        "stepId": "step//./wire-tap/workflows/wire-tap//emitDone"
+      },
+      "enrichOrder": {
+        "stepId": "step//./wire-tap/workflows/wire-tap//enrichOrder"
+      },
+      "transformOrder": {
+        "stepId": "step//./wire-tap/workflows/wire-tap//transformOrder"
+      },
+      "validateOrder": {
+        "stepId": "step//./wire-tap/workflows/wire-tap//validateOrder"
+      }
     }
   },
-  "workflows": {},
+  "workflows": {
+    "aggregator/workflows/aggregator.ts": {
+      "aggregator": {
+        "workflowId": "workflow//./aggregator/workflows/aggregator//aggregator",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: aggregator",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "approval-chain/workflows/approval-chain.ts": {
+      "approvalChain": {
+        "workflowId": "workflow//./approval-chain/workflows/approval-chain//approvalChain",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: approvalChain",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "circuit-breaker/workflows/circuit-breaker.ts": {
+      "circuitBreakerFlow": {
+        "workflowId": "workflow//./circuit-breaker/workflows/circuit-breaker//circuitBreakerFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: circuitBreakerFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "approval-gate/workflows/approval-gate.ts": {
+      "approvalGate": {
+        "workflowId": "workflow//./approval-gate/workflows/approval-gate//approvalGate",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: approvalGate",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "claim-check/workflows/claim-check.ts": {
+      "claimCheckImport": {
+        "workflowId": "workflow//./claim-check/workflows/claim-check//claimCheckImport",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: claimCheckImport",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "cancellable-export/workflows/report-generator.ts": {
+      "generateReport": {
+        "workflowId": "workflow//./cancellable-export/workflows/report-generator//generateReport",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: generateReport",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "async-request-reply/workflows/async-request-reply.ts": {
+      "asyncRequestReply": {
+        "workflowId": "workflow//./async-request-reply/workflows/async-request-reply//asyncRequestReply",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: asyncRequestReply",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "bulkhead/workflows/bulkhead.ts": {
+      "bulkhead": {
+        "workflowId": "workflow//./bulkhead/workflows/bulkhead//bulkhead",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: bulkhead",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "choreography/workflows/choreography.ts": {
+      "choreography": {
+        "workflowId": "workflow//./choreography/workflows/choreography//choreography",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: choreography",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "batch-processor/workflows/batch-processor.ts": {
+      "batchProcessor": {
+        "workflowId": "workflow//./batch-processor/workflows/batch-processor//batchProcessor",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: batchProcessor",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "competing-consumers/workflows/competing-consumers.ts": {
+      "competingConsumers": {
+        "workflowId": "workflow//./competing-consumers/workflows/competing-consumers//competingConsumers",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: competingConsumers",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "content-based-router/workflows/content-based-router.ts": {
+      "contentBasedRouterFlow": {
+        "workflowId": "workflow//./content-based-router/workflows/content-based-router//contentBasedRouterFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: contentBasedRouterFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "detour/workflows/detour.ts": {
+      "detourFlow": {
+        "workflowId": "workflow//./detour/workflows/detour//detourFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: detourFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "correlation-identifier/workflows/correlation-identifier.ts": {
+      "correlationIdentifierFlow": {
+        "workflowId": "workflow//./correlation-identifier/workflows/correlation-identifier//correlationIdentifierFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: correlationIdentifierFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "content-enricher/workflows/content-enricher.ts": {
+      "enrichLeadProfile": {
+        "workflowId": "workflow//./content-enricher/workflows/content-enricher//enrichLeadProfile",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: enrichLeadProfile",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "dead-letter-queue/workflows/dead-letter-queue.ts": {
+      "deadLetterQueue": {
+        "workflowId": "workflow//./dead-letter-queue/workflows/dead-letter-queue//deadLetterQueue",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: deadLetterQueue",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "event-gateway/workflows/event-gateway.ts": {
+      "eventGateway": {
+        "workflowId": "workflow//./event-gateway/workflows/event-gateway//eventGateway",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: eventGateway",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "guaranteed-delivery/workflows/guaranteed-delivery.ts": {
+      "guaranteedDelivery": {
+        "workflowId": "workflow//./guaranteed-delivery/workflows/guaranteed-delivery//guaranteedDelivery",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: guaranteedDelivery",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "fan-out/workflows/incident-fanout.ts": {
+      "incidentFanOut": {
+        "workflowId": "workflow//./fan-out/workflows/incident-fanout//incidentFanOut",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: incidentFanOut",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "event-sourcing/workflows/event-sourcing.ts": {
+      "eventSourcing": {
+        "workflowId": "workflow//./event-sourcing/workflows/event-sourcing//eventSourcing",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: eventSourcing",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "hedge-request/workflows/hedge-request.ts": {
+      "hedgeRequestFlow": {
+        "workflowId": "workflow//./hedge-request/workflows/hedge-request//hedgeRequestFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: hedgeRequestFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "idempotent-receiver/workflows/idempotent-receiver.ts": {
+      "idempotentReceiver": {
+        "workflowId": "workflow//./idempotent-receiver/workflows/idempotent-receiver//idempotentReceiver",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: idempotentReceiver",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "map-reduce/workflows/map-reduce.ts": {
+      "mapReduce": {
+        "workflowId": "workflow//./map-reduce/workflows/map-reduce//mapReduce",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: mapReduce",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "message-filter/workflows/order-filter.ts": {
+      "orderFilter": {
+        "workflowId": "workflow//./message-filter/workflows/order-filter//orderFilter",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: orderFilter",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "message-history/workflows/support-ticket-routing.ts": {
+      "supportTicketRouting": {
+        "workflowId": "workflow//./message-history/workflows/support-ticket-routing//supportTicketRouting",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: supportTicketRouting",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "onboarding-drip/workflows/onboarding-drip.ts": {
+      "runOnboardingDrip": {
+        "workflowId": "workflow//./onboarding-drip/workflows/onboarding-drip//runOnboardingDrip",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: runOnboardingDrip",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "message-translator/workflows/message-translator.ts": {
+      "messageTranslatorFlow": {
+        "workflowId": "workflow//./message-translator/workflows/message-translator//messageTranslatorFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: messageTranslatorFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "namespaced-streams/workflows/namespaced-streams.ts": {
+      "generatePost": {
+        "workflowId": "workflow//./namespaced-streams/workflows/namespaced-streams//generatePost",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: generatePost",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "normalizer/workflows/normalizer.ts": {
+      "normalizer": {
+        "workflowId": "workflow//./normalizer/workflows/normalizer//normalizer",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: normalizer",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "pipeline/workflows/pipeline.ts": {
+      "pipeline": {
+        "workflowId": "workflow//./pipeline/workflows/pipeline//pipeline",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: pipeline",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "publish-subscribe/workflows/publish-subscribe.ts": {
+      "publishSubscribeFlow": {
+        "workflowId": "workflow//./publish-subscribe/workflows/publish-subscribe//publishSubscribeFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: publishSubscribeFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "priority-queue/workflows/priority-queue.ts": {
+      "priorityQueueFlow": {
+        "workflowId": "workflow//./priority-queue/workflows/priority-queue//priorityQueueFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: priorityQueueFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "recipient-list/workflows/recipient-list.ts": {
+      "recipientList": {
+        "workflowId": "workflow//./recipient-list/workflows/recipient-list//recipientList",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: recipientList",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "retry-backoff/workflows/retry-backoff.ts": {
+      "retryBackoffContactSync": {
+        "workflowId": "workflow//./retry-backoff/workflows/retry-backoff//retryBackoffContactSync",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: retryBackoffContactSync",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "request-reply/workflows/request-reply.ts": {
+      "requestReplyFlow": {
+        "workflowId": "workflow//./request-reply/workflows/request-reply//requestReplyFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: requestReplyFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "resequencer/workflows/resequencer.ts": {
+      "resequencer": {
+        "workflowId": "workflow//./resequencer/workflows/resequencer//resequencer",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: resequencer",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "retryable-rate-limit/workflows/retryable-rate-limit.ts": {
+      "syncCrmContact": {
+        "workflowId": "workflow//./retryable-rate-limit/workflows/retryable-rate-limit//syncCrmContact",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: syncCrmContact",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "process-manager/workflows/process-manager.ts": {
+      "processManager": {
+        "workflowId": "workflow//./process-manager/workflows/process-manager//processManager",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: processManager",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "routing-slip/workflows/routing-slip.ts": {
+      "routingSlip": {
+        "workflowId": "workflow//./routing-slip/workflows/routing-slip//routingSlip",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: routingSlip",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "scheduled-digest/workflows/scheduled-digest.ts": {
+      "collectAndSendDigest": {
+        "workflowId": "workflow//./scheduled-digest/workflows/scheduled-digest//collectAndSendDigest",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: collectAndSendDigest",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "scatter-gather/workflows/scatter-gather.ts": {
+      "scatterGather": {
+        "workflowId": "workflow//./scatter-gather/workflows/scatter-gather//scatterGather",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: scatterGather",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "saga/workflows/subscription-upgrade-saga.ts": {
+      "subscriptionUpgradeSaga": {
+        "workflowId": "workflow//./saga/workflows/subscription-upgrade-saga//subscriptionUpgradeSaga",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: subscriptionUpgradeSaga",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "splitter/workflows/order-splitter.ts": {
+      "orderSplitter": {
+        "workflowId": "workflow//./splitter/workflows/order-splitter//orderSplitter",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: orderSplitter",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "throttle/workflows/throttle.ts": {
+      "throttleFlow": {
+        "workflowId": "workflow//./throttle/workflows/throttle//throttleFlow",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: throttleFlow",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "transactional-outbox/workflows/transactional-outbox.ts": {
+      "transactionalOutbox": {
+        "workflowId": "workflow//./transactional-outbox/workflows/transactional-outbox//transactionalOutbox",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: transactionalOutbox",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "status-poller/workflows/status-poller.ts": {
+      "pollTranscodeStatus": {
+        "workflowId": "workflow//./status-poller/workflows/status-poller//pollTranscodeStatus",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: pollTranscodeStatus",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "scheduler-agent-supervisor/workflows/scheduler-agent-supervisor.ts": {
+      "schedulerAgentSupervisor": {
+        "workflowId": "workflow//./scheduler-agent-supervisor/workflows/scheduler-agent-supervisor//schedulerAgentSupervisor",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: schedulerAgentSupervisor",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "wakeable-reminder/workflows/wakeable-reminder.ts": {
+      "scheduleReminder": {
+        "workflowId": "workflow//./wakeable-reminder/workflows/wakeable-reminder//scheduleReminder",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: scheduleReminder",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "webhook-basics/workflows/payment-webhook.ts": {
+      "paymentWebhook": {
+        "workflowId": "workflow//./webhook-basics/workflows/payment-webhook//paymentWebhook",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: paymentWebhook",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    },
+    "wire-tap/workflows/wire-tap.ts": {
+      "wireTap": {
+        "workflowId": "workflow//./wire-tap/workflows/wire-tap//wireTap",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "workflowStart",
+              "data": {
+                "label": "Start: wireTap",
+                "nodeKind": "workflow_start"
+              }
+            },
+            {
+              "id": "end",
+              "type": "workflowEnd",
+              "data": {
+                "label": "Return",
+                "nodeKind": "workflow_end"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e_start_end",
+              "source": "start",
+              "target": "end",
+              "type": "default"
+            }
+          ]
+        }
+      }
+    }
+  },
   "classes": {}
 }
