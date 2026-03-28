@@ -78,14 +78,16 @@ test("generated routes never contain bare @/ imports pointing to demo internals"
 // Registry tests
 // ---------------------------------------------------------------------------
 
-test("registry has uiReady: true for approval-gate", () => {
+test("registry marks approval-gate as native-ready and no demos use other uiStatus values", () => {
   const source = readFileSync("lib/native-demos.generated.ts", "utf8");
-  // Find the approval-gate entry and check uiReady
+
   const gateSection = source.slice(
     source.indexOf('"approval-gate"'),
     source.indexOf('"approval-gate"') + 300,
   );
-  expect(gateSection).toContain("uiReady: true");
+  expect(gateSection).toContain('uiStatus: "native-ready"');
+  expect(source).not.toContain('uiStatus: "adapter-required"');
+  expect(source).not.toContain('uiStatus: "placeholder"');
 });
 
 test("registry has namespaced extra routes", () => {
@@ -101,24 +103,34 @@ test("registry has namespaced extra routes", () => {
 // Wrapper component tests
 // ---------------------------------------------------------------------------
 
-test("approval-gate native wrapper re-exports the original component", () => {
+test("approval-gate native wrapper renders the real component directly", () => {
   const source = readFileSync("app/components/demos/approval-gate-native.tsx", "utf8");
-  expect(source).toContain("ApprovalDemo as default");
-  expect(source).toContain("@/approval-gate/app/components/demo");
+  expect(source).toContain('import { ApprovalDemo } from "@/approval-gate/app/components/demo"');
+  expect(source).toContain("export default function ApprovalGateNativeDemo()");
+  expect(source).toContain("return <ApprovalDemo />");
+  expect(source).not.toContain("as default");
 });
 
-test("fan-out native wrapper is a placeholder (has code-pane props)", () => {
+test("fan-out native wrapper renders the real component with generated demo props", () => {
   const source = readFileSync("app/components/demos/fan-out-native.tsx", "utf8");
-  expect(source).toContain("native UI adapter pending");
+  expect(source).toContain('import { FanOutCodeWorkbench } from "@/fan-out/app/components/fanout-code-workbench"');
+  expect(source).toContain("const demoProps = {");
+  expect(source).toContain("workflowCode: \"\"");
+  expect(source).toContain("stepCode: \"\"");
+  expect(source).toContain("} as unknown as Parameters<typeof FanOutDemo>[0]");
+  expect(source).toContain("export default function FanOutNativeDemo()");
+  expect(source).toContain("return <FanOutDemo {...demoProps} />");
+  expect(source).not.toContain("native UI adapter pending");
 });
 
 // ---------------------------------------------------------------------------
 // Detail page tests
 // ---------------------------------------------------------------------------
 
-test("detail page does not 404 solely because uiReady is false", () => {
+test("detail page gates fallback rendering on uiStatus instead of uiReady", () => {
   const source = readFileSync("app/demos/[slug]/page.tsx", "utf8");
   expect(source).toContain("DemoDetailShell");
+  expect(source).toContain('if (native.uiStatus !== "native-ready")');
   expect(source).not.toContain("!demo || !native || !native.uiReady");
 });
 
