@@ -3,21 +3,41 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { deadLetterQueue } from "@/dead-letter-queue/workflows/dead-letter-queue";
 
+type DLQRequestBody = {
+  messages?: unknown;
+  poisonMessages?: unknown;
+};
+
+function parseStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let body: DLQRequestBody;
 
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = (await request.json()) as DLQRequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(deadLetterQueue as any, [body] as any);
+  const messages = parseStringArray(body.messages);
+  const poisonMessages = parseStringArray(body.poisonMessages);
+
+  if (messages.length === 0) {
+    return NextResponse.json(
+      { error: "messages array is required and must not be empty" },
+      { status: 400 }
+    );
+  }
+
+  const run = await start(deadLetterQueue, [messages, poisonMessages]);
 
   return NextResponse.json({
     runId: run.runId,
-    slug: "dead-letter-queue",
-    status: "started",
+    messages,
+    poisonMessages,
+    status: "processing",
   });
 }

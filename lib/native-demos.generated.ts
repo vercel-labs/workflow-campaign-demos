@@ -20,7 +20,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/aggregator", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/signal", kind: "extra" as const },
+      { route: "/api/aggregator/signal", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/aggregator-native"),
   },
@@ -31,18 +31,18 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/approval-chain", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/approve", kind: "extra" as const },
+      { route: "/api/approval-chain/approve", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/approval-chain-native"),
   },
   "approval-gate": {
     title: "Approval-Gate",
     workflowId: "approval-gate/workflows/approval-gate.ts",
-    uiReady: false,
+    uiReady: true,
     apiRoutes: [
       { route: "/api/approval-gate", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/approve", kind: "extra" as const },
+      { route: "/api/approval-gate/approve", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/approval-gate-native"),
   },
@@ -53,8 +53,8 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/async-request-reply", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/run/[runId]", kind: "extra" as const },
-      { route: "/api/webhook/[token]", kind: "extra" as const },
+      { route: "/api/async-request-reply/run/[runId]", kind: "extra" as const },
+      { route: "/api/async-request-reply/webhook/[token]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/async-request-reply-native"),
   },
@@ -85,7 +85,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/cancellable-export", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/run/[runId]", kind: "extra" as const },
+      { route: "/api/cancellable-export/run/[runId]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/cancellable-export-native"),
   },
@@ -96,7 +96,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/choreography", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/run/[runId]", kind: "extra" as const },
+      { route: "/api/choreography/run/[runId]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/choreography-native"),
   },
@@ -148,7 +148,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/content-enricher", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/enrich", kind: "extra" as const },
+      { route: "/api/content-enricher/enrich", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/content-enricher-native"),
   },
@@ -189,7 +189,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/event-gateway", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/signal", kind: "extra" as const },
+      { route: "/api/event-gateway/signal", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/event-gateway-native"),
   },
@@ -240,7 +240,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/idempotent-receiver", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/run/[runId]", kind: "extra" as const },
+      { route: "/api/idempotent-receiver/run/[runId]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/idempotent-receiver-native"),
   },
@@ -271,7 +271,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/message-history", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/run/[runId]", kind: "extra" as const },
+      { route: "/api/message-history/run/[runId]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/message-history-native"),
   },
@@ -312,7 +312,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/onboarding-drip", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/onboarding", kind: "extra" as const },
+      { route: "/api/onboarding-drip/onboarding", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/onboarding-drip-native"),
   },
@@ -343,7 +343,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/process-manager", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/run/[runId]", kind: "extra" as const },
+      { route: "/api/process-manager/run/[runId]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/process-manager-native"),
   },
@@ -385,7 +385,7 @@ export const nativeDemos = {
       { route: "/api/resequencer", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
       { route: "/api/resequencer/event", kind: "extra" as const },
-      { route: "/api/run/[runId]", kind: "extra" as const },
+      { route: "/api/resequencer/run/[runId]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/resequencer-native"),
   },
@@ -406,7 +406,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/retryable-rate-limit", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/start", kind: "extra" as const },
+      { route: "/api/retryable-rate-limit/start", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/retryable-rate-limit-native"),
   },
@@ -447,7 +447,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/scheduled-digest", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/event", kind: "extra" as const },
+      { route: "/api/scheduled-digest/event", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/scheduled-digest-native"),
   },
@@ -498,7 +498,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/transactional-outbox", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/run/[runId]", kind: "extra" as const },
+      { route: "/api/transactional-outbox/run/[runId]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/transactional-outbox-native"),
   },
@@ -509,7 +509,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/wakeable-reminder", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/wake", kind: "extra" as const },
+      { route: "/api/wakeable-reminder/wake", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/wakeable-reminder-native"),
   },
@@ -520,7 +520,7 @@ export const nativeDemos = {
     apiRoutes: [
       { route: "/api/webhook-basics", kind: "start" as const },
       { route: "/api/readable/[runId]", kind: "readable" as const },
-      { route: "/api/webhook/[token]", kind: "extra" as const },
+      { route: "/api/webhook-basics/webhook/[token]", kind: "extra" as const },
     ],
     component: () => import("@/app/components/demos/webhook-basics-native"),
   },

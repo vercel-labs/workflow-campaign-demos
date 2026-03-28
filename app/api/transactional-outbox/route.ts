@@ -3,21 +3,38 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { transactionalOutbox } from "@/transactional-outbox/workflows/transactional-outbox";
 
+type OutboxRequestBody = {
+  orderId?: unknown;
+  payload?: unknown;
+};
+
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let body: OutboxRequestBody;
 
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = (await request.json()) as OutboxRequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(transactionalOutbox as any, [body] as any);
+  const orderId =
+    typeof body.orderId === "string" ? body.orderId.trim() : "";
+  const payload =
+    typeof body.payload === "string" ? body.payload.trim() : "";
+
+  if (!orderId) {
+    return NextResponse.json({ error: "orderId is required" }, { status: 400 });
+  }
+
+  if (!payload) {
+    return NextResponse.json({ error: "payload is required" }, { status: 400 });
+  }
+
+  const run = await start(transactionalOutbox, [orderId, payload]);
 
   return NextResponse.json({
     runId: run.runId,
-    slug: "transactional-outbox",
-    status: "started",
+    orderId,
+    status: "persisting",
   });
 }

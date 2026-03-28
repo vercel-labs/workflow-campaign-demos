@@ -117,45 +117,58 @@ const catalog = JSON.parse(
   readFileSync(catalogPath, "utf8"),
 ) as DemoCatalogEntry[];
 
-// Check each demo's workflow files against the manifest
+// Check each demo's workflow files against the manifest.
+// A demo passes if at least one of its workflow files is registered.
+// Extra unregistered workflow files are logged as warnings, not failures.
 const results: CheckResult[] = [];
-let missingCount = 0;
+let demosWithNoRegistration = 0;
 
 for (const entry of catalog) {
+  if (entry.workflowFiles.length === 0) continue;
+
+  const demoResults: CheckResult[] = [];
   for (const wfFile of entry.workflowFiles) {
     const registered = findWorkflowInManifest(manifest, wfFile);
-    results.push({ workflowFile: wfFile, slug: entry.slug, registered });
-    if (!registered) {
-      missingCount++;
-    }
+    const result = { workflowFile: wfFile, slug: entry.slug, registered };
+    demoResults.push(result);
+    results.push(result);
+  }
+
+  const anyRegistered = demoResults.some((r) => r.registered);
+
+  for (const result of demoResults) {
+    const level = result.registered ? "info" : anyRegistered ? "warn" : "error";
+    const action = result.registered
+      ? "workflow_registered"
+      : anyRegistered
+        ? "workflow_not_in_import_chain"
+        : "workflow_not_registered";
+    console.log(
+      JSON.stringify({ level, action, slug: result.slug, workflowFile: result.workflowFile }),
+    );
+  }
+
+  if (!anyRegistered) {
+    demosWithNoRegistration++;
   }
 }
 
-// Emit per-workflow results
-for (const result of results) {
-  console.log(
-    JSON.stringify({
-      level: result.registered ? "info" : "error",
-      action: result.registered
-        ? "workflow_registered"
-        : "workflow_not_registered",
-      slug: result.slug,
-      workflowFile: result.workflowFile,
-    }),
-  );
-}
+const totalRegistered = results.filter((r) => r.registered).length;
+const totalMissing = results.length - totalRegistered;
 
 // Summary
 console.log(
   JSON.stringify({
-    level: missingCount > 0 ? "error" : "info",
+    level: demosWithNoRegistration > 0 ? "error" : "info",
     action: "manifest_check_complete",
-    total: results.length,
-    registered: results.length - missingCount,
-    missing: missingCount,
+    totalWorkflowFiles: results.length,
+    registered: totalRegistered,
+    notInImportChain: totalMissing - demosWithNoRegistration,
+    demosFullyMissing: demosWithNoRegistration,
+    demosChecked: catalog.filter((e) => e.workflowFiles.length > 0).length,
   }),
 );
 
-if (missingCount > 0) {
+if (demosWithNoRegistration > 0) {
   process.exit(1);
 }

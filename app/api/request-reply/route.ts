@@ -3,21 +3,50 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { requestReplyFlow } from "@/request-reply/workflows/request-reply";
 
+type RequestBody = {
+  requestId?: unknown;
+  services?: unknown;
+  timeoutMs?: unknown;
+  maxAttempts?: unknown;
+};
+
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let body: RequestBody;
 
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = (await request.json()) as RequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(requestReplyFlow as any, [body] as any);
+  const requestId =
+    typeof body.requestId === "string" ? body.requestId.trim() : "";
+
+  if (!requestId) {
+    return NextResponse.json({ error: "requestId is required" }, { status: 400 });
+  }
+
+  const services =
+    Array.isArray(body.services) && body.services.every((s: unknown) => typeof s === "string")
+      ? (body.services as string[])
+      : ["user-service", "inventory-service", "payment-service"];
+
+  const timeoutMs =
+    typeof body.timeoutMs === "number" && body.timeoutMs > 0
+      ? body.timeoutMs
+      : 800;
+
+  const maxAttempts =
+    typeof body.maxAttempts === "number" && body.maxAttempts > 0
+      ? body.maxAttempts
+      : 2;
+
+  const run = await start(requestReplyFlow, [requestId, services, timeoutMs, maxAttempts]);
 
   return NextResponse.json({
     runId: run.runId,
-    slug: "request-reply",
+    requestId,
+    services,
     status: "started",
   });
 }

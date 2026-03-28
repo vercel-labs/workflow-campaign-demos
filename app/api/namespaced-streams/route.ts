@@ -5,19 +5,22 @@ import { generatePost } from "@/namespaced-streams/workflows/namespaced-streams"
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
-
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(generatePost as any, [body] as any);
+  const topic = body.topic;
+  if (!topic || typeof topic !== "string") {
+    return NextResponse.json({ error: "topic is required" }, { status: 400 });
+  }
 
-  return NextResponse.json({
-    runId: run.runId,
-    slug: "namespaced-streams",
-    status: "started",
-  });
+  try {
+    const run = await start(generatePost, [topic]);
+    return NextResponse.json({ runId: run.runId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

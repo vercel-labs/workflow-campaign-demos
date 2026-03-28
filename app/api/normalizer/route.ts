@@ -1,23 +1,15 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
-import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { normalizer } from "@/normalizer/workflows/normalizer";
+import type { DemoConfig } from "@/normalizer/workflows/normalizer";
 
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  const body = (await request.json()) as { config?: Partial<DemoConfig> };
+  const { runId } = await start(normalizer, [body.config]);
 
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(normalizer as any, [body] as any);
-
-  return NextResponse.json({
-    runId: run.runId,
-    slug: "normalizer",
-    status: "started",
+  return Response.json({
+    runId,
+    config: body.config,
+    status: "normalizing",
   });
 }

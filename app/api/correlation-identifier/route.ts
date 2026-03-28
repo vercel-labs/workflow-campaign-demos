@@ -1,23 +1,56 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
-import { correlationIdentifierFlow } from "@/correlation-identifier/workflows/correlation-identifier";
+import {
+  correlationIdentifierFlow,
+  type ServiceName,
+} from "@/correlation-identifier/workflows/correlation-identifier";
+
+type RequestBody = {
+  requestId?: unknown;
+  service?: unknown;
+  payload?: unknown;
+};
+
+const VALID_SERVICES = new Set<ServiceName>([
+  "payment-api",
+  "inventory-api",
+  "shipping-api",
+  "notification-api",
+]);
 
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let body: RequestBody;
 
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = (await request.json()) as RequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(correlationIdentifierFlow as any, [body] as any);
+  const requestId =
+    typeof body.requestId === "string" ? body.requestId.trim() : "";
+  const service =
+    typeof body.service === "string" && VALID_SERVICES.has(body.service as ServiceName)
+      ? (body.service as ServiceName)
+      : "payment-api";
+  const payload =
+    typeof body.payload === "string" ? body.payload.trim() : "";
+
+  if (!requestId) {
+    return NextResponse.json({ error: "requestId is required" }, { status: 400 });
+  }
+
+  if (!payload) {
+    return NextResponse.json({ error: "payload is required" }, { status: 400 });
+  }
+
+  const run = await start(correlationIdentifierFlow, [requestId, service, payload]);
 
   return NextResponse.json({
     runId: run.runId,
-    slug: "correlation-identifier",
-    status: "started",
+    requestId,
+    service,
+    status: "correlating",
   });
 }

@@ -1,23 +1,39 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
-import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { paymentWebhook } from "@/webhook-basics/workflows/payment-webhook";
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
-
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return Response.json(
+      { ok: false, error: { code: "INVALID_JSON", message: "Invalid JSON body" } },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
+    );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(paymentWebhook as any, [body] as any);
+  const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
+  if (!orderId) {
+    return Response.json(
+      { ok: false, error: { code: "MISSING_ORDER_ID", message: "orderId is required" } },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
+    );
+  }
 
-  return NextResponse.json({
-    runId: run.runId,
-    slug: "webhook-basics",
-    status: "started",
-  });
+  try {
+    const run = await start(paymentWebhook, [orderId]);
+    return Response.json({
+      ok: true,
+      message: "Payment webhook workflow started",
+      runId: run.runId,
+      orderId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return Response.json(
+      { ok: false, error: { code: "WORKFLOW_START_FAILED", message } },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
+  }
 }

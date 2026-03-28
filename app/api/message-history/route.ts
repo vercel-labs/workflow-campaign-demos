@@ -1,27 +1,69 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
-import { messageHistory } from "@/message-history/workflows/message-history";
 import { supportTicketRouting } from "@/message-history/workflows/support-ticket-routing";
 
-// Preserve secondary workflow imports for manifest registration
-void supportTicketRouting;
+type RequestBody = {
+  subject?: unknown;
+  body?: unknown;
+  failAtStep?: unknown;
+};
+
+const VALID_FAIL_STEPS = new Set([
+  "normalizeTicket",
+  "classifySeverity",
+  "chooseRoute",
+  "dispatchTicket",
+]);
 
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let payload: RequestBody;
 
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    payload = (await request.json()) as RequestBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: { code: "INVALID_JSON", message: "Invalid JSON body" } },
+      { status: 400 }
+    );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(messageHistory as any, [body] as any);
+  const subject =
+    typeof payload.subject === "string" ? payload.subject.trim() : "";
+  const body =
+    typeof payload.body === "string" ? payload.body.trim() : "";
+  const failAtStep =
+    typeof payload.failAtStep === "string" && VALID_FAIL_STEPS.has(payload.failAtStep)
+      ? payload.failAtStep
+      : null;
+
+  if (!subject) {
+    return NextResponse.json(
+      { ok: false, error: { code: "MISSING_SUBJECT", message: "subject is required" } },
+      { status: 400 }
+    );
+  }
+
+  if (!body) {
+    return NextResponse.json(
+      { ok: false, error: { code: "MISSING_BODY", message: "body is required" } },
+      { status: 400 }
+    );
+  }
+
+  const correlationId = `ticket_${Date.now()}`;
+
+  const run = await start(supportTicketRouting, [
+    correlationId,
+    subject,
+    body,
+    failAtStep,
+  ]);
 
   return NextResponse.json({
     runId: run.runId,
-    slug: "message-history",
-    status: "started",
+    correlationId,
+    subject,
+    status: "processing",
   });
 }

@@ -3,21 +3,33 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { aggregator } from "@/aggregator/workflows/aggregator";
 
+type StartRequestBody = {
+  batchId?: unknown;
+  timeoutMs?: unknown;
+};
+
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let body: StartRequestBody;
 
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = (await request.json()) as StartRequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(aggregator as any, [body] as any);
+  const batchId =
+    typeof body.batchId === "string"
+      ? body.batchId.trim()
+      : `batch-${Date.now()}`;
+  const timeoutMs =
+    typeof body.timeoutMs === "number" ? body.timeoutMs : 8000;
+
+  const run = await start(aggregator, [batchId, timeoutMs]);
 
   return NextResponse.json({
     runId: run.runId,
-    slug: "aggregator",
-    status: "started",
+    batchId,
+    timeoutMs,
+    status: "collecting",
   });
 }

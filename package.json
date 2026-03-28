@@ -7,14 +7,20 @@
     "demo": "bun scripts/run-demo.ts",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate:native-gallery": "bun .scripts/generate-native-gallery.ts",
+    "check:native-manifest": "bun .scripts/check-native-manifest.ts",
+    "test:native-gallery": "bun test tests/native-gallery.codegen.test.ts",
+    "verify:native-gallery": "bun run generate:native-gallery && npx next build && bun run check:native-manifest && bun run test:native-gallery"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",
+    "@types/ms": "^2.1.0",
+    "ms": "^2.1.3",
     "next": "16.0.10",
+    "prism-react-renderer": "^2.4.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "prism-react-renderer": "^2.4.1",
     "workflow": "4.2.0-beta.72"
   },
   "devDependencies": {

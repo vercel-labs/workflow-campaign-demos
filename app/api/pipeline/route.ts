@@ -7,17 +7,23 @@ export async function POST(request: Request) {
   let body: Record<string, unknown>;
 
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const run = await start(pipeline as any, [body] as any);
+  const documentId = typeof body.documentId === "string" ? body.documentId.trim() : "";
+  if (!documentId) {
+    return NextResponse.json({ error: "documentId required" }, { status: 400 });
+  }
 
-  return NextResponse.json({
-    runId: run.runId,
-    slug: "pipeline",
-    status: "started",
-  });
+  try {
+    const run = await start(pipeline, [documentId]);
+    return NextResponse.json({ runId: run.runId });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown" },
+      { status: 500 }
+    );
+  }
 }
