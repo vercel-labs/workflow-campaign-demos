@@ -717,15 +717,8 @@ export function SchedulerAgentSupervisorDemo({
   );
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowHtmlLines: [],
-  workflowLineMap: {},
-  stepCode: "",
-  stepHtmlLines: [],
-  stepLineMap: {},
-} as unknown as Parameters<typeof SchedulerAgentSupervisorDemo>[0];
+export type SchedulerAgentSupervisorNativeDemoProps = Parameters<typeof SchedulerAgentSupervisorDemo>[0];
 
-export default function SchedulerAgentSupervisorNativeDemo() {
-  return <SchedulerAgentSupervisorDemo {...demoProps} />;
+export default function SchedulerAgentSupervisorNativeDemo(props: SchedulerAgentSupervisorNativeDemoProps) {
+  return <SchedulerAgentSupervisorDemo {...props} />;
 }

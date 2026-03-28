@@ -510,16 +510,8 @@ export function ContentPipelineDemo({
   );
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowLinesHtml: [],
-  stepCodes: [],
-  stepLinesHtml: [],
-  highlightLineMap: {},
-  sectionNames: [],
-  sectionContent: [],
-} as unknown as Parameters<typeof ContentPipelineDemo>[0];
+export type CancellableExportNativeDemoProps = Parameters<typeof ContentPipelineDemo>[0];
 
-export default function CancellableExportNativeDemo() {
-  return <ContentPipelineDemo {...demoProps} />;
+export default function CancellableExportNativeDemo(props: CancellableExportNativeDemoProps) {
+  return <ContentPipelineDemo {...props} />;
 }

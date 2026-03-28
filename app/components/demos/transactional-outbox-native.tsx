@@ -958,15 +958,8 @@ export function OutboxDemo({
   );
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowLinesHtml: [],
-  stepCode: "",
-  stepLinesHtml: [],
-  workflowLineMap: {},
-  stepLineMap: {},
-} as unknown as Parameters<typeof OutboxDemo>[0];
+export type TransactionalOutboxNativeDemoProps = Parameters<typeof OutboxDemo>[0];
 
-export default function TransactionalOutboxNativeDemo() {
-  return <OutboxDemo {...demoProps} />;
+export default function TransactionalOutboxNativeDemo(props: TransactionalOutboxNativeDemoProps) {
+  return <OutboxDemo {...props} />;
 }

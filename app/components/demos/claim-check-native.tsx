@@ -432,15 +432,8 @@ function ExecutionLog({ events }: { events: LogEntry[] }) {
   );
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowHtmlLines: [],
-  workflowLineMap: {},
-  stepCode: "",
-  stepHtmlLines: [],
-  stepLineMap: {},
-} as unknown as Parameters<typeof ClaimCheckDemo>[0];
+export type ClaimCheckNativeDemoProps = Parameters<typeof ClaimCheckDemo>[0];
 
-export default function ClaimCheckNativeDemo() {
-  return <ClaimCheckDemo {...demoProps} />;
+export default function ClaimCheckNativeDemo(props: ClaimCheckNativeDemoProps) {
+  return <ClaimCheckDemo {...props} />;
 }

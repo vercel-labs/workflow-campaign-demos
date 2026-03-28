@@ -3,13 +3,8 @@
 
 import { PaymentWebhookDemo } from "@/webhook-basics/app/components/demo";
 
-const demoProps = {
-  orchestratorHtmlLines: [],
-  orchestratorLineMap: {},
-  stepHtmlLines: [],
-  stepLineMap: {},
-} as unknown as Parameters<typeof PaymentWebhookDemo>[0];
+export type WebhookBasicsNativeDemoProps = Parameters<typeof PaymentWebhookDemo>[0];
 
-export default function WebhookBasicsNativeDemo() {
-  return <PaymentWebhookDemo {...demoProps} />;
+export default function WebhookBasicsNativeDemo(props: WebhookBasicsNativeDemoProps) {
+  return <PaymentWebhookDemo {...props} />;
 }

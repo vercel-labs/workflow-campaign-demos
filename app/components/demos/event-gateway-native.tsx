@@ -522,15 +522,8 @@ function logTone(kind: LogEvent["kind"]) {
   }
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowHtmlLines: [],
-  workflowLineMap: {},
-  stepCode: "",
-  stepHtmlLines: [],
-  stepLineMap: {},
-} as unknown as Parameters<typeof EventGatewayDemo>[0];
+export type EventGatewayNativeDemoProps = Parameters<typeof EventGatewayDemo>[0];
 
-export default function EventGatewayNativeDemo() {
-  return <EventGatewayDemo {...demoProps} />;
+export default function EventGatewayNativeDemo(props: EventGatewayNativeDemoProps) {
+  return <EventGatewayDemo {...props} />;
 }

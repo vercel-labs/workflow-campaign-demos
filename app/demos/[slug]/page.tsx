@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getDemo } from "@/lib/demos";
 import { nativeDemos } from "@/lib/native-demos.generated";
+import { getNativeDemoCodeProps } from "@/lib/native-demo-code.generated";
 import { DemoDetailShell } from "@/app/components/demos/demo-detail-shell";
 
 type Props = {
@@ -16,19 +17,18 @@ export default async function DemoDetailPage({ params }: Props) {
     notFound();
   }
 
-  console.log(
-    JSON.stringify({
-      level: "info",
-      page: "demo-detail",
-      action: "render",
-      slug,
-      uiStatus: native.uiStatus,
-      uiReasons: native.uiReasons,
-      workflowId: native.workflowId,
-    }),
-  );
-
   if (native.uiStatus !== "native-ready") {
+    console.log(
+      JSON.stringify({
+        level: "info",
+        page: "demo-detail",
+        action: "render",
+        slug,
+        uiStatus: native.uiStatus,
+        uiReasons: native.uiReasons,
+      }),
+    );
+
     return (
       <DemoDetailShell
         slug={slug}
@@ -52,7 +52,23 @@ export default async function DemoDetailPage({ params }: Props) {
     );
   }
 
-  const { default: DemoComponent } = await native.component();
+  const [{ default: DemoComponent }, codeProps] = await Promise.all([
+    native.component(),
+    getNativeDemoCodeProps(slug),
+  ]);
+
+  console.log(
+    JSON.stringify({
+      level: "info",
+      page: "demo-detail",
+      action: "render",
+      slug,
+      uiStatus: native.uiStatus,
+      uiReasons: native.uiReasons,
+      workflowId: native.workflowId,
+      codePropKeys: Object.keys(codeProps),
+    }),
+  );
 
   return (
     <DemoDetailShell
@@ -61,7 +77,7 @@ export default async function DemoDetailPage({ params }: Props) {
       catalogEntry={demo}
       apiRoutes={native.apiRoutes}
     >
-      <DemoComponent />
+      <DemoComponent {...codeProps} />
     </DemoDetailShell>
   );
 }

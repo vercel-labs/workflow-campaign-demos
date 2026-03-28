@@ -740,15 +740,8 @@ function SourceDataRows({
   );
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowHtmlLines: [],
-  workflowLineMap: {},
-  stepCode: "",
-  stepHtmlLines: [],
-  stepLineMap: {},
-} as unknown as Parameters<typeof ContentEnricherDemo>[0];
+export type ContentEnricherNativeDemoProps = Parameters<typeof ContentEnricherDemo>[0];
 
-export default function ContentEnricherNativeDemo() {
-  return <ContentEnricherDemo {...demoProps} />;
+export default function ContentEnricherNativeDemo(props: ContentEnricherNativeDemoProps) {
+  return <ContentEnricherDemo {...props} />;
 }

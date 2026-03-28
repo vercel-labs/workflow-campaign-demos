@@ -166,6 +166,18 @@ function cleanGeneratedFiles(): void {
     rmSync(registryPath, { force: true });
   }
 
+  // Clean generated code-props modules
+  const codePropsDir = join(ROOT, "lib/generated/demo-code-props");
+  if (existsSync(codePropsDir)) {
+    rmSync(codePropsDir, { recursive: true, force: true });
+  }
+
+  // Clean generated code-props dispatcher
+  const codeDispatcherPath = join(ROOT, "lib/native-demo-code.generated.ts");
+  if (existsSync(codeDispatcherPath)) {
+    rmSync(codeDispatcherPath, { force: true });
+  }
+
   console.log(
     JSON.stringify({ level: "info", action: "clean_generated_files" }),
   );
@@ -506,6 +518,11 @@ function componentNeedsInlineWrapper(
       ts.isStringLiteral(statement.moduleSpecifier)
     ) {
       const specifier = statement.moduleSpecifier.text;
+      // Relative imports resolve correctly based on the file's physical
+      // location, so they never require inlining the component source.
+      if (specifier.startsWith("./") || specifier.startsWith("../")) {
+        continue;
+      }
       const rewritten = rewriteComponentImportSpecifier(specifier, importerPath, slug);
       if (rewritten !== specifier) {
         return true;
@@ -1071,37 +1088,48 @@ function generateReadableRoute(): string {
 
 /**
  * Generates a wrapper component for a demo.
- * Demos with a component export get a thin wrapper that passes empty code-pane props.
+ * Demos with a component export get a thin prop pass-through wrapper.
+ * Code-pane props are injected by the server-side detail page, not embedded here.
  * Demos without a component export get a metadata placeholder.
  */
 function generateWrapper(demo: SupportedDemo): string {
   if (demo.componentExportName) {
     const componentName = `${toPascalCase(demo.slug)}NativeDemo`;
-    const propEntries = demo.componentProps.map((prop) => {
-      const value =
-        prop.valueKind === "string"
-          ? `""`
-          : prop.valueKind === "array"
-            ? `[]`
-            : `{}`;
-      return `  ${prop.name}: ${value},`;
-    });
 
     if (demo.componentRequiresInlineWrapper && demo.componentSourcePath) {
+      if (demo.componentProps.length === 0) {
+        return [
+          HEADER.trimEnd(),
+          rewriteComponentSource(demo.componentSourcePath, demo.slug).trimEnd(),
+          ``,
+          `export default function ${componentName}() {`,
+          `  return <${demo.componentExportName} />;`,
+          `}`,
+          ``,
+        ].join("\n");
+      }
       return [
         HEADER.trimEnd(),
         rewriteComponentSource(demo.componentSourcePath, demo.slug).trimEnd(),
         ``,
-        ...(propEntries.length > 0
-          ? [
-              `const demoProps = {`,
-              ...propEntries,
-              `} as unknown as Parameters<typeof ${demo.componentExportName}>[0];`,
-              ``,
-            ]
-          : []),
+        `export type ${componentName}Props = Parameters<typeof ${demo.componentExportName}>[0];`,
+        ``,
+        `export default function ${componentName}(props: ${componentName}Props) {`,
+        `  return <${demo.componentExportName} {...props} />;`,
+        `}`,
+        ``,
+      ].join("\n");
+    }
+
+    if (demo.componentProps.length === 0) {
+      return [
+        HEADER.trimEnd(),
+        `"use client";`,
+        ``,
+        `import { ${demo.componentExportName} } from ${JSON.stringify(demo.componentImportPath ?? `@/${demo.slug}/app/components/demo`)};`,
+        ``,
         `export default function ${componentName}() {`,
-        `  return <${demo.componentExportName}${propEntries.length > 0 ? " {...demoProps}" : ""} />;`,
+        `  return <${demo.componentExportName} />;`,
         `}`,
         ``,
       ].join("\n");
@@ -1113,16 +1141,10 @@ function generateWrapper(demo: SupportedDemo): string {
       ``,
       `import { ${demo.componentExportName} } from ${JSON.stringify(demo.componentImportPath ?? `@/${demo.slug}/app/components/demo`)};`,
       ``,
-      ...(propEntries.length > 0
-        ? [
-            `const demoProps = {`,
-            ...propEntries,
-            `} as unknown as Parameters<typeof ${demo.componentExportName}>[0];`,
-            ``,
-          ]
-        : []),
-      `export default function ${componentName}() {`,
-      `  return <${demo.componentExportName}${propEntries.length > 0 ? " {...demoProps}" : ""} />;`,
+      `export type ${componentName}Props = Parameters<typeof ${demo.componentExportName}>[0];`,
+      ``,
+      `export default function ${componentName}(props: ${componentName}Props) {`,
+      `  return <${demo.componentExportName} {...props} />;`,
       `}`,
       ``,
     ].join("\n");
@@ -1219,6 +1241,241 @@ function generateRegistry(
     `export const nativeDemos: Record<string, NativeDemo> = {`,
     entries,
     `};`,
+    ``,
+  ].join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Code-props generation (server-side code workbench pipeline)
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates the fan-out code-props module that reads the workflow source
+ * from the monorepo root and produces real highlighted code + line maps.
+ */
+function generateFanOutCodePropsModule(): string {
+  return [
+    HEADER.trimEnd(),
+    `import { readFileSync } from "node:fs";`,
+    `import { join } from "node:path";`,
+    `import {`,
+    `  collectFunctionBlock,`,
+    `  collectUntil,`,
+    `  extractFunctionBlock,`,
+    `  highlightCodeToHtmlLines,`,
+    `} from "@/lib/code-workbench.server";`,
+    ``,
+    `type ChannelId = "slack" | "email" | "sms" | "pagerduty";`,
+    ``,
+    `type WorkflowLineMap = {`,
+    `  allSettled: number[];`,
+    `  deliveries: number[];`,
+    `  summary: number[];`,
+    `  returnResult: number[];`,
+    `};`,
+    ``,
+    `type StepLineMap = Record<ChannelId, number[]>;`,
+    `type StepErrorLineMap = Record<ChannelId, number[]>;`,
+    `type StepRetryLineMap = Record<ChannelId, number[]>;`,
+    `type StepSuccessLineMap = Record<ChannelId, number[]>;`,
+    ``,
+    `export type FanOutCodeProps = {`,
+    `  workflowCode: string;`,
+    `  workflowLinesHtml: string[];`,
+    `  stepCode: string;`,
+    `  stepLinesHtml: string[];`,
+    `  workflowLineMap: WorkflowLineMap;`,
+    `  stepLineMap: StepLineMap;`,
+    `  stepErrorLineMap: StepErrorLineMap;`,
+    `  stepRetryLineMap: StepRetryLineMap;`,
+    `  stepSuccessLineMap: StepSuccessLineMap;`,
+    `};`,
+    ``,
+    `function buildWorkflowLineMap(code: string): WorkflowLineMap {`,
+    `  const lines = code.split("\\n");`,
+    `  return {`,
+    `    allSettled: collectUntil(`,
+    `      lines,`,
+    `      "const settled = await Promise.allSettled(",`,
+    `      (line) => line.trim() === ");"`,
+    `    ),`,
+    `    deliveries: collectUntil(`,
+    `      lines,`,
+    `      "const deliveries: ChannelResult[]",`,
+    `      (line) => line.trim() === "});"`,
+    `    ),`,
+    `    summary: collectUntil(`,
+    `      lines,`,
+    `      "return aggregateResults(",`,
+    `      (line) => line.includes("return aggregateResults(")`,
+    `    ),`,
+    `    returnResult: collectUntil(`,
+    `      lines,`,
+    `      "return aggregateResults(",`,
+    `      (line) => line.includes("return aggregateResults(")`,
+    `    ),`,
+    `  };`,
+    `}`,
+    ``,
+    `function buildStepLineMap(code: string): StepLineMap {`,
+    `  const lines = code.split("\\n");`,
+    `  return {`,
+    `    slack: collectFunctionBlock(lines, "async function sendSlackAlert("),`,
+    `    email: collectFunctionBlock(lines, "async function sendEmailAlert("),`,
+    `    sms: collectFunctionBlock(lines, "async function sendSmsAlert("),`,
+    `    pagerduty: collectFunctionBlock(lines, "async function sendPagerDutyAlert("),`,
+    `  };`,
+    `}`,
+    ``,
+    `function findErrorLine(lines: string[], marker: string): number[] {`,
+    `  const index = lines.findIndex((line) => line.includes(marker));`,
+    `  return index === -1 ? [] : [index + 1];`,
+    `}`,
+    ``,
+    `function buildStepErrorLineMap(code: string): StepErrorLineMap {`,
+    `  const lines = code.split("\\n");`,
+    `  const errorLine = findErrorLine(lines, "throw new FatalError(");`,
+    `  return {`,
+    `    slack: errorLine,`,
+    `    email: errorLine,`,
+    `    sms: errorLine,`,
+    `    pagerduty: errorLine,`,
+    `  };`,
+    `}`,
+    ``,
+    `function buildStepRetryLineMap(code: string): StepRetryLineMap {`,
+    `  const lines = code.split("\\n");`,
+    `  const retryLine = findErrorLine(`,
+    `    lines,`,
+    `    "throw new Error(CHANNEL_ERROR_MESSAGES[channel])"`,
+    `  );`,
+    `  return {`,
+    `    slack: retryLine,`,
+    `    email: retryLine,`,
+    `    sms: retryLine,`,
+    `    pagerduty: retryLine,`,
+    `  };`,
+    `}`,
+    ``,
+    `function findReturnLineInBlock(lines: string[], fnMarker: string): number[] {`,
+    `  const start = lines.findIndex((line) => line.includes(fnMarker));`,
+    `  if (start === -1) return [];`,
+    `  for (let i = start + 1; i < lines.length; i++) {`,
+    `    if (lines[i].trimStart().startsWith("return ")) return [i + 1];`,
+    `    if (lines[i].trimStart().startsWith("async function ") || lines[i].trim() === "}") {`,
+    `      if (lines[i].trim() === "}") continue;`,
+    `      break;`,
+    `    }`,
+    `  }`,
+    `  return [];`,
+    `}`,
+    ``,
+    `function buildStepSuccessLineMap(code: string): StepSuccessLineMap {`,
+    `  const lines = code.split("\\n");`,
+    `  const successLine = findReturnLineInBlock(`,
+    `    lines,`,
+    `    "async function sendChannelAlert("`,
+    `  );`,
+    `  return {`,
+    `    slack: successLine,`,
+    `    email: successLine,`,
+    `    sms: successLine,`,
+    `    pagerduty: successLine,`,
+    `  };`,
+    `}`,
+    ``,
+    `export function getFanOutCodeProps(): FanOutCodeProps {`,
+    `  const workflowSource = readFileSync(`,
+    `    join(process.cwd(), "fan-out/workflows/incident-fanout.ts"),`,
+    `    "utf-8",`,
+    `  );`,
+    ``,
+    `  const workflowCode = extractFunctionBlock(`,
+    `    workflowSource,`,
+    `    "export async function incidentFanOut(",`,
+    `  );`,
+    ``,
+    `  const stepCode = [`,
+    `    extractFunctionBlock(workflowSource, "async function sendChannelAlert("),`,
+    `    "",`,
+    `    extractFunctionBlock(workflowSource, "async function sendSlackAlert("),`,
+    `    "",`,
+    `    extractFunctionBlock(workflowSource, "async function sendEmailAlert("),`,
+    `    "",`,
+    `    extractFunctionBlock(workflowSource, "async function sendSmsAlert("),`,
+    `    "",`,
+    `    extractFunctionBlock(workflowSource, "async function sendPagerDutyAlert("),`,
+    `    "",`,
+    `    extractFunctionBlock(workflowSource, "async function aggregateResults("),`,
+    `  ].join("\\n");`,
+    ``,
+    `  return {`,
+    `    workflowCode,`,
+    `    workflowLinesHtml: highlightCodeToHtmlLines(workflowCode),`,
+    `    stepCode,`,
+    `    stepLinesHtml: highlightCodeToHtmlLines(stepCode),`,
+    `    workflowLineMap: buildWorkflowLineMap(workflowCode),`,
+    `    stepLineMap: buildStepLineMap(stepCode),`,
+    `    stepErrorLineMap: buildStepErrorLineMap(stepCode),`,
+    `    stepRetryLineMap: buildStepRetryLineMap(stepCode),`,
+    `    stepSuccessLineMap: buildStepSuccessLineMap(stepCode),`,
+    `  };`,
+    `}`,
+    ``,
+  ].join("\n");
+}
+
+/**
+ * Generates the code-props dispatcher that routes each slug to its
+ * code-props module.  Fan-out gets real props; everything else gets
+ * dummy fallbacks matching the wrapper's expected prop shapes.
+ */
+function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
+  const cases = demos
+    .map((demo) => {
+      if (demo.slug === "fan-out") {
+        return [
+          `    case "fan-out":`,
+          `      return getFanOutCodeProps();`,
+        ].join("\n");
+      }
+      if (demo.componentProps.length === 0) {
+        return [
+          `    case ${JSON.stringify(demo.slug)}:`,
+          `      return {};`,
+        ].join("\n");
+      }
+      const entries = demo.componentProps.map((prop) => {
+        const value =
+          prop.valueKind === "string"
+            ? `""`
+            : prop.valueKind === "array"
+              ? `[]`
+              : `{}`;
+        return `        ${prop.name}: ${value},`;
+      });
+      return [
+        `    case ${JSON.stringify(demo.slug)}:`,
+        `      return {`,
+        ...entries,
+        `      };`,
+      ].join("\n");
+    })
+    .join("\n");
+
+  return [
+    HEADER.trimEnd(),
+    `import { getFanOutCodeProps } from "@/lib/generated/demo-code-props/fan-out";`,
+    ``,
+    `export async function getNativeDemoCodeProps(`,
+    `  slug: string,`,
+    `): Promise<Record<string, unknown>> {`,
+    `  switch (slug) {`,
+    cases,
+    `    default:`,
+    `      return {};`,
+    `  }`,
+    `}`,
     ``,
   ].join("\n");
 }
@@ -1326,6 +1583,20 @@ function main(): void {
 
   // Generate registry
   write("lib/native-demos.generated.ts", generateRegistry(supported, extraRoutesBySlug));
+  filesWritten++;
+
+  // Generate fan-out code-props module (real server-side code extraction)
+  write(
+    "lib/generated/demo-code-props/fan-out.ts",
+    generateFanOutCodePropsModule(),
+  );
+  filesWritten++;
+
+  // Generate code-props dispatcher (routes slug → real or dummy code props)
+  write(
+    "lib/native-demo-code.generated.ts",
+    generateCodePropsDispatcher(supported),
+  );
   filesWritten++;
 
   const uiCounts = supported.reduce<Record<UiStatus, number>>(

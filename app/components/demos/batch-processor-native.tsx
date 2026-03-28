@@ -780,15 +780,8 @@ function eventTone(kind: string) {
   }
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowHtmlLines: [],
-  workflowLineMap: {},
-  stepCode: "",
-  stepHtmlLines: [],
-  stepLineMap: {},
-} as unknown as Parameters<typeof BatchProcessorDemo>[0];
+export type BatchProcessorNativeDemoProps = Parameters<typeof BatchProcessorDemo>[0];
 
-export default function BatchProcessorNativeDemo() {
-  return <BatchProcessorDemo {...demoProps} />;
+export default function BatchProcessorNativeDemo(props: BatchProcessorNativeDemoProps) {
+  return <BatchProcessorDemo {...props} />;
 }

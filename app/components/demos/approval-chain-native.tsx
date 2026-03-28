@@ -763,15 +763,8 @@ export function ApprovalChainDemo({
   );
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowHtmlLines: [],
-  workflowLineMap: {},
-  stepCode: "",
-  stepHtmlLines: [],
-  stepLineMap: {},
-} as unknown as Parameters<typeof ApprovalChainDemo>[0];
+export type ApprovalChainNativeDemoProps = Parameters<typeof ApprovalChainDemo>[0];
 
-export default function ApprovalChainNativeDemo() {
-  return <ApprovalChainDemo {...demoProps} />;
+export default function ApprovalChainNativeDemo(props: ApprovalChainNativeDemoProps) {
+  return <ApprovalChainDemo {...props} />;
 }

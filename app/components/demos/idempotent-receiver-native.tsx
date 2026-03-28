@@ -3,13 +3,8 @@
 
 import { IdempotentReceiverDemo } from "@/idempotent-receiver/app/components/demo";
 
-const demoProps = {
-  orchestratorHtmlLines: [],
-  orchestratorLineMap: {},
-  stepHtmlLines: [],
-  stepLineMap: {},
-} as unknown as Parameters<typeof IdempotentReceiverDemo>[0];
+export type IdempotentReceiverNativeDemoProps = Parameters<typeof IdempotentReceiverDemo>[0];
 
-export default function IdempotentReceiverNativeDemo() {
-  return <IdempotentReceiverDemo {...demoProps} />;
+export default function IdempotentReceiverNativeDemo(props: IdempotentReceiverNativeDemoProps) {
+  return <IdempotentReceiverDemo {...props} />;
 }

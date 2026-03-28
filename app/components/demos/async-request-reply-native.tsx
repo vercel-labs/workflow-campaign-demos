@@ -3,13 +3,8 @@
 
 import { AsyncRequestReplyDemo } from "@/async-request-reply/app/components/demo";
 
-const demoProps = {
-  orchestratorHtmlLines: [],
-  orchestratorLineMap: {},
-  callbackHtmlLines: [],
-  callbackLineMap: {},
-} as unknown as Parameters<typeof AsyncRequestReplyDemo>[0];
+export type AsyncRequestReplyNativeDemoProps = Parameters<typeof AsyncRequestReplyDemo>[0];
 
-export default function AsyncRequestReplyNativeDemo() {
-  return <AsyncRequestReplyDemo {...demoProps} />;
+export default function AsyncRequestReplyNativeDemo(props: AsyncRequestReplyNativeDemoProps) {
+  return <AsyncRequestReplyDemo {...props} />;
 }

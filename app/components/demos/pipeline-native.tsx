@@ -537,16 +537,8 @@ export function PipelineDemo({
   );
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowLinesHtml: [],
-  stepCode: "",
-  stepLinesHtml: [],
-  lineMap: {},
-  workflowDirective: "",
-  stepDirective: "",
-} as unknown as Parameters<typeof PipelineDemo>[0];
+export type PipelineNativeDemoProps = Parameters<typeof PipelineDemo>[0];
 
-export default function PipelineNativeDemo() {
-  return <PipelineDemo {...demoProps} />;
+export default function PipelineNativeDemo(props: PipelineNativeDemoProps) {
+  return <PipelineDemo {...props} />;
 }

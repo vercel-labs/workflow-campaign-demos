@@ -467,14 +467,8 @@ export function RoutingSlipDemo({
   );
 }
 
-const demoProps = {
-  workflowCode: "",
-  workflowLinesHtml: [],
-  stepCode: "",
-  stepLinesHtml: [],
-  lineMap: {},
-} as unknown as Parameters<typeof RoutingSlipDemo>[0];
+export type RoutingSlipNativeDemoProps = Parameters<typeof RoutingSlipDemo>[0];
 
-export default function RoutingSlipNativeDemo() {
-  return <RoutingSlipDemo {...demoProps} />;
+export default function RoutingSlipNativeDemo(props: RoutingSlipNativeDemoProps) {
+  return <RoutingSlipDemo {...props} />;
 }

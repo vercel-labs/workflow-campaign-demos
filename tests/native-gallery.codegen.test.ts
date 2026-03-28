@@ -111,16 +111,45 @@ test("approval-gate native wrapper renders the real component directly", () => {
   expect(source).not.toContain("as default");
 });
 
-test("fan-out native wrapper renders the real component with generated demo props", () => {
+test("fan-out native wrapper accepts server props instead of embedding dummy code props", () => {
   const source = readFileSync("app/components/demos/fan-out-native.tsx", "utf8");
-  expect(source).toContain('import { FanOutCodeWorkbench } from "@/fan-out/app/components/fanout-code-workbench"');
-  expect(source).toContain("const demoProps = {");
-  expect(source).toContain("workflowCode: \"\"");
-  expect(source).toContain("stepCode: \"\"");
-  expect(source).toContain("} as unknown as Parameters<typeof FanOutDemo>[0]");
-  expect(source).toContain("export default function FanOutNativeDemo()");
-  expect(source).toContain("return <FanOutDemo {...demoProps} />");
-  expect(source).not.toContain("native UI adapter pending");
+  expect(source).toContain(
+    "export type FanOutNativeDemoProps = Parameters<typeof FanOutDemo>[0]",
+  );
+  expect(source).toContain(
+    "export default function FanOutNativeDemo(props: FanOutNativeDemoProps)",
+  );
+  expect(source).toContain("return <FanOutDemo {...props} />");
+  expect(source).not.toContain('workflowCode: ""');
+  expect(source).not.toContain('stepCode: ""');
+});
+
+// ---------------------------------------------------------------------------
+// Code-props generation tests
+// ---------------------------------------------------------------------------
+
+test("fan-out generated code props read monorepo-root workflow source and build real line maps", () => {
+  const source = readFileSync("lib/generated/demo-code-props/fan-out.ts", "utf8");
+  expect(source).toContain(
+    'join(process.cwd(), "fan-out/workflows/incident-fanout.ts")',
+  );
+  expect(source).toContain("highlightCodeToHtmlLines(workflowCode)");
+  expect(source).toContain("buildWorkflowLineMap(workflowCode)");
+  expect(source).toContain("buildStepSuccessLineMap(stepCode)");
+});
+
+test("detail page loads code props before rendering the native component", () => {
+  const source = readFileSync("app/demos/[slug]/page.tsx", "utf8");
+  expect(source).toContain("getNativeDemoCodeProps(slug)");
+  expect(source).toContain("<DemoComponent {...codeProps} />");
+});
+
+test("generated code-props dispatcher routes fan-out to real props and preserves dummy fallbacks", () => {
+  const source = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  expect(source).toContain('case "fan-out"');
+  expect(source).toContain("return getFanOutCodeProps()");
+  expect(source).toContain('case "saga"');
+  expect(source).toContain('orchestratorCode: ""');
 });
 
 // ---------------------------------------------------------------------------
