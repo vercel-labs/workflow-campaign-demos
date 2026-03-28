@@ -1,20 +1,32 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
 "use client";
 
+const meta = {
+  "slug": "retry-backoff",
+  "uiStatus": "placeholder",
+  "uiReasons": [
+    "component_requires_props"
+  ],
+  "routeMap": {
+    "start": {
+      "original": "/api/retry-backoff",
+      "gallery": "/api/retry-backoff"
+    },
+    "readable": {
+      "original": "/api/readable/[runId]",
+      "gallery": "/api/readable/[runId]"
+    },
+    "extras": {}
+  }
+} as const;
+
 export default function RetryBackoffNativePlaceholder() {
   return (
-    <div
-      data-demo={"retry-backoff"}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "50vh",
-        color: "#888",
-        fontFamily: "var(--font-geist-mono), monospace",
-      }}
+    <pre
+      data-native-demo-meta={JSON.stringify(meta)}
+      className="overflow-x-auto rounded-lg border border-gray-300 bg-background-200 p-4 text-xs text-gray-900"
     >
-      "Retry-Backoff" — native UI adapter pending
-    </div>
+      {JSON.stringify(meta, null, 2)}
+    </pre>
   );
 }

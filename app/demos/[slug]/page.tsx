@@ -10,7 +10,7 @@ type Props = {
 export default async function DemoDetailPage({ params }: Props) {
   const { slug } = await params;
   const demo = getDemo(slug);
-  const native = nativeDemos[slug as keyof typeof nativeDemos];
+  const native = nativeDemos[slug];
 
   if (!demo || !native) {
     notFound();
@@ -22,12 +22,13 @@ export default async function DemoDetailPage({ params }: Props) {
       page: "demo-detail",
       action: "render",
       slug,
-      uiReady: native.uiReady,
+      uiStatus: native.uiStatus,
+      uiReasons: native.uiReasons,
       workflowId: native.workflowId,
-    })
+    }),
   );
 
-  if (!native.uiReady) {
+  if (native.uiStatus !== "native-ready") {
     return (
       <DemoDetailShell
         slug={slug}
@@ -35,9 +36,18 @@ export default async function DemoDetailPage({ params }: Props) {
         catalogEntry={demo}
         apiRoutes={native.apiRoutes}
       >
-        <div className="rounded-lg border border-gray-300 bg-background-200 p-8 text-center text-sm text-gray-900">
-          Native demo adapter pending for <code>{slug}</code>.
-        </div>
+        <pre className="overflow-x-auto rounded-lg border border-gray-300 bg-background-200 p-4 text-xs text-gray-900">
+          {JSON.stringify(
+            {
+              slug,
+              uiStatus: native.uiStatus,
+              uiReasons: native.uiReasons,
+              routeMap: native.routeMap,
+            },
+            null,
+            2,
+          )}
+        </pre>
       </DemoDetailShell>
     );
   }

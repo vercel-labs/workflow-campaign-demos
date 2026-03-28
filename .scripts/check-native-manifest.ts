@@ -23,6 +23,13 @@ type CheckResult = {
   registered: boolean;
 };
 
+type DemoCheckResult = {
+  slug: string;
+  status: "registered" | "partial" | "missing";
+  registeredWorkflowFiles: string[];
+  missingWorkflowFiles: string[];
+};
+
 // ---------------------------------------------------------------------------
 // Manifest discovery
 // ---------------------------------------------------------------------------
@@ -118,57 +125,99 @@ const catalog = JSON.parse(
 ) as DemoCatalogEntry[];
 
 // Check each demo's workflow files against the manifest.
-// A demo passes if at least one of its workflow files is registered.
-// Extra unregistered workflow files are logged as warnings, not failures.
 const results: CheckResult[] = [];
-let demosWithNoRegistration = 0;
+const demoSummaries: DemoCheckResult[] = [];
 
 for (const entry of catalog) {
   if (entry.workflowFiles.length === 0) continue;
 
-  const demoResults: CheckResult[] = [];
+  const registeredWorkflowFiles: string[] = [];
+  const missingWorkflowFiles: string[] = [];
+
   for (const wfFile of entry.workflowFiles) {
     const registered = findWorkflowInManifest(manifest, wfFile);
-    const result = { workflowFile: wfFile, slug: entry.slug, registered };
-    demoResults.push(result);
-    results.push(result);
+    results.push({ workflowFile: wfFile, slug: entry.slug, registered });
+
+    if (registered) {
+      registeredWorkflowFiles.push(wfFile);
+      console.log(
+        JSON.stringify({
+          level: "info",
+          action: "workflow_registered",
+          slug: entry.slug,
+          workflowFile: wfFile,
+        }),
+      );
+    } else {
+      missingWorkflowFiles.push(wfFile);
+    }
   }
 
-  const anyRegistered = demoResults.some((r) => r.registered);
+  const status =
+    registeredWorkflowFiles.length === 0
+      ? "missing"
+      : missingWorkflowFiles.length === 0
+        ? "registered"
+        : "partial";
 
-  for (const result of demoResults) {
-    const level = result.registered ? "info" : anyRegistered ? "warn" : "error";
-    const action = result.registered
-      ? "workflow_registered"
-      : anyRegistered
-        ? "workflow_not_in_import_chain"
-        : "workflow_not_registered";
+  for (const wfFile of missingWorkflowFiles) {
     console.log(
-      JSON.stringify({ level, action, slug: result.slug, workflowFile: result.workflowFile }),
+      JSON.stringify({
+        level: status === "missing" ? "error" : "warn",
+        action:
+          status === "missing"
+            ? "workflow_not_registered"
+            : "workflow_not_in_import_chain",
+        slug: entry.slug,
+        workflowFile: wfFile,
+      }),
     );
   }
 
-  if (!anyRegistered) {
-    demosWithNoRegistration++;
-  }
+  const demoSummary: DemoCheckResult = {
+    slug: entry.slug,
+    status,
+    registeredWorkflowFiles,
+    missingWorkflowFiles,
+  };
+  demoSummaries.push(demoSummary);
+
+  console.log(
+    JSON.stringify({
+      level:
+        status === "missing" ? "error" : status === "partial" ? "warn" : "info",
+      action: "demo_manifest_status",
+      ...demoSummary,
+    }),
+  );
 }
 
-const totalRegistered = results.filter((r) => r.registered).length;
-const totalMissing = results.length - totalRegistered;
+const summary = {
+  demosChecked: demoSummaries.length,
+  demosRegistered: demoSummaries.filter((demo) => demo.status === "registered")
+    .length,
+  demosPartial: demoSummaries.filter((demo) => demo.status === "partial")
+    .length,
+  demosMissing: demoSummaries.filter((demo) => demo.status === "missing")
+    .length,
+  workflowFilesRegistered: demoSummaries.reduce(
+    (count, demo) => count + demo.registeredWorkflowFiles.length,
+    0,
+  ),
+  workflowFilesMissing: demoSummaries.reduce(
+    (count, demo) => count + demo.missingWorkflowFiles.length,
+    0,
+  ),
+};
 
-// Summary
 console.log(
   JSON.stringify({
-    level: demosWithNoRegistration > 0 ? "error" : "info",
+    level: summary.demosMissing > 0 ? "error" : "info",
     action: "manifest_check_complete",
-    totalWorkflowFiles: results.length,
-    registered: totalRegistered,
-    notInImportChain: totalMissing - demosWithNoRegistration,
-    demosFullyMissing: demosWithNoRegistration,
-    demosChecked: catalog.filter((e) => e.workflowFiles.length > 0).length,
+    ...summary,
   }),
 );
 
-if (demosWithNoRegistration > 0) {
+if (summary.demosMissing > 0) {
   process.exit(1);
 }

@@ -44,6 +44,20 @@ type WorkflowInfo = {
   importPath: string;
 };
 
+type UiStatus = "native-ready" | "adapter-required" | "placeholder";
+
+type RouteMap = {
+  start: { original: string; gallery: string };
+  readable: { original: string; gallery: string };
+  extras: Record<string, string>;
+};
+
+type UiAnalysis = {
+  status: UiStatus;
+  reasons: string[];
+  fetchPaths: string[];
+};
+
 type SupportedDemo = {
   slug: string;
   title: string;
@@ -53,12 +67,21 @@ type SupportedDemo = {
   selfContained: boolean;
   /** The exported component name from the demo's app/components/demo.tsx */
   componentExportName: string | null;
+  ui: UiAnalysis;
+  routeMap: RouteMap;
 };
 
 type UnsupportedDemo = {
   slug: string;
   reason: string;
   workflowFiles: string[];
+};
+
+type GenerationError = {
+  slug: string;
+  kind: "start_route_missing" | "extra_route_missing";
+  output: string;
+  sourceCandidates?: string[];
 };
 
 // ---------------------------------------------------------------------------
@@ -212,45 +235,8 @@ function toImportPath(filePath: string): string {
   return "@/" + filePath.replace(/\.ts$/, "");
 }
 
-/**
- * Rewrites `@/...` imports in a route source to `@/{slug}/...`.
- * Handles both `from "@/..."` and `from '@/...'` patterns.
- * Does NOT rewrite imports from packages (e.g., `workflow/api`, `next/server`).
- */
-function rewriteAliasImports(source: string, slug: string): string {
-  return source.replace(
-    /(from\s+["'])@\/((?!node_modules)[^"']+)(["'])/g,
-    `$1@/${slug}/$2$3`,
-  );
-}
-
-/**
- * Rewrites relative imports (../foo, ./foo) to @/{slug}/... absolute paths.
- * Uses the original file's directory to resolve relative paths.
- *
- * e.g. in normalizer/app/api/normalizer/route.ts:
- *   import { normalizer } from "../../../workflows/normalizer"
- *   → import { normalizer } from "@/normalizer/workflows/normalizer"
- */
-function rewriteRelativeImports(source: string, originalPath: string, slug: string): string {
-  // Directory of the original file within the demo, relative to demo root
-  // e.g. "normalizer/app/api/normalizer/route.ts" → dir is "normalizer/app/api/normalizer"
-  const originalDir = dirname(originalPath);
-
-  return source.replace(
-    /(from\s+["'])(\.\.?\/[^"']+)(["'])/g,
-    (_match, prefix, relPath, suffix) => {
-      // Resolve the relative path against the original file's directory
-      const resolved = join(originalDir, relPath);
-      // Normalize: remove leading ./ and resolve ..
-      const normalized = resolved.split("/").reduce((acc: string[], part) => {
-        if (part === "..") acc.pop();
-        else if (part !== ".") acc.push(part);
-        return acc;
-      }, []).join("/");
-      return `${prefix}@/${normalized}${suffix}`;
-    },
-  );
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
@@ -331,6 +317,130 @@ function toPascalCase(slug: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Route mapping & UI analysis
+// ---------------------------------------------------------------------------
+
+function findMainApiRoute(entry: DemoCatalogEntry): string | null {
+  const exact = `${entry.slug}/app/api/${entry.slug}/route.ts`;
+  return (
+    entry.apiRoutes.find((route) => route === exact) ??
+    entry.apiRoutes.find(
+      (route) => !route.includes("readable") && !route.includes("[runId]"),
+    ) ??
+    null
+  );
+}
+
+function toApiPathFromRouteFile(
+  slug: string,
+  routeFile: string,
+): string | null {
+  const match = routeFile.match(
+    new RegExp(`^${escapeRegExp(slug)}/app/(api/.+)/route\\.ts$`),
+  );
+  return match ? `/${match[1]}` : null;
+}
+
+function buildRouteMap(entry: DemoCatalogEntry): RouteMap {
+  const startSource = findMainApiRoute(entry);
+  const startOriginal =
+    (startSource && toApiPathFromRouteFile(entry.slug, startSource)) ??
+    `/api/${entry.slug}`;
+
+  const extras: Record<string, string> = {};
+  for (const extraRoutePath of entry.extraRoutes) {
+    const originalPath = toApiPathFromRouteFile(entry.slug, extraRoutePath);
+    if (!originalPath) continue;
+    const routeSegment = originalPath.replace(/^\/api\//, "");
+    const galleryPath = routeSegment.startsWith(`${entry.slug}/`)
+      ? originalPath
+      : `/api/${entry.slug}/${routeSegment}`;
+    extras[originalPath] = galleryPath;
+  }
+
+  return {
+    start: {
+      original: startOriginal,
+      gallery: `/api/${entry.slug}`,
+    },
+    readable: {
+      original: "/api/readable/[runId]",
+      gallery: "/api/readable/[runId]",
+    },
+    extras,
+  };
+}
+
+function extractClientApiPaths(slug: string): string[] {
+  const demoPath = join(ROOT, slug, "app/components/demo.tsx");
+  if (!existsSync(demoPath)) return [];
+  const source = readFileSync(demoPath, "utf8");
+  const paths = new Set<string>();
+  for (const regex of [
+    /fetch\(\s*["'`](\/api\/[^"'`]+)["'`]/g,
+    /postJson(?:<[^>]+>)?\(\s*["'`](\/api\/[^"'`]+)["'`]/g,
+  ]) {
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(source)) !== null) {
+      paths.add(match[1]);
+    }
+  }
+  return [...paths].sort();
+}
+
+function analyzeUiCompatibility(
+  entry: DemoCatalogEntry,
+  componentExportName: string | null,
+  selfContained: boolean,
+): { ui: UiAnalysis; routeMap: RouteMap } {
+  const routeMap = buildRouteMap(entry);
+  const fetchPaths = extractClientApiPaths(entry.slug);
+  const reasons: string[] = [];
+
+  if (!componentExportName) reasons.push("component_export_missing");
+  if (!selfContained) reasons.push("component_requires_props");
+
+  for (const path of fetchPaths) {
+    if (path.startsWith("/api/readable/")) continue;
+    if (path === routeMap.start.gallery) continue;
+    if (
+      path === routeMap.start.original &&
+      routeMap.start.original !== routeMap.start.gallery
+    ) {
+      reasons.push(`hardcoded_start_route:${path}->${routeMap.start.gallery}`);
+      continue;
+    }
+    const rewrittenExtra = routeMap.extras[path];
+    if (rewrittenExtra && rewrittenExtra !== path) {
+      reasons.push(`hardcoded_extra_route:${path}->${rewrittenExtra}`);
+    }
+  }
+
+  const status: UiStatus =
+    !componentExportName || !selfContained
+      ? "placeholder"
+      : reasons.some((reason) => reason.startsWith("hardcoded_"))
+        ? "adapter-required"
+        : "native-ready";
+
+  console.log(
+    JSON.stringify({
+      level: "info",
+      action: "ui_analysis",
+      slug: entry.slug,
+      status,
+      componentExportName,
+      selfContained,
+      fetchPaths,
+      reasons,
+      routeMap,
+    }),
+  );
+
+  return { ui: { status, reasons, fetchPaths }, routeMap };
+}
+
+// ---------------------------------------------------------------------------
 // Catalog analysis
 // ---------------------------------------------------------------------------
 
@@ -351,13 +461,19 @@ function analyzeCatalog(
     }
 
     const workflows: WorkflowInfo[] = [];
-    let allResolved = true;
 
     for (const wfFile of entry.workflowFiles) {
       const functionName = extractWorkflowFunctionName(wfFile);
       if (!functionName) {
-        allResolved = false;
-        break;
+        console.log(
+          JSON.stringify({
+            level: "warn",
+            action: "workflow_function_name_unresolved",
+            slug: entry.slug,
+            workflowFile: wfFile,
+          }),
+        );
+        continue;
       }
       workflows.push({
         filePath: wfFile,
@@ -366,17 +482,36 @@ function analyzeCatalog(
       });
     }
 
-    if (!allResolved || workflows.length === 0) {
+    const hasCopyableRoute = findMainApiRoute(entry) !== null;
+
+    if (!hasCopyableRoute) {
       unsupported.push({
         slug: entry.slug,
-        reason: "workflow_function_not_found",
+        reason: "start_route_not_found",
         workflowFiles: entry.workflowFiles,
       });
       continue;
     }
 
+    if (workflows.length === 0) {
+      console.log(
+        JSON.stringify({
+          level: "warn",
+          action: "route_copy_only_demo",
+          slug: entry.slug,
+          reason: "workflow_function_not_found_but_route_copyable",
+        }),
+      );
+    }
+
     const selfContained = detectSelfContained(entry.slug);
     const componentExportName = extractComponentExportName(entry.slug);
+
+    const { ui, routeMap } = analyzeUiCompatibility(
+      entry,
+      componentExportName,
+      selfContained,
+    );
 
     supported.push({
       slug: entry.slug,
@@ -385,6 +520,8 @@ function analyzeCatalog(
       extraRoutes: entry.extraRoutes,
       selfContained,
       componentExportName,
+      ui,
+      routeMap,
     });
 
     console.log(
@@ -396,6 +533,8 @@ function analyzeCatalog(
         extraRouteCount: entry.extraRoutes.length,
         selfContained,
         componentExportName,
+        uiStatus: ui.status,
+        uiReasons: ui.reasons,
       }),
     );
   }
@@ -409,15 +548,21 @@ function analyzeCatalog(
 
 /**
  * Generates a start route by reading the original and rewriting imports.
- * Falls back to a generic shim if the original can't be read.
  */
 function generateStartRoute(demo: SupportedDemo, catalogEntry: DemoCatalogEntry): string | null {
-  // Find the start route: {slug}/app/api/{slug}/route.ts
-  // The catalog apiRoutes array order is not guaranteed, so match by path pattern.
-  const startRoutePattern = `${demo.slug}/app/api/${demo.slug}/route.ts`;
-  const mainApiRoute = catalogEntry.apiRoutes.find((r) => r === startRoutePattern)
-    ?? catalogEntry.apiRoutes.find((r) => !r.includes("readable") && !r.includes("[runId]"));
-  if (!mainApiRoute) return null;
+  const mainApiRoute = findMainApiRoute(catalogEntry);
+  if (!mainApiRoute) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        action: "start_route_source_unresolved",
+        slug: demo.slug,
+        expected: `${demo.slug}/app/api/${demo.slug}/route.ts`,
+        apiRoutes: catalogEntry.apiRoutes,
+      }),
+    );
+    return null;
+  }
 
   const result = readAndRewriteRoute(mainApiRoute, demo.slug);
   if (result) {
@@ -434,7 +579,6 @@ function generateStartRoute(demo: SupportedDemo, catalogEntry: DemoCatalogEntry)
     return result.contents;
   }
 
-  // Fallback: should not happen if catalog is correct
   console.log(
     JSON.stringify({
       level: "warn",
@@ -524,10 +668,6 @@ function generateExtraRoutes(
   return results;
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function generateReadableRoute(): string {
   return [
     HEADER.trimEnd(),
@@ -538,15 +678,58 @@ function generateReadableRoute(): string {
     `  params: Promise<{ runId: string }>;`,
     `};`,
     ``,
+    `function log(`,
+    `  level: "info" | "warn" | "error",`,
+    `  action: string,`,
+    `  data: Record<string, unknown>,`,
+    `) {`,
+    `  const entry = {`,
+    `    level,`,
+    `    route: "/api/readable/[runId]",`,
+    `    action,`,
+    `    ...data,`,
+    `  };`,
+    `  if (level === "error") {`,
+    `    console.error(JSON.stringify(entry));`,
+    `    return;`,
+    `  }`,
+    `  if (level === "warn") {`,
+    `    console.warn(JSON.stringify(entry));`,
+    `    return;`,
+    `  }`,
+    `  console.log(JSON.stringify(entry));`,
+    `}`,
+    ``,
+    `function jsonError(`,
+    `  status: number,`,
+    `  code: string,`,
+    `  message: string,`,
+    `  runId: string,`,
+    `) {`,
+    `  return Response.json(`,
+    `    { ok: false, error: { code, message }, runId },`,
+    `    { status, headers: { "Cache-Control": "no-store" } },`,
+    `  );`,
+    `}`,
+    ``,
     `export async function GET(`,
     `  _request: NextRequest,`,
     `  { params }: ReadableRouteContext,`,
     `) {`,
     `  const { runId } = await params;`,
+    `  log("info", "readable_open", { runId });`,
     ``,
-    `  const run = getRun(runId);`,
+    `  let run;`,
+    `  try {`,
+    `    run = getRun(runId);`,
+    `  } catch (error) {`,
+    `    const message =`,
+    `      error instanceof Error ? error.message : "Run not found";`,
+    `    log("warn", "readable_run_not_found", { runId, message });`,
+    `    return jsonError(404, "RUN_NOT_FOUND", message, runId);`,
+    `  }`,
+    ``,
     `  const readable = run.getReadable();`,
-    ``,
     `  const encoder = new TextEncoder();`,
     `  const sseStream = (readable as ReadableStream).pipeThrough(`,
     `    new TransformStream({`,
@@ -554,6 +737,9 @@ function generateReadableRoute(): string {
     `        const data =`,
     `          typeof chunk === "string" ? chunk : JSON.stringify(chunk);`,
     "        controller.enqueue(encoder.encode(`data: ${data}\\n\\n`));",
+    `      },`,
+    `      flush() {`,
+    `        log("info", "readable_closed", { runId });`,
     `      },`,
     `    }),`,
     `  );`,
@@ -573,11 +759,11 @@ function generateReadableRoute(): string {
 
 /**
  * Generates a wrapper component for a demo.
- * Self-contained demos get a direct re-export.
- * Demos with code-pane props get a placeholder.
+ * native-ready demos get a direct re-export.
+ * Non-ready demos get a metadata placeholder.
  */
 function generateWrapper(demo: SupportedDemo): string {
-  if (demo.selfContained && demo.componentExportName) {
+  if (demo.ui.status === "native-ready" && demo.componentExportName) {
     return [
       HEADER.trimEnd(),
       `"use client";`,
@@ -588,29 +774,39 @@ function generateWrapper(demo: SupportedDemo): string {
   }
 
   const componentName = `${toPascalCase(demo.slug)}NativePlaceholder`;
+  const meta = {
+    slug: demo.slug,
+    uiStatus: demo.ui.status,
+    uiReasons: demo.ui.reasons,
+    routeMap: demo.routeMap,
+  };
+
   return [
     HEADER.trimEnd(),
     `"use client";`,
     ``,
+    `const meta = ${JSON.stringify(meta, null, 2)} as const;`,
+    ``,
     `export default function ${componentName}() {`,
     `  return (`,
-    `    <div`,
-    `      data-demo={${JSON.stringify(demo.slug)}}`,
-    `      style={{`,
-    `        display: "flex",`,
-    `        alignItems: "center",`,
-    `        justifyContent: "center",`,
-    `        minHeight: "50vh",`,
-    `        color: "#888",`,
-    `        fontFamily: "var(--font-geist-mono), monospace",`,
-    `      }}`,
+    `    <pre`,
+    `      data-native-demo-meta={JSON.stringify(meta)}`,
+    `      className="overflow-x-auto rounded-lg border border-gray-300 bg-background-200 p-4 text-xs text-gray-900"`,
     `    >`,
-    `      ${JSON.stringify(demo.title)} — native UI adapter pending`,
-    `    </div>`,
+    `      {JSON.stringify(meta, null, 2)}`,
+    `    </pre>`,
     `  );`,
     `}`,
     ``,
   ].join("\n");
+}
+
+function indentBlock(value: string, spaces: number): string {
+  const pad = " ".repeat(spaces);
+  return value
+    .split("\n")
+    .map((line) => (line.length === 0 ? line : `${pad}${line}`))
+    .join("\n");
 }
 
 function generateRegistry(
@@ -621,24 +817,22 @@ function generateRegistry(
     .map((demo) => {
       const primary = demo.workflows[0];
       const apiRoutes = [
-        `      { route: "/api/${demo.slug}", kind: "start" as const }`,
-        `      { route: "/api/readable/[runId]", kind: "readable" as const }`,
+        { route: demo.routeMap.start.gallery, kind: "start" as const },
+        { route: demo.routeMap.readable.gallery, kind: "readable" as const },
+        ...(extraRoutesBySlug.get(demo.slug) ?? []).map((route) => ({
+          route,
+          kind: "extra" as const,
+        })),
       ];
-      const extras = extraRoutesBySlug.get(demo.slug) ?? [];
-      for (const galleryRoute of extras) {
-        apiRoutes.push(
-          `      { route: ${JSON.stringify(galleryRoute)}, kind: "extra" as const }`,
-        );
-      }
 
       return [
         `  ${JSON.stringify(demo.slug)}: {`,
         `    title: ${JSON.stringify(demo.title)},`,
-        `    workflowId: ${JSON.stringify(primary.filePath)},`,
-        `    uiReady: ${demo.selfContained},`,
-        `    apiRoutes: [`,
-        apiRoutes.join(",\n") + ",",
-        `    ],`,
+        `    workflowId: ${JSON.stringify(primary?.filePath ?? `${demo.slug}/workflows/unknown`)},`,
+        `    uiStatus: ${JSON.stringify(demo.ui.status)},`,
+        `    uiReasons: ${JSON.stringify(demo.ui.reasons)},`,
+        `    routeMap: ${indentBlock(JSON.stringify(demo.routeMap, null, 2), 4).trimStart()},`,
+        `    apiRoutes: ${indentBlock(JSON.stringify(apiRoutes, null, 2), 4).trimStart()},`,
         `    component: () => import("@/app/components/demos/${demo.slug}-native"),`,
         `  }`,
       ].join("\n");
@@ -649,20 +843,27 @@ function generateRegistry(
     HEADER.trimEnd(),
     `import type { ComponentType } from "react";`,
     ``,
+    `export type NativeDemoUiStatus = "native-ready" | "adapter-required" | "placeholder";`,
     `export type NativeDemoRouteKind = "start" | "readable" | "extra";`,
     ``,
     `export type NativeDemo = {`,
     `  title: string;`,
     `  workflowId: string;`,
-    `  uiReady: boolean;`,
+    `  uiStatus: NativeDemoUiStatus;`,
+    `  uiReasons: string[];`,
+    `  routeMap: {`,
+    `    start: { original: string; gallery: string };`,
+    `    readable: { original: string; gallery: string };`,
+    `    extras: Record<string, string>;`,
+    `  };`,
     `  apiRoutes: Array<{ route: string; kind: NativeDemoRouteKind }>;`,
     `  // eslint-disable-next-line @typescript-eslint/no-explicit-any`,
     `  component: () => Promise<{ default: ComponentType<any> }>;`,
     `};`,
     ``,
-    `export const nativeDemos = {`,
+    `export const nativeDemos: Record<string, NativeDemo> = {`,
     entries,
-    `} satisfies Record<string, NativeDemo>;`,
+    `};`,
     ``,
   ].join("\n");
 }
@@ -712,17 +913,28 @@ function main(): void {
   let startRoutesGenerated = 0;
   let extraRoutesGenerated = 0;
   const extraRoutesBySlug = new Map<string, string[]>();
+  const generationErrors: GenerationError[] = [];
 
   for (const demo of supported) {
     const catalogEntry = catalogBySlug.get(demo.slug)!;
 
     // Generate start route with full parity
     const startRoute = generateStartRoute(demo, catalogEntry);
-    if (startRoute) {
-      write(`app/api/${demo.slug}/route.ts`, startRoute);
-      startRoutesGenerated++;
-      filesWritten++;
+    if (!startRoute) {
+      generationErrors.push({
+        slug: demo.slug,
+        kind: "start_route_missing",
+        output: `app/api/${demo.slug}/route.ts`,
+        sourceCandidates: catalogEntry.apiRoutes.filter(
+          (route) => !route.includes("readable"),
+        ),
+      });
+      continue;
     }
+
+    write(`app/api/${demo.slug}/route.ts`, startRoute);
+    startRoutesGenerated++;
+    filesWritten++;
 
     // Generate extra routes with full parity (namespaced under /api/{slug}/...)
     const extraRoutes = generateExtraRoutes(demo);
@@ -745,11 +957,29 @@ function main(): void {
     filesWritten++;
   }
 
+  if (generationErrors.length > 0) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        action: "native_gallery_generation_failed",
+        errorCount: generationErrors.length,
+        errors: generationErrors,
+      }),
+    );
+    process.exit(1);
+  }
+
   // Generate registry
   write("lib/native-demos.generated.ts", generateRegistry(supported, extraRoutesBySlug));
   filesWritten++;
 
-  const uiReadyCount = supported.filter((d) => d.selfContained).length;
+  const uiCounts = supported.reduce<Record<UiStatus, number>>(
+    (acc, demo) => {
+      acc[demo.ui.status] += 1;
+      return acc;
+    },
+    { "native-ready": 0, "adapter-required": 0, placeholder: 0 },
+  );
 
   console.log(
     JSON.stringify({
@@ -759,10 +989,8 @@ function main(): void {
       unsupported: unsupported.length,
       startRoutesGenerated,
       extraRoutesGenerated,
-      uiReadyCount,
-      slugs: supported.map((d) => d.slug),
-      uiReadySlugs: supported.filter((d) => d.selfContained).map((d) => d.slug),
       filesWritten,
+      uiCounts,
     }),
   );
 }

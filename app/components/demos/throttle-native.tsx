@@ -1,20 +1,32 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
 "use client";
 
+const meta = {
+  "slug": "throttle",
+  "uiStatus": "placeholder",
+  "uiReasons": [
+    "component_requires_props"
+  ],
+  "routeMap": {
+    "start": {
+      "original": "/api/throttle",
+      "gallery": "/api/throttle"
+    },
+    "readable": {
+      "original": "/api/readable/[runId]",
+      "gallery": "/api/readable/[runId]"
+    },
+    "extras": {}
+  }
+} as const;
+
 export default function ThrottleNativePlaceholder() {
   return (
-    <div
-      data-demo={"throttle"}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "50vh",
-        color: "#888",
-        fontFamily: "var(--font-geist-mono), monospace",
-      }}
+    <pre
+      data-native-demo-meta={JSON.stringify(meta)}
+      className="overflow-x-auto rounded-lg border border-gray-300 bg-background-200 p-4 text-xs text-gray-900"
     >
-      "Throttle" — native UI adapter pending
-    </div>
+      {JSON.stringify(meta, null, 2)}
+    </pre>
   );
 }
