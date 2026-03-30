@@ -167,6 +167,14 @@ test("representative generated code-props modules contain real server-side workb
     .toContain('join(process.cwd(), "splitter/workflows/order-splitter.ts")');
   expect(readFileSync("lib/generated/demo-code-props/dead-letter-queue.ts", "utf8"))
     .toContain('join(process.cwd(), "dead-letter-queue/workflows/dead-letter-queue.ts")');
+  expect(readFileSync("lib/generated/demo-code-props/async-request-reply.ts", "utf8"))
+    .toContain("buildOrchestratorLineMap(orchestratorCode)");
+  expect(readFileSync("lib/generated/demo-code-props/idempotent-receiver.ts", "utf8"))
+    .toContain("buildOrchestratorLineMap(orchestratorCode)");
+  expect(readFileSync("lib/generated/demo-code-props/choreography.ts", "utf8"))
+    .toContain("buildParticipantLineMap(participantCode)");
+  expect(readFileSync("lib/generated/demo-code-props/cancellable-export.ts", "utf8"))
+    .toContain("buildHighlightLineMap(workflowCode)");
 });
 
 // ---------------------------------------------------------------------------
@@ -212,6 +220,10 @@ const REPRESENTATIVE_SLUGS = [
   "circuit-breaker",
   "splitter",
   "dead-letter-queue",
+  "async-request-reply",
+  "idempotent-receiver",
+  "choreography",
+  "cancellable-export",
 ] as const;
 
 const SLUG_TO_FN: Record<string, string> = {
@@ -220,6 +232,10 @@ const SLUG_TO_FN: Record<string, string> = {
   "circuit-breaker": "getCircuitBreakerCodeProps",
   splitter: "getSplitterCodeProps",
   "dead-letter-queue": "getDeadLetterQueueCodeProps",
+  "async-request-reply": "getAsyncRequestReplyCodeProps",
+  "idempotent-receiver": "getIdempotentReceiverCodeProps",
+  choreography: "getChoreographyCodeProps",
+  "cancellable-export": "getCancellableExportCodeProps",
 };
 
 function runGenerator() {
@@ -313,34 +329,38 @@ test("html-only demos receive workflow and secondary HTML fallbacks", () => {
   expect(dispatcher).toContain("extractExportedWorkflowBlock");
   expect(dispatcher).toContain("extractSecondaryFunctionBlocks");
 
+  // async-request-reply and idempotent-receiver now use real preserved modules
   const asyncCase = dispatcher.slice(
     dispatcher.indexOf('case "async-request-reply"'),
     dispatcher.indexOf('case "batch-processor"'),
   );
-  expect(asyncCase).toContain("readWorkflowSource(");
-  expect(asyncCase).toContain("orchestratorHtmlLines: workflowHtmlLines");
-  expect(asyncCase).toContain("callbackHtmlLines: secondaryHtmlLines");
-  expect(asyncCase).not.toContain("orchestratorHtmlLines: []");
-  expect(asyncCase).not.toContain("callbackHtmlLines: []");
+  expect(asyncCase).toContain("return getAsyncRequestReplyCodeProps()");
 
   const idempotentCase = dispatcher.slice(
     dispatcher.indexOf('case "idempotent-receiver"'),
     dispatcher.indexOf('case "map-reduce"'),
   );
-  expect(idempotentCase).toContain("orchestratorHtmlLines: workflowHtmlLines");
-  expect(idempotentCase).toContain("stepHtmlLines: secondaryHtmlLines");
+  expect(idempotentCase).toContain("return getIdempotentReceiverCodeProps()");
+
+  // Verify that other non-representative demos still use the generic fallback
+  const bulkheadCase = dispatcher.slice(
+    dispatcher.indexOf('case "bulkhead"'),
+    dispatcher.indexOf('case "bulkhead"') + 500,
+  );
+  expect(bulkheadCase).toContain("readWorkflowSource(");
 });
 
 test("secondary string-pane demos receive secondary code fallbacks", () => {
   const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
 
+  // choreography now uses a real preserved module
   const choreographyCase = dispatcher.slice(
     dispatcher.indexOf('case "choreography"'),
     dispatcher.indexOf('case "circuit-breaker"'),
   );
-  expect(choreographyCase).toContain("participantCode: secondaryCode");
-  expect(choreographyCase).toContain("participantHtmlLines: secondaryHtmlLines");
+  expect(choreographyCase).toContain("return getChoreographyCodeProps()");
 
+  // Other secondary-pane demos still use the generic fallback
   const historyCase = dispatcher.slice(
     dispatcher.indexOf('case "message-history"'),
     dispatcher.indexOf('case "message-translator"'),
@@ -354,6 +374,162 @@ test("secondary string-pane demos receive secondary code fallbacks", () => {
   );
   expect(managerCase).toContain("stepCode: secondaryCode");
   expect(managerCase).toContain("stepHtmlLines: secondaryHtmlLines");
+});
+
+// ---------------------------------------------------------------------------
+// Per-demo semantic coverage: new preserved-module cluster
+// ---------------------------------------------------------------------------
+
+test("async-request-reply is a real preserved module with non-empty orchestrator and callback maps", () => {
+  // Generator registration
+  const generator = readFileSync(".scripts/generate-native-gallery.ts", "utf8");
+  expect(generator).toContain(
+    '{ slug: "async-request-reply", fn: "getAsyncRequestReplyCodeProps", mode: "preserve-file" }',
+  );
+
+  // Dispatcher routing
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  const asyncCase = dispatcher.slice(
+    dispatcher.indexOf('case "async-request-reply"'),
+    dispatcher.indexOf('case "async-request-reply"') + 200,
+  );
+  expect(asyncCase).toContain("return getAsyncRequestReplyCodeProps()");
+
+  // Module semantic markers — orchestrator line map builders
+  const source = readFileSync(
+    "lib/generated/demo-code-props/async-request-reply.ts",
+    "utf8",
+  );
+  expect(source).toContain("buildOrchestratorLineMap(orchestratorCode)");
+  expect(source).toContain("buildCallbackLineMap(callbackCode)");
+  // Orchestrator uses manual scanning for finalizeResult
+  expect(source).toContain('includes("finalizeResult(")');
+  // Callback map uses helpers
+  expect(source).toContain('findBlockLineNumbers(code, "if (!response)")');
+  // Orchestrator line map keys
+  expect(source).toContain("submit: number[]");
+  expect(source).toContain("wait: number[]");
+  expect(source).toContain("callback: number[]");
+  expect(source).toContain("timeout: number[]");
+  // Callback line map keys
+  expect(source).toContain("resume: number[]");
+  expect(source).toContain("duplicate: number[]");
+  expect(source).toContain("delivered: number[]");
+  // Exported props shape
+  expect(source).toContain("orchestratorHtmlLines: string[]");
+  expect(source).toContain("callbackHtmlLines: string[]");
+});
+
+test("idempotent-receiver is a real preserved module with orchestrator and step maps", () => {
+  const generator = readFileSync(".scripts/generate-native-gallery.ts", "utf8");
+  expect(generator).toContain(
+    '{ slug: "idempotent-receiver", fn: "getIdempotentReceiverCodeProps", mode: "preserve-file" }',
+  );
+
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  const irCase = dispatcher.slice(
+    dispatcher.indexOf('case "idempotent-receiver"'),
+    dispatcher.indexOf('case "idempotent-receiver"') + 200,
+  );
+  expect(irCase).toContain("return getIdempotentReceiverCodeProps()");
+
+  const source = readFileSync(
+    "lib/generated/demo-code-props/idempotent-receiver.ts",
+    "utf8",
+  );
+  // Orchestrator line map keys
+  expect(source).toContain("checkKey: number[]");
+  expect(source).toContain("duplicateBranch: number[]");
+  expect(source).toContain("processBranch: number[]");
+  expect(source).toContain("returnResult: number[]");
+  // Step line map keys
+  expect(source).toContain("processPayment: number[]");
+  expect(source).toContain("storeResult: number[]");
+  expect(source).toContain("emitDuplicate: number[]");
+  // Semantic markers — real line-map builders, not generic fallback
+  expect(source).toContain("buildOrchestratorLineMap(orchestratorCode)");
+  expect(source).toContain("buildStepLineMap(stepCode)");
+  expect(source).toContain('findBlockLineNumbers(code, "if (cached)")');
+  expect(source).toContain('findLineNumbers(code, "checkIdempotencyKey(")');
+});
+
+test("choreography is a real preserved module with flow and participant pane data", () => {
+  const generator = readFileSync(".scripts/generate-native-gallery.ts", "utf8");
+  expect(generator).toContain(
+    '{ slug: "choreography", fn: "getChoreographyCodeProps", mode: "preserve-file" }',
+  );
+
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  const chorCase = dispatcher.slice(
+    dispatcher.indexOf('case "choreography"'),
+    dispatcher.indexOf('case "choreography"') + 200,
+  );
+  expect(chorCase).toContain("return getChoreographyCodeProps()");
+
+  const source = readFileSync(
+    "lib/generated/demo-code-props/choreography.ts",
+    "utf8",
+  );
+  // Flow line map keys — participant call sites
+  expect(source).toContain("orderServicePlaceOrder: number[]");
+  expect(source).toContain("inventoryServiceReserve: number[]");
+  expect(source).toContain("paymentServiceCharge: number[]");
+  expect(source).toContain("shippingServiceShip: number[]");
+  expect(source).toContain("compensationBranch: number[]");
+  expect(source).toContain("finalizeOutcome: number[]");
+  // Participant line map keys — all 7 service functions
+  expect(source).toContain("orderService: number[]");
+  expect(source).toContain("inventoryService: number[]");
+  expect(source).toContain("paymentService: number[]");
+  expect(source).toContain("shippingService: number[]");
+  expect(source).toContain("orderServiceCompensate: number[]");
+  expect(source).toContain("inventoryServiceCompensate: number[]");
+  expect(source).toContain("paymentServiceCompensate: number[]");
+  // Real builders, not generic fallback
+  expect(source).toContain("buildFlowLineMap(flowCode)");
+  expect(source).toContain("buildParticipantLineMap(participantCode)");
+  // Exported props include both code strings and html lines
+  expect(source).toContain("flowCode: string");
+  expect(source).toContain("flowHtmlLines: string[]");
+  expect(source).toContain("participantCode: string");
+  expect(source).toContain("participantHtmlLines: string[]");
+});
+
+test("cancellable-export is a real preserved module with sections and workbench data", () => {
+  const generator = readFileSync(".scripts/generate-native-gallery.ts", "utf8");
+  expect(generator).toContain(
+    '{ slug: "cancellable-export", fn: "getCancellableExportCodeProps", mode: "preserve-file" }',
+  );
+
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  const ceCase = dispatcher.slice(
+    dispatcher.indexOf('case "cancellable-export"'),
+    dispatcher.indexOf('case "cancellable-export"') + 200,
+  );
+  expect(ceCase).toContain("return getCancellableExportCodeProps()");
+
+  const source = readFileSync(
+    "lib/generated/demo-code-props/cancellable-export.ts",
+    "utf8",
+  );
+  // Props shape — multi-section workbench
+  expect(source).toContain("workflowCode: string");
+  expect(source).toContain("workflowLinesHtml: string[]");
+  expect(source).toContain("stepCodes: string[]");
+  expect(source).toContain("stepLinesHtml: string[][]");
+  expect(source).toContain("sectionNames: string[]");
+  expect(source).toContain("sectionContent: string[]");
+  expect(source).toContain("highlightLineMap: HighlightLineMap");
+  // Line map builder
+  expect(source).toContain("buildHighlightLineMap(workflowCode)");
+  expect(source).toContain('findLineNumbers(code, "await generateSection(")');
+  // sectionNames has real content, not empty array
+  expect(source).toContain('"Introduction"');
+  expect(source).toContain('"Market Analysis"');
+  expect(source).toContain('"Conclusion"');
+  // sectionContent has real content
+  expect(source).toContain("European market");
+  expect(source).toContain("GDPR");
 });
 
 // ---------------------------------------------------------------------------

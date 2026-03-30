@@ -11,6 +11,10 @@ import { getSagaCodeProps } from "@/lib/generated/demo-code-props/saga";
 import { getCircuitBreakerCodeProps } from "@/lib/generated/demo-code-props/circuit-breaker";
 import { getSplitterCodeProps } from "@/lib/generated/demo-code-props/splitter";
 import { getDeadLetterQueueCodeProps } from "@/lib/generated/demo-code-props/dead-letter-queue";
+import { getAsyncRequestReplyCodeProps } from "@/lib/generated/demo-code-props/async-request-reply";
+import { getIdempotentReceiverCodeProps } from "@/lib/generated/demo-code-props/idempotent-receiver";
+import { getChoreographyCodeProps } from "@/lib/generated/demo-code-props/choreography";
+import { getCancellableExportCodeProps } from "@/lib/generated/demo-code-props/cancellable-export";
 
 function readWorkflowSource(relPath: string): string {
   try {
@@ -58,20 +62,8 @@ export async function getNativeDemoCodeProps(
     }
     case "approval-gate":
       return {};
-    case "async-request-reply": {
-      const workflowSource = readWorkflowSource("async-request-reply/workflows/async-request-reply.ts");
-      const workflowCode = extractExportedWorkflowBlock(workflowSource);
-      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
-      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
-      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
-      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
-      return {
-        orchestratorHtmlLines: workflowHtmlLines,
-        orchestratorLineMap: {},
-        callbackHtmlLines: secondaryHtmlLines,
-        callbackLineMap: {},
-      };
-    }
+    case "async-request-reply":
+      return getAsyncRequestReplyCodeProps();
     case "batch-processor": {
       const workflowSource = readWorkflowSource("batch-processor/workflows/batch-processor.ts");
       const workflowCode = extractExportedWorkflowBlock(workflowSource);
@@ -104,39 +96,10 @@ export async function getNativeDemoCodeProps(
         stepLineMap: {},
       };
     }
-    case "cancellable-export": {
-      const workflowSource = readWorkflowSource("cancellable-export/workflows/report-generator.ts");
-      const workflowCode = extractExportedWorkflowBlock(workflowSource);
-      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
-      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
-      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
-      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
-      return {
-        workflowCode: workflowCode,
-        workflowLinesHtml: workflowHtmlLines,
-        stepCodes: [],
-        stepLinesHtml: secondaryHtmlLines,
-        highlightLineMap: {},
-        sectionNames: [],
-        sectionContent: [],
-      };
-    }
-    case "choreography": {
-      const workflowSource = readWorkflowSource("choreography/workflows/choreography.ts");
-      const workflowCode = extractExportedWorkflowBlock(workflowSource);
-      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
-      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
-      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
-      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
-      return {
-        flowCode: workflowCode,
-        flowHtmlLines: workflowHtmlLines,
-        flowLineMap: {},
-        participantCode: secondaryCode,
-        participantHtmlLines: secondaryHtmlLines,
-        participantLineMap: {},
-      };
-    }
+    case "cancellable-export":
+      return getCancellableExportCodeProps();
+    case "choreography":
+      return getChoreographyCodeProps();
     case "circuit-breaker":
       return getCircuitBreakerCodeProps();
     case "claim-check": {
@@ -303,20 +266,8 @@ export async function getNativeDemoCodeProps(
         stepLineMap: {},
       };
     }
-    case "idempotent-receiver": {
-      const workflowSource = readWorkflowSource("idempotent-receiver/workflows/idempotent-receiver.ts");
-      const workflowCode = extractExportedWorkflowBlock(workflowSource);
-      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
-      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
-      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
-      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
-      return {
-        orchestratorHtmlLines: workflowHtmlLines,
-        orchestratorLineMap: {},
-        stepHtmlLines: secondaryHtmlLines,
-        stepLineMap: {},
-      };
-    }
+    case "idempotent-receiver":
+      return getIdempotentReceiverCodeProps();
     case "map-reduce": {
       const workflowSource = readWorkflowSource("map-reduce/workflows/map-reduce.ts");
       const workflowCode = extractExportedWorkflowBlock(workflowSource);

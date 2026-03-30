@@ -1468,6 +1468,10 @@ const REAL_CODE_PROPS_DEMOS: readonly RealCodePropsDemo[] = [
   { slug: "circuit-breaker", fn: "getCircuitBreakerCodeProps", mode: "preserve-file" },
   { slug: "splitter", fn: "getSplitterCodeProps", mode: "preserve-file" },
   { slug: "dead-letter-queue", fn: "getDeadLetterQueueCodeProps", mode: "preserve-file" },
+  { slug: "async-request-reply", fn: "getAsyncRequestReplyCodeProps", mode: "preserve-file" },
+  { slug: "idempotent-receiver", fn: "getIdempotentReceiverCodeProps", mode: "preserve-file" },
+  { slug: "choreography", fn: "getChoreographyCodeProps", mode: "preserve-file" },
+  { slug: "cancellable-export", fn: "getCancellableExportCodeProps", mode: "preserve-file" },
 ] as const;
 
 /** Set of slugs that have real code-props modules (derived from REAL_CODE_PROPS_DEMOS). */
