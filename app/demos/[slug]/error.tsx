@@ -55,8 +55,8 @@ export default function DemoDetailError({
           <p className="font-mono text-xs text-red-700">RUNTIME_ERROR</p>
           <h1 className="mt-3 text-xl font-semibold">Something went wrong</h1>
           <p className="mt-2 text-sm text-gray-900">
-            {error.message ||
-              "An unexpected error occurred while loading this demo."}
+            An unexpected error occurred while loading this demo. Try again,
+            or return to the gallery and reopen the pattern.
           </p>
           {error.digest && (
             <p className="mt-1 font-mono text-[10px] text-gray-500">
