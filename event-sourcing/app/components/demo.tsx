@@ -727,27 +727,35 @@ function EventGraph({
     >
       <rect x={0} y={0} width={svgWidth} height={120} fill="var(--color-background-100)" rx={8} />
 
-      {/* Event nodes */}
+      {/* Connecting lines (behind nodes) */}
+      {displayEvents.map((event, i) => {
+        if (i === 0) return null;
+        const x = startX + i * nodeSpacing;
+        const color = eventKindColor(event.kind);
+        const isReplaying = lifecycle === "replaying" && i === replayProgress - 1;
+        return (
+          <line
+            key={`line-${i}`}
+            x1={startX + (i - 1) * nodeSpacing}
+            y1={y}
+            x2={x}
+            y2={y}
+            stroke={color}
+            strokeWidth={2}
+            strokeDasharray={isReplaying ? "4 3" : undefined}
+            className={isReplaying ? "animate-pulse" : undefined}
+          />
+        );
+      })}
+
+      {/* Event nodes (on top of lines) */}
       {displayEvents.map((event, i) => {
         const x = startX + i * nodeSpacing;
         const color = eventKindColor(event.kind);
         const isReplayed = lifecycle === "replaying" && i < replayProgress;
-        const isReplaying = lifecycle === "replaying" && i === replayProgress - 1;
 
         return (
           <g key={i}>
-            {i > 0 && (
-              <line
-                x1={startX + (i - 1) * nodeSpacing}
-                y1={y}
-                x2={x}
-                y2={y}
-                stroke={color}
-                strokeWidth={2}
-                strokeDasharray={isReplaying ? "4 3" : undefined}
-                className={isReplaying ? "animate-pulse" : undefined}
-              />
-            )}
             <circle
               cx={x}
               cy={y}

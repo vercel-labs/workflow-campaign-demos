@@ -30,195 +30,222 @@ type TreeNode = {
 
 const tree: TreeNode = {
   id: "root",
-  question: "What kind of workflow are you building?",
+  question: "I want to\u2026",
   branches: [
     {
-      label: "Coordinate work",
-      icon: "◇",
+      label: "Process payments & orders",
+      icon: "$",
       next: {
-        id: "coordinate",
-        question: "How are tasks related?",
+        id: "payments",
+        question: "What happens if a step fails?",
         branches: [
           {
-            label: "Run in parallel, combine results",
-            icon: "⫘",
-            next: {
-              id: "parallel-type",
-              question: "What happens with the results?",
-              branches: [
-                {
-                  label: "Merge into one result",
-                  icon: "⊕",
-                  slugs: ["aggregator", "scatter-gather", "map-reduce"],
-                },
-                {
-                  label: "Each result is independent",
-                  icon: "⊙",
-                  slugs: ["fan-out", "publish-subscribe", "recipient-list", "competing-consumers", "priority-queue"],
-                },
-              ],
-            },
+            label: "Roll back everything automatically",
+            icon: "↩",
+            slugs: ["saga"],
           },
           {
-            label: "Run in sequence, step by step",
-            icon: "→",
-            next: {
-              id: "sequence-type",
-              question: "Is the sequence fixed or dynamic?",
-              branches: [
-                {
-                  label: "Fixed pipeline",
-                  icon: "▸",
-                  slugs: ["pipeline", "choreography", "process-manager"],
-                },
-                {
-                  label: "Dynamic — determined at runtime",
-                  icon: "◈",
-                  slugs: ["routing-slip", "content-based-router", "detour"],
-                },
-                {
-                  label: "With rollback if something fails",
-                  icon: "↩",
-                  slugs: ["saga", "choreography"],
-                },
-              ],
-            },
-          },
-          {
-            label: "React to events as they arrive",
+            label: "Let services react independently",
             icon: "⚡",
-            slugs: ["event-gateway", "event-sourcing", "choreography"],
+            slugs: ["choreography"],
+          },
+          {
+            label: "Orchestrate with branching logic",
+            icon: "◈",
+            slugs: ["process-manager", "pipeline"],
+          },
+          {
+            label: "Make sure nothing gets lost",
+            icon: "✓",
+            slugs: [
+              "guaranteed-delivery",
+              "transactional-outbox",
+              "idempotent-receiver",
+            ],
           },
         ],
       },
     },
     {
-      label: "Handle failures",
-      icon: "⚠",
+      label: "Approve or review something",
+      icon: "✋",
       next: {
-        id: "failure-type",
-        question: "What's your failure strategy?",
+        id: "approve",
+        question: "How many approvers?",
         branches: [
           {
-            label: "Retry with backoff",
-            icon: "↻",
-            slugs: [
-              "retry-backoff",
-              "retryable-rate-limit",
-              "guaranteed-delivery",
-            ],
+            label: "One person",
+            icon: "1",
+            slugs: ["approval-gate", "cancellable-export"],
           },
           {
-            label: "Stop calling a broken service",
-            icon: "⊘",
-            slugs: ["circuit-breaker", "bulkhead", "hedge-request"],
-          },
-          {
-            label: "Quarantine bad messages",
-            icon: "☐",
-            slugs: [
-              "dead-letter-queue",
-              "idempotent-receiver",
-              "transactional-outbox",
-            ],
+            label: "A chain of approvers",
+            icon: "⋯",
+            slugs: ["approval-chain", "scheduler-agent-supervisor"],
           },
         ],
       },
     },
     {
-      label: "Wait for something",
-      icon: "◴",
+      label: "Handle flaky APIs",
+      icon: "↻",
       next: {
-        id: "wait-type",
+        id: "flaky",
+        question: "What's going wrong?",
+        branches: [
+          {
+            label: "Random failures or timeouts",
+            icon: "⚠",
+            slugs: ["retry-backoff"],
+          },
+          {
+            label: "Rate limited (429s)",
+            icon: "⊘",
+            slugs: ["retryable-rate-limit", "throttle"],
+          },
+          {
+            label: "Service is fully down",
+            icon: "✕",
+            slugs: ["circuit-breaker", "bulkhead"],
+          },
+          {
+            label: "Too slow, need a faster fallback",
+            icon: "⏱",
+            slugs: ["hedge-request", "dead-letter-queue"],
+          },
+        ],
+      },
+    },
+    {
+      label: "Send notifications & alerts",
+      icon: "→",
+      next: {
+        id: "notify",
+        question: "How should they be sent?",
+        branches: [
+          {
+            label: "All at once, in parallel",
+            icon: "⫘",
+            slugs: ["fan-out", "publish-subscribe"],
+          },
+          {
+            label: "Only to matching recipients",
+            icon: "⑂",
+            slugs: ["recipient-list"],
+          },
+          {
+            label: "Spread out over days or weeks",
+            icon: "◴",
+            slugs: ["onboarding-drip", "wakeable-reminder"],
+          },
+          {
+            label: "Batched into a digest",
+            icon: "▤",
+            slugs: ["scheduled-digest"],
+          },
+        ],
+      },
+    },
+    {
+      label: "Wait for a webhook or callback",
+      icon: "↓",
+      next: {
+        id: "wait",
         question: "What are you waiting for?",
         branches: [
           {
-            label: "A human to approve or act",
-            icon: "✋",
-            next: {
-              id: "human-type",
-              question: "How many approvers?",
-              branches: [
-                {
-                  label: "One person",
-                  icon: "1",
-                  slugs: ["approval-gate", "cancellable-export"],
-                },
-                {
-                  label: "A chain of approvers",
-                  icon: "⋯",
-                  slugs: ["approval-chain", "scheduler-agent-supervisor"],
-                },
-              ],
-            },
+            label: "An async API response",
+            icon: "⇄",
+            slugs: ["async-request-reply", "request-reply"],
           },
           {
-            label: "An external signal or webhook",
+            label: "An inbound webhook",
             icon: "↓",
-            slugs: [
-              "async-request-reply",
-              "claim-check",
-              "webhook-basics",
-              "request-reply",
-            ],
+            slugs: ["webhook-basics", "claim-check"],
           },
           {
-            label: "A specific time or delay",
-            icon: "⏱",
-            slugs: [
-              "onboarding-drip",
-              "scheduled-digest",
-              "status-poller",
-              "wakeable-reminder",
-              "throttle",
-            ],
+            label: "Multiple signals to converge",
+            icon: "⊕",
+            slugs: ["event-gateway"],
+          },
+          {
+            label: "A job to finish (polling)",
+            icon: "◴",
+            slugs: ["status-poller"],
           },
         ],
       },
     },
     {
-      label: "Transform or route data",
-      icon: "⊿",
+      label: "Process data in bulk",
+      icon: "▤",
       next: {
-        id: "data-type",
+        id: "bulk",
+        question: "What's the shape of the work?",
+        branches: [
+          {
+            label: "Linear pipeline (A then B then C)",
+            icon: "▸",
+            slugs: ["pipeline", "batch-processor"],
+          },
+          {
+            label: "Parallel map, then merge results",
+            icon: "⊕",
+            slugs: ["map-reduce", "scatter-gather", "aggregator"],
+          },
+          {
+            label: "Split one payload into many",
+            icon: "⫘",
+            slugs: ["splitter", "resequencer"],
+          },
+          {
+            label: "Many workers competing for items",
+            icon: "⊙",
+            slugs: ["competing-consumers", "priority-queue"],
+          },
+        ],
+      },
+    },
+    {
+      label: "Route to the right handler",
+      icon: "⑂",
+      next: {
+        id: "route",
         question: "What's the main operation?",
         branches: [
           {
-            label: "Transform format or shape",
+            label: "Branch based on message content",
+            icon: "◈",
+            slugs: ["content-based-router", "detour"],
+          },
+          {
+            label: "Dynamic route list per request",
+            icon: "⋯",
+            slugs: ["routing-slip", "recipient-list"],
+          },
+          {
+            label: "Transform or normalize the format",
             icon: "⇄",
             slugs: ["message-translator", "normalizer", "content-enricher"],
           },
           {
-            label: "Split, filter, or batch",
-            icon: "▤",
-            slugs: [
-              "splitter",
-              "batch-processor",
-              "message-filter",
-              "resequencer",
-            ],
-          },
-          {
-            label: "Route to the right destination",
-            icon: "⑂",
-            slugs: [
-              "content-based-router",
-              "routing-slip",
-              "recipient-list",
-            ],
-          },
-          {
-            label: "Observe or audit the flow",
-            icon: "◎",
-            slugs: [
-              "wire-tap",
-              "message-history",
-              "correlation-identifier",
-              "namespaced-streams",
-            ],
+            label: "Filter out noise before processing",
+            icon: "✕",
+            slugs: ["message-filter"],
           },
         ],
       },
+    },
+    {
+      label: "Observe & audit the flow",
+      icon: "◎",
+      slugs: [
+        "wire-tap",
+        "message-history",
+        "correlation-identifier",
+        "event-sourcing",
+        "namespaced-streams",
+      ],
     },
   ],
 };
