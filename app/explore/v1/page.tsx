@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { demos } from "@/lib/demos";
 import { getDemoApis, getApiColorClasses } from "@/lib/api-taxonomy";
+import { GALLERY_TITLE } from "@/lib/page-titles";
 import { getTagLabel } from "@/lib/taxonomy";
 import { useState } from "react";
 
@@ -32,7 +33,7 @@ export default function V1Page() {
       </Link>
       <header className="mb-14 mt-6 text-center">
         <h1 className="text-5xl font-semibold tracking-tight text-gray-1000 sm:text-6xl">
-          API Gallery
+          {GALLERY_TITLE}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-gray-900">
           {demos.length} workflow demos organized by the DevKit APIs they use.

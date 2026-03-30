@@ -10,6 +10,7 @@ import {
   getDemoApis,
   getAllDemoApis,
 } from "@/lib/api-taxonomy";
+import { HOME_TITLE, GALLERY_TITLE } from "@/lib/page-titles";
 import { useState, useMemo, useCallback } from "react";
 
 /**
@@ -133,12 +134,12 @@ export default function GalleryPage() {
         href="/"
         className="text-sm text-gray-400 hover:text-gray-1000 font-mono transition-colors"
       >
-        ← API Finder
+        ← {HOME_TITLE}
       </Link>
 
       <header className="mb-10 mt-6 text-center">
         <h1 className="text-5xl font-semibold tracking-tight text-gray-1000 sm:text-6xl">
-          Browse Gallery
+          {GALLERY_TITLE}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-gray-1000/70">
           All {demos.length} Workflow DevKit demos. Filter by API, search by

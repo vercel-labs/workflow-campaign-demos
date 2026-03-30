@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { demos } from "@/lib/demos";
 import type { DemoCatalogEntry } from "@/lib/demos";
+import { GALLERY_TITLE } from "@/lib/page-titles";
 import {
   workflowApis,
   getApiUsageCounts,
@@ -142,7 +143,7 @@ export default function V6Page() {
       {/* Header */}
       <header className="mb-10 mt-6 text-center">
         <h1 className="text-5xl font-semibold tracking-tight text-gray-1000 sm:text-6xl">
-          Workflow API Gallery
+          {GALLERY_TITLE}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-gray-1000/70">
           {demos.length} interactive demos showing every Workflow DevKit API in

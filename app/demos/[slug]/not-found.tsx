@@ -1,3 +1,5 @@
+import { GALLERY_TITLE } from "@/lib/page-titles";
+
 export default function DemoNotFound() {
   return (
     <main className="min-h-screen bg-background-100 text-gray-1000">
@@ -21,7 +23,7 @@ export default function DemoNotFound() {
             >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
-            Gallery
+            {GALLERY_TITLE}
           </a>
           <span className="text-gray-300">/</span>
           <span className="text-sm font-semibold text-gray-500">Not found</span>

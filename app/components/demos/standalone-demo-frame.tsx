@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HOME_TITLE } from "@/lib/page-titles";
 
 export function StandaloneDemoFrame({
   title,
@@ -16,7 +17,7 @@ export function StandaloneDemoFrame({
           href={backHref}
           className="text-sm text-white/70 transition-colors hover:text-white"
         >
-          &larr; Gallery
+          &larr; {HOME_TITLE}
         </Link>
 
         <a

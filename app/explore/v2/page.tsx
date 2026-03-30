@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { demos } from "@/lib/demos";
+import { GALLERY_TITLE } from "@/lib/page-titles";
 import {
   workflowApis,
   getApiUsageCounts,
@@ -62,7 +63,7 @@ export default function V2Page() {
       </Link>
       <header className="mb-10 mt-6 text-center">
         <h1 className="text-5xl font-semibold tracking-tight text-gray-1000 sm:text-6xl">
-          API Explorer
+          {GALLERY_TITLE}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-gray-900">
           The complete Workflow DevKit surface area. Click any API to see demos

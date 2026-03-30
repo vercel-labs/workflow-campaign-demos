@@ -4,6 +4,7 @@ import Link from "next/link";
 import { demos } from "@/lib/demos";
 import type { DemoCatalogEntry } from "@/lib/demos";
 import { getDemoApis, getApiColorClasses } from "@/lib/api-taxonomy";
+import { HOME_TITLE, GALLERY_TITLE } from "@/lib/page-titles";
 import { useState, useMemo, useCallback } from "react";
 
 /**
@@ -292,7 +293,7 @@ export default function HomePage() {
     >
       <header className="mb-12 text-center">
         <h1 className="text-5xl font-semibold leading-[1.02] tracking-tight text-gray-1000 sm:text-6xl">
-          Workflow API Explorer
+          {HOME_TITLE}
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-gray-1000/70">
           Answer a few questions to find the right pattern from{" "}
@@ -446,7 +447,7 @@ export default function HomePage() {
               href="/explore"
               className="text-sm font-mono text-gray-400 hover:text-gray-1000 transition-colors"
             >
-              Browse Gallery →
+              {GALLERY_TITLE} →
             </Link>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { DemoCatalogEntry } from "@/lib/demos";
 import { getTagLabel } from "@/lib/taxonomy";
+import { GALLERY_TITLE } from "@/lib/page-titles";
 
 type DemoApiRoute = {
   route: string;
@@ -45,7 +46,7 @@ export function DemoDetailShell({
             >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
-            Gallery
+            {GALLERY_TITLE}
           </a>
 
           <span className="text-gray-300">/</span>

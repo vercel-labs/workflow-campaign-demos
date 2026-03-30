@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { demos } from "@/lib/demos";
 import { getAllDemoApis, getApiColorClasses, getDemoApis } from "@/lib/api-taxonomy";
+import { GALLERY_TITLE } from "@/lib/page-titles";
 import { getTagLabel } from "@/lib/taxonomy";
 import { useState, useMemo } from "react";
 
@@ -40,7 +41,7 @@ export default function V5Page() {
       </Link>
       <header className="mb-10 mt-6 text-center">
         <h1 className="text-5xl font-semibold tracking-tight text-gray-1000 sm:text-6xl">
-          API Gallery
+          {GALLERY_TITLE}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-gray-900">
           Each card shows its API fingerprint — a visual signature of the DevKit

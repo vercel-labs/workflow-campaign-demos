@@ -4,6 +4,7 @@ import { demos, getDemo } from "@/lib/demos";
 import { nativeDemos } from "@/lib/native-demos.generated";
 import { getNativeDemoCodeProps } from "@/lib/native-demo-code.generated";
 import { DemoDetailShell } from "@/app/components/demos/demo-detail-shell";
+import { HOME_TITLE } from "@/lib/page-titles";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -22,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       robots: { index: false, follow: false },
     };
   }
-  const title = `${demo.title} — Workflow API Explorer`;
+  const title = `${demo.title} — ${HOME_TITLE}`;
   const description = demo.description;
   const canonicalPath = `/demos/${slug}`;
   const ogImage = `${canonicalPath}/opengraph-image`;
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: ogImage,
           width: 1200,
           height: 630,
-          alt: `${demo.title} — Workflow API Explorer`,
+          alt: `${demo.title} — ${HOME_TITLE}`,
         },
       ],
     },

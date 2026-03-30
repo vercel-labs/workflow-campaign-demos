@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { GALLERY_TITLE } from "@/lib/page-titles";
 
 export default function DemoDetailError({
   error,
@@ -43,7 +44,7 @@ export default function DemoDetailError({
             >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
-            Gallery
+            {GALLERY_TITLE}
           </a>
           <span className="text-gray-300">/</span>
           <span className="text-sm font-semibold text-red-700">Error</span>

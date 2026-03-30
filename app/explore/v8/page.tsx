@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { demos } from "@/lib/demos";
 import type { DemoCatalogEntry } from "@/lib/demos";
+import { HOME_TITLE } from "@/lib/page-titles";
 import { getDemoApis, getApiColorClasses } from "@/lib/api-taxonomy";
 import { useState, useMemo, useCallback } from "react";
 
@@ -286,7 +287,7 @@ export default function V8Page() {
 
       <header className="mb-12 mt-6 text-center">
         <h1 className="text-5xl font-semibold tracking-tight text-gray-1000 sm:text-6xl">
-          Workflow API Explorer
+          {HOME_TITLE}
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-gray-1000/70">
           Follow the branches to find the right workflow pattern. Each choice

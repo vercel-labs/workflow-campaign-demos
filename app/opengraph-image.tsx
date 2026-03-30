@@ -1,8 +1,9 @@
 // GENERATED — root-level OG image route for social sharing
 import { ImageResponse } from "next/og";
+import { HOME_TITLE } from "@/lib/page-titles";
 
 export const runtime = "edge";
-export const alt = "Workflow API Explorer";
+export const alt = HOME_TITLE;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -39,7 +40,7 @@ export default function OGImage() {
               lineHeight: 1.1,
             }}
           >
-            Workflow API Explorer
+            {HOME_TITLE}
           </div>
           <div
             style={{
