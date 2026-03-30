@@ -200,13 +200,137 @@ test("all generated route files have GENERATED header", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Idempotency test
+// Real regeneration verification
 // ---------------------------------------------------------------------------
 
-test("generator is idempotent (running twice produces same output)", () => {
-  const file = "app/api/fan-out/route.ts";
-  const before = readFileSync(file, "utf8");
-  // The generator was already run — just verify the file exists and is stable
-  expect(before.length).toBeGreaterThan(100);
-  expect(before).toContain("GENERATED");
+import { execSync } from "node:child_process";
+import { rmSync as fsRmSync, writeFileSync } from "node:fs";
+
+const REPRESENTATIVE_SLUGS = [
+  "fan-out",
+  "saga",
+  "circuit-breaker",
+  "splitter",
+  "dead-letter-queue",
+] as const;
+
+const SLUG_TO_FN: Record<string, string> = {
+  "fan-out": "getFanOutCodeProps",
+  saga: "getSagaCodeProps",
+  "circuit-breaker": "getCircuitBreakerCodeProps",
+  splitter: "getSplitterCodeProps",
+  "dead-letter-queue": "getDeadLetterQueueCodeProps",
+};
+
+function runGenerator() {
+  execSync("bun .scripts/generate-native-gallery.ts", { stdio: "inherit" });
+}
+
+test("generator is idempotent: two consecutive runs produce identical output", () => {
+  // Run 1
+  runGenerator();
+  const afterFirst = new Map<string, string>();
+  for (const slug of REPRESENTATIVE_SLUGS) {
+    afterFirst.set(slug, readFileSync(`lib/generated/demo-code-props/${slug}.ts`, "utf8"));
+  }
+  const dispatcherFirst = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  const registryFirst = readFileSync("lib/native-demos.generated.ts", "utf8");
+  const routeFirst = readFileSync("app/api/fan-out/route.ts", "utf8");
+
+  // Run 2
+  runGenerator();
+
+  // Assert all representative code-props modules still exist with identical content
+  for (const slug of REPRESENTATIVE_SLUGS) {
+    const content = readFileSync(`lib/generated/demo-code-props/${slug}.ts`, "utf8");
+    expect(content).toBe(afterFirst.get(slug)!);
+  }
+  expect(readFileSync("lib/native-demo-code.generated.ts", "utf8")).toBe(dispatcherFirst);
+  expect(readFileSync("lib/native-demos.generated.ts", "utf8")).toBe(registryFirst);
+  expect(readFileSync("app/api/fan-out/route.ts", "utf8")).toBe(routeFirst);
+});
+
+test("all five representative code-props modules exist after clean+regen cycle", () => {
+  // Run the generator (which internally cleans then regenerates)
+  runGenerator();
+
+  for (const slug of REPRESENTATIVE_SLUGS) {
+    const path = `lib/generated/demo-code-props/${slug}.ts`;
+    expect(existsSync(path)).toBe(true);
+    const content = readFileSync(path, "utf8");
+    expect(content.length).toBeGreaterThan(50);
+  }
+});
+
+test("dispatcher contains dispatch branches for all five representative demos after regen", () => {
+  // Run twice to exercise the clean+regen cycle
+  runGenerator();
+  runGenerator();
+
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  for (const slug of REPRESENTATIVE_SLUGS) {
+    expect(dispatcher).toContain(`case "${slug}"`);
+    expect(dispatcher).toContain(`return ${SLUG_TO_FN[slug]}()`);
+  }
+});
+
+test("non-representative demos use real workflow source fallback instead of blank props", () => {
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+
+  // The dispatcher should import readFileSync and highlightCodeToHtmlLines for generic fallback
+  expect(dispatcher).toContain('import { readFileSync } from "node:fs"');
+  expect(dispatcher).toContain('import { highlightCodeToHtmlLines } from "@/lib/code-workbench.server"');
+  expect(dispatcher).toContain("function readWorkflowSource(");
+
+  // Non-representative demos with code props should use readWorkflowSource, not blank strings
+  // Check a sample of demos that previously returned workflowCode: ""
+  for (const slug of ["aggregator", "bulkhead", "competing-consumers", "throttle"]) {
+    const caseStart = dispatcher.indexOf(`case "${slug}"`);
+    expect(caseStart).toBeGreaterThan(-1);
+    // Find the next case or default to delimit this case block
+    const caseBlock = dispatcher.slice(caseStart, caseStart + 500);
+    expect(caseBlock).toContain("readWorkflowSource(");
+    expect(caseBlock).toContain("highlightCodeToHtmlLines(workflowCode)");
+    // Should NOT contain blank workflowCode
+    expect(caseBlock).not.toContain('workflowCode: ""');
+  }
+
+  // Demos with no code props (approval-gate) should still return {}
+  const gateCase = dispatcher.slice(
+    dispatcher.indexOf('case "approval-gate"'),
+    dispatcher.indexOf('case "approval-gate"') + 100,
+  );
+  expect(gateCase).toContain("return {}");
+});
+
+test("generator fails fast with machine-parseable error when a preserved module is missing", () => {
+  // Ensure clean state first
+  runGenerator();
+
+  // Temporarily remove one preserved module
+  const target = "lib/generated/demo-code-props/saga.ts";
+  const backup = readFileSync(target, "utf8");
+  fsRmSync(target, { force: true });
+
+  let exitCode = 0;
+  let stderr = "";
+  try {
+    execSync("bun .scripts/generate-native-gallery.ts", {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+  } catch (err: unknown) {
+    const e = err as { status: number; stderr: Buffer };
+    exitCode = e.status;
+    stderr = e.stderr.toString();
+  }
+
+  // Restore the preserved module so subsequent tests work
+  writeFileSync(target, backup);
+  // Re-run generator to restore all generated files
+  runGenerator();
+
+  expect(exitCode).not.toBe(0);
+  expect(stderr).toContain("missing_preserved_code_props_module");
+  expect(stderr).toContain("saga");
+  expect(stderr).toContain("lib/generated/demo-code-props/saga.ts");
 });

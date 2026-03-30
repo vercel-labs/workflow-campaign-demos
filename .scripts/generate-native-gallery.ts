@@ -1431,45 +1431,89 @@ function generateFanOutCodePropsModule(): string {
   ].join("\n");
 }
 
-/**
- * Reads a code-props module from the lib/generated/demo-code-props/ directory.
- * Used for demos whose code-props modules are hand-authored rather than
- * generated from string templates (inline-code demos like saga, circuit-breaker,
- * and file-backed demos like splitter, dead-letter-queue).
- *
- * If the file doesn't exist yet, returns null so the generator can skip it.
- */
-function readCodePropsModule(slug: string): string | null {
-  const filePath = join(ROOT, `lib/generated/demo-code-props/${slug}.ts`);
-  if (!existsSync(filePath)) return null;
-  return readFileSync(filePath, "utf8");
-}
+// ---------------------------------------------------------------------------
+// Canonical representative demo metadata — single source of truth.
+//
+// All import lists, dispatcher branches, cache/restore lists, and
+// slug-to-function-name mappings are derived from this one array.
+// ---------------------------------------------------------------------------
 
-/**
- * Generates the code-props dispatcher that routes each slug to its
- * code-props module.  Representative demos get real props; everything else
- * gets dummy fallbacks matching the wrapper's expected prop shapes.
- */
+type CodePropsMode = "template" | "preserve-file";
+
+type RealCodePropsDemo = {
+  slug: string;
+  fn: string;
+  mode: CodePropsMode;
+};
+
+const REAL_CODE_PROPS_DEMOS: readonly RealCodePropsDemo[] = [
+  { slug: "fan-out", fn: "getFanOutCodeProps", mode: "template" },
+  { slug: "saga", fn: "getSagaCodeProps", mode: "preserve-file" },
+  { slug: "circuit-breaker", fn: "getCircuitBreakerCodeProps", mode: "preserve-file" },
+  { slug: "splitter", fn: "getSplitterCodeProps", mode: "preserve-file" },
+  { slug: "dead-letter-queue", fn: "getDeadLetterQueueCodeProps", mode: "preserve-file" },
+] as const;
+
+/** Set of slugs that have real code-props modules (derived from REAL_CODE_PROPS_DEMOS). */
+const REAL_CODE_PROPS_SLUGS = new Set(REAL_CODE_PROPS_DEMOS.map((d) => d.slug));
+
+/** Map slug → exported function name (derived from REAL_CODE_PROPS_DEMOS). */
 function slugToCodePropsFnName(slug: string): string {
-  const map: Record<string, string> = {
-    "fan-out": "getFanOutCodeProps",
-    saga: "getSagaCodeProps",
-    "circuit-breaker": "getCircuitBreakerCodeProps",
-    splitter: "getSplitterCodeProps",
-    "dead-letter-queue": "getDeadLetterQueueCodeProps",
-  };
-  return map[slug] ?? `get${slug.replace(/-./g, (m) => m[1].toUpperCase())}CodeProps`;
+  const demo = REAL_CODE_PROPS_DEMOS.find((d) => d.slug === slug);
+  return demo?.fn ?? `get${toPascalCase(slug)}CodeProps`;
 }
 
-const REAL_CODE_PROPS_SLUGS = new Set([
-  "fan-out",
-  "saga",
-  "circuit-breaker",
-  "splitter",
-  "dead-letter-queue",
-]);
+/**
+ * Classifies a code-pane prop as "code" (raw source string), "html" (highlighted
+ * HTML lines array), or "map" (line map object) so the dispatcher can populate
+ * code/html props with real highlighted workflow source while leaving line maps
+ * as empty objects for graceful degradation.
+ */
+function classifyCodeProp(prop: DemoComponentProp): "code" | "html" | "map" | "other" {
+  if (prop.valueKind === "string") {
+    // e.g. workflowCode, orchestratorCode, stepCode, flowCode, workflowDirective
+    if (prop.name.endsWith("Code")) return "code";
+    if (prop.name.endsWith("Directive")) return "other";
+    return "other";
+  }
+  if (prop.valueKind === "array") {
+    // e.g. workflowLinesHtml, workflowHtmlLines, orchestratorHtmlLines, stepLinesHtml
+    if (prop.name.endsWith("LinesHtml") || prop.name.endsWith("HtmlLines")) return "html";
+    // e.g. stepCodes, sectionNames, sectionContent — array props that are not HTML
+    return "other";
+  }
+  // object props are line maps
+  return "map";
+}
+
+/**
+ * Determines which prop receives the primary workflow source code and which
+ * receives the corresponding highlighted HTML lines for a non-representative demo.
+ * Returns null if the demo doesn't have recognisable code+html prop pairs.
+ */
+function findPrimaryCodeHtmlPair(
+  props: DemoComponentProp[],
+): { codeProp: string; htmlProp: string } | null {
+  const codePropNames = ["workflowCode", "orchestratorCode", "flowCode"];
+  const htmlPropNames = [
+    "workflowLinesHtml", "workflowHtmlLines",
+    "orchestratorLinesHtml", "orchestratorHtmlLines",
+    "flowLinesHtml", "flowHtmlLines",
+  ];
+
+  const codeProp = props.find((p) => codePropNames.includes(p.name));
+  const htmlProp = props.find((p) => htmlPropNames.includes(p.name));
+
+  if (codeProp && htmlProp) {
+    return { codeProp: codeProp.name, htmlProp: htmlProp.name };
+  }
+  return null;
+}
 
 function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
+  // Track whether any non-representative demo needs the generic fallback
+  let needsGenericImports = false;
+
   const cases = demos
     .map((demo) => {
       if (REAL_CODE_PROPS_SLUGS.has(demo.slug)) {
@@ -1485,6 +1529,47 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
           `      return {};`,
         ].join("\n");
       }
+
+      // For non-representative demos with code props, generate a fallback
+      // that reads the real workflow source and highlights it
+      const primary = findPrimaryCodeHtmlPair(demo.componentProps);
+      const workflowPath = demo.workflows[0]?.filePath ?? null;
+
+      if (primary && workflowPath) {
+        needsGenericImports = true;
+
+        // Build entries: code prop gets raw source, html prop gets highlighted,
+        // map props get {}, other props get type-appropriate defaults
+        const entries = demo.componentProps.map((prop) => {
+          if (prop.name === primary.codeProp) {
+            return `        ${prop.name}: workflowCode,`;
+          }
+          if (prop.name === primary.htmlProp) {
+            return `        ${prop.name}: workflowHtmlLines,`;
+          }
+          const cls = classifyCodeProp(prop);
+          if (cls === "code") return `        ${prop.name}: "",`;
+          if (cls === "html") return `        ${prop.name}: [],`;
+          if (cls === "map") return `        ${prop.name}: {},`;
+          // "other" — use type-appropriate default
+          const value =
+            prop.valueKind === "string" ? `""` :
+            prop.valueKind === "array" ? `[]` : `{}`;
+          return `        ${prop.name}: ${value},`;
+        });
+
+        return [
+          `    case ${JSON.stringify(demo.slug)}: {`,
+          `      const workflowCode = readWorkflowSource(${JSON.stringify(workflowPath)});`,
+          `      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);`,
+          `      return {`,
+          ...entries,
+          `      };`,
+          `    }`,
+        ].join("\n");
+      }
+
+      // No recognisable code+html pair or no workflow file — use defaults
       const entries = demo.componentProps.map((prop) => {
         const value =
           prop.valueKind === "string"
@@ -1503,13 +1588,36 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
     })
     .join("\n");
 
+  const imports = REAL_CODE_PROPS_DEMOS.map(
+    (d) => `import { ${d.fn} } from "@/lib/generated/demo-code-props/${d.slug}";`,
+  );
+
+  const genericImports = needsGenericImports
+    ? [
+        `import { readFileSync } from "node:fs";`,
+        `import { join } from "node:path";`,
+        `import { highlightCodeToHtmlLines } from "@/lib/code-workbench.server";`,
+      ]
+    : [];
+
+  const helperFn = needsGenericImports
+    ? [
+        ``,
+        `function readWorkflowSource(relPath: string): string {`,
+        `  try {`,
+        `    return readFileSync(join(process.cwd(), relPath), "utf-8");`,
+        `  } catch {`,
+        `    return "// Source not available";`,
+        `  }`,
+        `}`,
+      ]
+    : [];
+
   return [
     HEADER.trimEnd(),
-    `import { getFanOutCodeProps } from "@/lib/generated/demo-code-props/fan-out";`,
-    `import { getSagaCodeProps } from "@/lib/generated/demo-code-props/saga";`,
-    `import { getCircuitBreakerCodeProps } from "@/lib/generated/demo-code-props/circuit-breaker";`,
-    `import { getSplitterCodeProps } from "@/lib/generated/demo-code-props/splitter";`,
-    `import { getDeadLetterQueueCodeProps } from "@/lib/generated/demo-code-props/dead-letter-queue";`,
+    ...genericImports,
+    ...imports,
+    ...helperFn,
     ``,
     `export async function getNativeDemoCodeProps(`,
     `  slug: string,`,
@@ -1529,13 +1637,34 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
 // ---------------------------------------------------------------------------
 
 function main(): void {
-  // Cache code-props module contents before cleaning (cleanup deletes the directory)
+  // Cache code-props module contents before cleaning (cleanup deletes the directory).
+  // Only preserve-file demos need caching; template demos are regenerated from scratch.
   const cachedCodePropsModules = new Map<string, string>();
-  for (const slug of ["saga", "circuit-breaker", "splitter", "dead-letter-queue"]) {
-    const filePath = join(ROOT, `lib/generated/demo-code-props/${slug}.ts`);
+  const missingPreserved: RealCodePropsDemo[] = [];
+  for (const demo of REAL_CODE_PROPS_DEMOS) {
+    if (demo.mode !== "preserve-file") continue;
+    const filePath = join(ROOT, `lib/generated/demo-code-props/${demo.slug}.ts`);
     if (existsSync(filePath)) {
-      cachedCodePropsModules.set(slug, readFileSync(filePath, "utf8"));
+      cachedCodePropsModules.set(demo.slug, readFileSync(filePath, "utf8"));
+    } else {
+      missingPreserved.push(demo);
     }
+  }
+
+  // Fail fast BEFORE cleaning if any preserved modules are missing.
+  // This avoids writing 100+ files then failing, leaving partial state.
+  if (missingPreserved.length > 0) {
+    for (const demo of missingPreserved) {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          action: "missing_preserved_code_props_module",
+          slug: demo.slug,
+          expectedPath: `lib/generated/demo-code-props/${demo.slug}.ts`,
+        }),
+      );
+    }
+    process.exit(1);
   }
 
   // Clean stale generated files before writing new ones
@@ -1638,20 +1767,23 @@ function main(): void {
   write("lib/native-demos.generated.ts", generateRegistry(supported, extraRoutesBySlug));
   filesWritten++;
 
-  // Generate code-props modules (real server-side code extraction)
-  write(
-    "lib/generated/demo-code-props/fan-out.ts",
-    generateFanOutCodePropsModule(),
-  );
-  filesWritten++;
-
-  // Write code-props modules for representative demos (from cached pre-clean content)
-  for (const slug of ["saga", "circuit-breaker", "splitter", "dead-letter-queue"]) {
-    const content = cachedCodePropsModules.get(slug);
-    if (content) {
-      write(`lib/generated/demo-code-props/${slug}.ts`, content);
-      filesWritten++;
+  // Generate/restore code-props modules for all representative demos.
+  // Template-mode demos are regenerated; preserve-file demos are restored from cache.
+  // Missing preserve-file modules were already caught before cleaning started.
+  for (const demo of REAL_CODE_PROPS_DEMOS) {
+    if (demo.mode === "template") {
+      write(
+        `lib/generated/demo-code-props/${demo.slug}.ts`,
+        generateFanOutCodePropsModule(),
+      );
+    } else {
+      // preserve-file: restore from cached pre-clean content (validated above)
+      write(
+        `lib/generated/demo-code-props/${demo.slug}.ts`,
+        cachedCodePropsModules.get(demo.slug)!,
+      );
     }
+    filesWritten++;
   }
 
   // Generate code-props dispatcher (routes slug → real or dummy code props)
