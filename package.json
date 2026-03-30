@@ -8,10 +8,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "generate:catalog": "bun .scripts/generate-gallery-catalog.ts",
     "generate:native-gallery": "bun .scripts/generate-native-gallery.ts",
     "check:native-manifest": "bun .scripts/check-native-manifest.ts",
     "test:native-gallery": "bun test tests/native-gallery.codegen.test.ts",
-    "verify:native-gallery": "bun run generate:native-gallery && npx next build && bun run check:native-manifest && bun run test:native-gallery"
+    "verify:native-gallery": "bun run generate:catalog && bun run generate:native-gallery && npx next build && bun run check:native-manifest && bun run test:native-gallery"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

@@ -2,13 +2,16 @@
 /**
  * generate-gallery-catalog.ts
  *
- * Parses the README.md demo table and audits each demo directory to produce
- * a deterministic lib/demos.generated.json catalog.
+ * Discovers demos via filesystem scan, enriches with README.md metadata when
+ * available, and audits each demo directory to produce a deterministic
+ * lib/demos.generated.json catalog.
+ *
+ * A directory is considered a demo if it contains both package.json and a
+ * workflows/ directory. Adding a new demo directory that matches this
+ * convention is sufficient — no README edit required for discovery.
  *
  * Usage:
  *   bun .scripts/generate-gallery-catalog.ts
- *
- * Exits non-zero when the README intro count and parsed table row count disagree.
  */
 
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
@@ -31,55 +34,71 @@ function log(level: "info" | "warn" | "error", msg: string, data?: Record<string
 }
 
 // ---------------------------------------------------------------------------
-// README parsing
+// Filesystem discovery
 // ---------------------------------------------------------------------------
-function parseReadme(): {
-  introCount: number;
-  rows: Array<{
-    slug: string;
-    title: string;
-    description: string;
-    whenToUse: string;
-    reviewedBy: string;
-  }>;
-} {
-  const readme = readFileSync(join(ROOT, "README.md"), "utf-8");
+type ReadmeRow = {
+  slug: string;
+  title: string;
+  description: string;
+  whenToUse: string;
+  reviewedBy: string;
+};
 
-  // Extract the intro count: "48 standalone Next.js apps" or similar
-  const introMatch = readme.match(/(\d+)\s+standalone\s+Next\.js\s+app/i);
-  const introCount = introMatch ? parseInt(introMatch[1], 10) : -1;
+/**
+ * Scan ROOT for directories containing both package.json and workflows/.
+ * Returns sorted slug list.
+ */
+function discoverDemos(): string[] {
+  const slugs: string[] = [];
+  for (const entry of readdirSync(ROOT)) {
+    if (entry.startsWith(".") || entry.startsWith("_")) continue;
+    const dir = join(ROOT, entry);
+    if (!statSync(dir).isDirectory()) continue;
+    if (
+      existsSync(join(dir, "package.json")) &&
+      existsSync(join(dir, "workflows")) &&
+      statSync(join(dir, "workflows")).isDirectory()
+    ) {
+      slugs.push(entry);
+    }
+  }
+  return slugs.sort();
+}
+
+/** Slug → title case: "fan-out" → "Fan-Out" */
+function slugToTitle(slug: string): string {
+  return slug
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join("-")
+    .replace(/(^|[\s-])([a-z])/g, (_m, sep, c) => sep + c.toUpperCase());
+}
+
+// ---------------------------------------------------------------------------
+// README parsing (enrichment source, not discovery source)
+// ---------------------------------------------------------------------------
+function parseReadme(): Map<string, ReadmeRow> {
+  const readme = readFileSync(join(ROOT, "README.md"), "utf-8");
 
   // Parse markdown table rows
   // Format: | **`slug`** | description | when to use | reviewed by |
   const tableRowRe =
     /^\|\s*\*\*`([^`]+)`\*\*\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|$/gm;
-  const rows: Array<{
-    slug: string;
-    title: string;
-    description: string;
-    whenToUse: string;
-    reviewedBy: string;
-  }> = [];
+  const rows = new Map<string, ReadmeRow>();
 
   let match: RegExpExecArray | null;
   while ((match = tableRowRe.exec(readme)) !== null) {
     const slug = match[1].trim();
-    const description = match[2].trim();
-    const whenToUse = match[3].trim();
-    const reviewedBy = match[4].trim();
-
-    // Title: slug to title case (e.g., "fan-out" → "Fan-Out")
-    const title = slug
-      .split("-")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join("-")
-      // Capitalize after spaces too
-      .replace(/(^|[\s-])([a-z])/g, (_m, sep, c) => sep + c.toUpperCase());
-
-    rows.push({ slug, title, description, whenToUse, reviewedBy });
+    rows.set(slug, {
+      slug,
+      title: slugToTitle(slug),
+      description: match[2].trim(),
+      whenToUse: match[3].trim(),
+      reviewedBy: match[4].trim(),
+    });
   }
 
-  return { introCount, rows };
+  return rows;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,45 +257,49 @@ function detectExtraRoutes(slug: string, standardRoutes: string[]): string[] {
 function main() {
   log("info", "starting catalog generation");
 
-  const { introCount, rows } = parseReadme();
-  log("info", "parsed README", { introCount, rowCount: rows.length });
+  // 1. Filesystem-first discovery
+  const discoveredSlugs = discoverDemos();
+  log("info", "discovered demos on filesystem", { count: discoveredSlugs.length });
 
-  // Count mismatch check
-  if (introCount !== -1 && introCount !== rows.length) {
-    log("error", "README intro count disagrees with parsed table row count", {
-      introCount,
-      rowCount: rows.length,
-    });
-    process.exit(1);
+  // 2. README enrichment (optional metadata)
+  const readmeRows = parseReadme();
+  log("info", "parsed README", { rowCount: readmeRows.size });
+
+  // Log mismatches (informational, not fatal)
+  const fsSet = new Set(discoveredSlugs);
+  for (const slug of readmeRows.keys()) {
+    if (!fsSet.has(slug)) {
+      log("warn", "README entry has no matching directory on filesystem", { slug });
+    }
+  }
+  for (const slug of discoveredSlugs) {
+    if (!readmeRows.has(slug)) {
+      log("warn", "demo discovered on filesystem but missing from README — using defaults", { slug });
+    }
   }
 
+  // 3. Build catalog from discovered demos, enriched with README metadata
   const catalog: DemoCatalogEntry[] = [];
 
-  for (const row of rows) {
-    const { slug } = row;
+  for (const slug of discoveredSlugs) {
     const demoDir = join(ROOT, slug);
-    const dirExists = existsSync(demoDir);
+    const readme = readmeRows.get(slug);
 
-    const workflowFiles = dirExists
-      ? collectFiles(join(demoDir, "workflows"), /\.ts$/).filter(
-          (f) => !f.endsWith(".test.ts")
-        )
-      : [];
+    const workflowFiles = collectFiles(join(demoDir, "workflows"), /\.ts$/).filter(
+      (f) => !f.endsWith(".test.ts")
+    );
 
-    const apiRoutes = dirExists
-      ? collectFiles(join(demoDir, "app/api"), /^route\.ts$/)
-      : [];
-
-    const extraRoutes = dirExists ? detectExtraRoutes(slug, apiRoutes) : [];
-    const sourceMode = dirExists ? detectSourceMode(slug) : "unknown";
+    const apiRoutes = collectFiles(join(demoDir, "app/api"), /^route\.ts$/);
+    const extraRoutes = detectExtraRoutes(slug, apiRoutes);
+    const sourceMode = detectSourceMode(slug);
     const tags = assignTags(slug);
 
     const entry: DemoCatalogEntry = {
       slug,
-      title: row.title,
-      description: row.description,
-      whenToUse: row.whenToUse,
-      reviewedBy: row.reviewedBy,
+      title: readme?.title ?? slugToTitle(slug),
+      description: readme?.description ?? "",
+      whenToUse: readme?.whenToUse ?? "",
+      reviewedBy: readme?.reviewedBy ?? "",
       tags,
       sourceMode,
       workflowFiles,
@@ -292,6 +315,7 @@ function main() {
       apiRoutes: apiRoutes.length,
       extraRoutes: extraRoutes.length,
       tags: tags.length,
+      hasReadmeEntry: !!readme,
     });
   }
 

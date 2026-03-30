@@ -74,6 +74,34 @@ Open a demo in v0 by following the pattern:
 https://v0.app/chat/api/open?url=https://github.com/vercel-labs/workflow-fan-out
 ```
 
+## Gallery Explorer
+
+A root-level Next.js app lets you browse, search, and run all 50 demos from a single UI.
+
+```bash
+pnpm install              # install gallery dependencies
+pnpm run generate:catalog # scan filesystem → lib/demos.generated.json
+pnpm run generate:native-gallery  # generate adapters, routes, code props
+pnpm dev                  # start gallery at http://localhost:3000
+```
+
+### Adding a new demo
+
+The catalog generator auto-discovers demos by scanning for directories that contain both `package.json` and a `workflows/` directory. To add a new demo:
+
+1. Create your demo directory with the standard structure (see any existing demo)
+2. Run `pnpm run generate:catalog` to pick it up
+3. Run `pnpm run generate:native-gallery` to generate adapters and routes
+4. Optionally add a row to the README table above for description and "when to use" metadata
+
+The gallery will include your demo automatically — no manual registration required.
+
+### Verification
+
+```bash
+pnpm run verify:native-gallery  # full pipeline: catalog → adapters → build → manifest check → tests
+```
+
 ## Scripts
 
 All utility scripts live in `.scripts/` and run with [Bun](https://bun.sh):
