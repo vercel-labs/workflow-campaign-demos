@@ -1,19 +1,42 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { demos } from "@/lib/demos";
 import type { DemoCatalogEntry } from "@/lib/demos";
+import { taxonomyMap } from "@/lib/taxonomy";
 import { SearchPanel } from "./search-panel";
 import { FilterBar } from "./filter-bar";
 import { DemoGrid } from "./demo-grid";
+
+function getRequestedTags(tagParams: string[]): Set<string> {
+  return new Set(
+    tagParams
+      .flatMap((value) => value.split(","))
+      .map((value) => value.trim().toLowerCase())
+      .filter((value) => taxonomyMap.has(value)),
+  );
+}
 
 /**
  * Client component that owns search + filter state and renders the
  * filtered demo grid. All filtering is client-side over the static catalog.
  */
 export function ScenarioMatcher() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedTagKey = searchParams.getAll("tag").join(",");
+  const requestedTags = useMemo(
+    () => getRequestedTags(searchParams.getAll("tag")),
+    [requestedTagKey, searchParams],
+  );
   const [query, setQuery] = useState("");
-  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
+  const [activeTags, setActiveTags] = useState<Set<string>>(() => requestedTags);
+
+  useEffect(() => {
+    setActiveTags(requestedTags);
+  }, [requestedTags]);
 
   const toggleTag = useCallback((tagId: string) => {
     setActiveTags((prev) => {
@@ -26,6 +49,20 @@ export function ScenarioMatcher() {
       return next;
     });
   }, []);
+
+  const clearFilters = useCallback(() => {
+    setQuery("");
+    setActiveTags(new Set());
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("tag");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+      scroll: false,
+    });
+  }, [pathname, router, searchParams]);
+
+  const hasActiveFilters = activeTags.size > 0 || query.trim().length > 0;
 
   const filtered = useMemo(() => {
     let results: DemoCatalogEntry[] = demos;
@@ -64,18 +101,18 @@ export function ScenarioMatcher() {
         <FilterBar activeTags={activeTags} onToggle={toggleTag} />
       </div>
       <div className="flex items-center justify-between pt-2 pb-3">
-        <p className="text-xs text-gray-500 font-mono tabular-nums">
+        <p className="text-sm text-gray-900 font-mono tabular-nums">
           {filtered.length} pattern{filtered.length !== 1 ? "s" : ""}
-          {activeTags.size > 0 && (
+          {hasActiveFilters && (
             <span className="text-gray-400">
               {" "}· filtered
             </span>
           )}
         </p>
-        {activeTags.size > 0 && (
+        {hasActiveFilters && (
           <button
-            onClick={() => setActiveTags(new Set())}
-            className="text-xs text-gray-500 font-mono hover:text-gray-1000 transition-colors"
+            onClick={clearFilters}
+            className="text-sm text-gray-900 font-mono hover:text-gray-1000 transition-colors"
           >
             Clear filters
           </button>
