@@ -6,11 +6,27 @@ export function DemoCard({ demo }: { demo: DemoCatalogEntry }) {
   return (
     <Link
       href={`/demos/${demo.slug}`}
-      className="group relative flex flex-col rounded-lg border border-gray-300 bg-background-200 p-5 transition-all hover:border-gray-500 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+      className="group relative flex flex-col rounded-lg border border-gray-300 bg-background-200 p-5 transition-colors duration-150 hover:border-gray-500 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
     >
-      <h3 className="text-sm font-semibold text-gray-1000 group-hover:text-blue-700 transition-colors">
-        {demo.title}
-      </h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold text-gray-1000 group-hover:text-blue-700 transition-colors duration-150">
+          {demo.title}
+        </h3>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className="mt-0.5 shrink-0 text-gray-500 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </div>
       <p className="mt-1.5 text-xs leading-relaxed text-gray-900 line-clamp-2 flex-1">
         {demo.description}
       </p>

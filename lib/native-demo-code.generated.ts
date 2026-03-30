@@ -1,11 +1,4 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import {
-  extractExportedWorkflowBlock,
-  extractSecondaryFunctionBlocks,
-  highlightCodeToHtmlLines,
-} from "@/lib/code-workbench.server";
 import { getFanOutCodeProps } from "@/lib/generated/demo-code-props/fan-out";
 import { getSagaCodeProps } from "@/lib/generated/demo-code-props/saga";
 import { getCircuitBreakerCodeProps } from "@/lib/generated/demo-code-props/circuit-breaker";
@@ -22,6 +15,7 @@ import { getRoutingSlipCodeProps } from "@/lib/generated/demo-code-props/routing
 import { getScatterGatherCodeProps } from "@/lib/generated/demo-code-props/scatter-gather";
 import { getWebhookBasicsCodeProps } from "@/lib/generated/demo-code-props/webhook-basics";
 import { getWireTapCodeProps } from "@/lib/generated/demo-code-props/wire-tap";
+import { getMessageHistoryCodeProps } from "@/lib/generated/demo-code-props/message-history";
 import { getAggregatorCodeProps } from "@/lib/generated/demo-code-props/aggregator";
 import { getApprovalChainCodeProps } from "@/lib/generated/demo-code-props/approval-chain";
 import { getBatchProcessorCodeProps } from "@/lib/generated/demo-code-props/batch-processor";
@@ -54,14 +48,6 @@ import { getStatusPollerCodeProps } from "@/lib/generated/demo-code-props/status
 import { getThrottleCodeProps } from "@/lib/generated/demo-code-props/throttle";
 import { getTransactionalOutboxCodeProps } from "@/lib/generated/demo-code-props/transactional-outbox";
 import { getWakeableReminderCodeProps } from "@/lib/generated/demo-code-props/wakeable-reminder";
-
-function readWorkflowSource(relPath: string): string {
-  try {
-    return readFileSync(join(process.cwd(), relPath), "utf-8");
-  } catch {
-    return "// Source not available";
-  }
-}
 
 export async function getNativeDemoCodeProps(
   slug: string,
@@ -115,22 +101,8 @@ export async function getNativeDemoCodeProps(
       return getMapReduceCodeProps();
     case "message-filter":
       return getMessageFilterCodeProps();
-    case "message-history": {
-      const workflowSource = readWorkflowSource("message-history/workflows/message-history.ts");
-      const workflowCode = extractExportedWorkflowBlock(workflowSource);
-      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
-      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
-      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
-      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
-      return {
-        orchestratorCode: workflowCode,
-        orchestratorHtmlLines: workflowHtmlLines,
-        orchestratorLineMap: {},
-        stepCode: secondaryCode,
-        stepHtmlLines: secondaryHtmlLines,
-        stepLineMap: {},
-      };
-    }
+    case "message-history":
+      return getMessageHistoryCodeProps();
     case "message-translator":
       return getMessageTranslatorCodeProps();
     case "namespaced-streams":

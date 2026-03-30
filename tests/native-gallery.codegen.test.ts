@@ -373,12 +373,13 @@ test("bespoke and standard demos dispatch through module imports", () => {
   expect(bulkheadCase).toContain("return getBulkheadCodeProps()");
   expect(bulkheadCase).not.toContain("readWorkflowSource(");
 
-  // message-history has multiple workflow files, so it uses inline fallback (not module import)
+  // message-history is now a real preserved bespoke module
   const historyCase = dispatcher.slice(
     dispatcher.indexOf('case "message-history"'),
     dispatcher.indexOf('case "message-history"') + 200,
   );
-  expect(historyCase).toContain("readWorkflowSource(");
+  expect(historyCase).toContain("return getMessageHistoryCodeProps()");
+  expect(historyCase).not.toContain("readWorkflowSource(");
 
   const managerCase = dispatcher.slice(
     dispatcher.indexOf('case "process-manager"'),
@@ -858,6 +859,62 @@ test("aggregator standard module returns step maps narrower than the full step p
 // ---------------------------------------------------------------------------
 // App Router route segment tests
 // ---------------------------------------------------------------------------
+
+test("message-history is a real preserved module with non-empty orchestrator and step maps", () => {
+  const generator = readFileSync(".scripts/generate-native-gallery.ts", "utf8");
+  expect(generator).toContain(
+    '{ slug: "message-history", fn: "getMessageHistoryCodeProps", mode: "preserve-file" }',
+  );
+
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  const historyCase = dispatcher.slice(
+    dispatcher.indexOf('case "message-history"'),
+    dispatcher.indexOf('case "message-history"') + 200,
+  );
+  expect(historyCase).toContain("return getMessageHistoryCodeProps()");
+  expect(historyCase).not.toContain("readWorkflowSource(");
+
+  const source = readFileSync(
+    "lib/generated/demo-code-props/message-history.ts",
+    "utf8",
+  );
+  expect(source).toContain("highlightCodeToHtmlLines(orchestratorCode)");
+  expect(source).toContain("highlightCodeToHtmlLines(stepCode)");
+  expect(source).toContain("buildOrchestratorLineMap(orchestratorCode)");
+  expect(source).toContain("buildStepLineMap(stepCode)");
+  expect(source).not.toContain("orchestratorLineMap: {}");
+  expect(source).not.toContain("stepLineMap: {}");
+});
+
+test("message-history returns non-empty line maps at runtime", async () => {
+  const { getMessageHistoryCodeProps } = await import(
+    "../lib/generated/demo-code-props/message-history"
+  );
+  const props = getMessageHistoryCodeProps() as {
+    orchestratorHtmlLines: string[];
+    orchestratorLineMap: Record<string, number[]>;
+    stepHtmlLines: string[];
+    stepLineMap: Record<string, number[]>;
+  };
+  expect(props.orchestratorHtmlLines.length).toBeGreaterThan(0);
+  expect(props.stepHtmlLines.length).toBeGreaterThan(0);
+  expect(Object.keys(props.orchestratorLineMap).length).toBeGreaterThan(0);
+  expect(Object.keys(props.stepLineMap).length).toBeGreaterThan(0);
+  expect(
+    Object.values(props.orchestratorLineMap).every((lines) => lines.length > 0),
+  ).toBe(true);
+  expect(
+    Object.values(props.stepLineMap).every((lines) => lines.length > 0),
+  ).toBe(true);
+});
+
+test("approval-gate is the only demo that returns empty code props", () => {
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  const emptyCases = [...dispatcher.matchAll(/case "([^"]+)":\s*return \{\};/gs)].map(
+    (match) => match[1],
+  );
+  expect(emptyCases).toEqual(["approval-gate"]);
+});
 
 test("demo detail route has loading, error, and not-found segments", () => {
   expect(existsSync("app/demos/[slug]/loading.tsx")).toBe(true);

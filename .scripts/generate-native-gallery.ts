@@ -1479,6 +1479,7 @@ const REAL_CODE_PROPS_DEMOS: readonly RealCodePropsDemo[] = [
   { slug: "scatter-gather", fn: "getScatterGatherCodeProps", mode: "preserve-file" },
   { slug: "webhook-basics", fn: "getWebhookBasicsCodeProps", mode: "preserve-file" },
   { slug: "wire-tap", fn: "getWireTapCodeProps", mode: "preserve-file" },
+  { slug: "message-history", fn: "getMessageHistoryCodeProps", mode: "preserve-file" },
 ] as const;
 
 /** Set of slugs that have real code-props modules (derived from REAL_CODE_PROPS_DEMOS). */
