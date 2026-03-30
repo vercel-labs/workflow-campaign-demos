@@ -955,3 +955,33 @@ test("root layout uses the file-based root OG route", () => {
   expect(source).toContain('url: "/opengraph-image"');
   expect(source).toContain('images: ["/opengraph-image"]');
 });
+
+test("root OG route file exists and exports a valid Next OG contract", async () => {
+  expect(existsSync("app/opengraph-image.tsx")).toBe(true);
+  const mod = await import("../app/opengraph-image");
+  expect(mod.runtime).toBe("edge");
+  expect(mod.contentType).toBe("image/png");
+  expect(mod.size).toEqual({ width: 1200, height: 630 });
+  expect(typeof mod.default).toBe("function");
+});
+
+test("per-demo OG route returns a PNG response for a real slug", async () => {
+  const mod = await import("../app/demos/[slug]/opengraph-image");
+  expect(mod.runtime).toBe("edge");
+  expect(mod.contentType).toBe("image/png");
+  expect(mod.size).toEqual({ width: 1200, height: 630 });
+  const response = await mod.default({
+    params: Promise.resolve({ slug: "fan-out" }),
+  });
+  expect(response).toBeInstanceOf(Response);
+  expect(response.headers.get("content-type")).toContain("image/png");
+});
+
+test("per-demo OG route renders a fallback image for an unknown slug", async () => {
+  const mod = await import("../app/demos/[slug]/opengraph-image");
+  const response = await mod.default({
+    params: Promise.resolve({ slug: "does-not-exist" }),
+  });
+  expect(response).toBeInstanceOf(Response);
+  expect(response.headers.get("content-type")).toContain("image/png");
+});
