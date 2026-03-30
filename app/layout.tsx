@@ -19,18 +19,32 @@ export const metadata: Metadata = {
   },
   description:
     "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "Workflow DevKit Gallery — 30 Days of Patterns",
     description:
       "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
     siteName: "Workflow DevKit Gallery",
     type: "website",
+    images: [
+      {
+        url: "/og/default.png",
+        width: 1200,
+        height: 630,
+        alt: "Workflow DevKit Gallery",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Workflow DevKit Gallery — 30 Days of Patterns",
     description:
       "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
+    images: ["/og/default.png"],
   },
   metadataBase: new URL(
     process.env.VERCEL_PROJECT_PRODUCTION_URL
