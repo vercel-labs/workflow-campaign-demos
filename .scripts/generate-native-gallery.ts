@@ -1432,6 +1432,22 @@ function generateFanOutCodePropsModule(): string {
 }
 
 // ---------------------------------------------------------------------------
+/**
+ * Dispatches template-mode code-props module generation by slug.
+ * Throws immediately for unknown slugs instead of silently generating
+ * the wrong module content.
+ */
+function renderTemplateCodePropsModule(slug: string): string {
+  switch (slug) {
+    case "fan-out":
+      return generateFanOutCodePropsModule();
+    default:
+      throw new Error(
+        `No template code-props generator registered for ${slug}`,
+      );
+  }
+}
+
 // Canonical representative demo metadata — single source of truth.
 //
 // All import lists, dispatcher branches, cache/restore lists, and
@@ -1486,28 +1502,83 @@ function classifyCodeProp(prop: DemoComponentProp): "code" | "html" | "map" | "o
   return "map";
 }
 
-/**
- * Determines which prop receives the primary workflow source code and which
- * receives the corresponding highlighted HTML lines for a non-representative demo.
- * Returns null if the demo doesn't have recognisable code+html prop pairs.
- */
-function findPrimaryCodeHtmlPair(
+// ---------------------------------------------------------------------------
+// Multi-pane fallback strategy
+// ---------------------------------------------------------------------------
+
+type GenericFallbackPaneSource = "workflow" | "secondary";
+
+type GenericFallbackPane = {
+  codeProp: string | null;
+  htmlProp: string | null;
+  source: GenericFallbackPaneSource;
+};
+
+type GenericFallbackStrategy = {
+  panes: GenericFallbackPane[];
+};
+
+function findNamedProp(
   props: DemoComponentProp[],
-): { codeProp: string; htmlProp: string } | null {
-  const codePropNames = ["workflowCode", "orchestratorCode", "flowCode"];
-  const htmlPropNames = [
-    "workflowLinesHtml", "workflowHtmlLines",
-    "orchestratorLinesHtml", "orchestratorHtmlLines",
-    "flowLinesHtml", "flowHtmlLines",
-  ];
+  names: readonly string[],
+): string | null {
+  const match = props.find((prop) => names.includes(prop.name));
+  return match?.name ?? null;
+}
 
-  const codeProp = props.find((p) => codePropNames.includes(p.name));
-  const htmlProp = props.find((p) => htmlPropNames.includes(p.name));
+/**
+ * Infers a multi-pane fallback strategy from a demo's component props.
+ * Recognises primary workflow panes (workflow*, orchestrator*, flow*) and
+ * secondary panes (step*, participant*, callback*) so the dispatcher can
+ * populate both from extracted workflow source instead of leaving them blank.
+ */
+function inferGenericFallbackStrategy(
+  props: DemoComponentProp[],
+): GenericFallbackStrategy | null {
+  const panes: GenericFallbackPane[] = [];
 
-  if (codeProp && htmlProp) {
-    return { codeProp: codeProp.name, htmlProp: htmlProp.name };
+  // Primary workflow pane
+  const workflowCodeProp = findNamedProp(props, [
+    "workflowCode",
+    "orchestratorCode",
+    "flowCode",
+  ]);
+  const workflowHtmlProp = findNamedProp(props, [
+    "workflowLinesHtml",
+    "workflowHtmlLines",
+    "orchestratorLinesHtml",
+    "orchestratorHtmlLines",
+    "flowLinesHtml",
+    "flowHtmlLines",
+  ]);
+
+  if (workflowCodeProp || workflowHtmlProp) {
+    panes.push({
+      codeProp: workflowCodeProp,
+      htmlProp: workflowHtmlProp,
+      source: "workflow",
+    });
   }
-  return null;
+
+  // Secondary panes
+  const secondarySpecs = [
+    { codeNames: ["stepCode"], htmlNames: ["stepLinesHtml", "stepHtmlLines"] },
+    { codeNames: ["participantCode"], htmlNames: ["participantLinesHtml", "participantHtmlLines"] },
+    { codeNames: ["callbackCode"], htmlNames: ["callbackLinesHtml", "callbackHtmlLines"] },
+  ] as const;
+
+  for (const spec of secondarySpecs) {
+    const codeProp = findNamedProp(props, spec.codeNames);
+    const htmlProp = findNamedProp(props, spec.htmlNames);
+    if (!codeProp && !htmlProp) continue;
+    panes.push({
+      codeProp,
+      htmlProp,
+      source: "secondary",
+    });
+  }
+
+  return panes.length > 0 ? { panes } : null;
 }
 
 function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
@@ -1530,23 +1601,40 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
         ].join("\n");
       }
 
-      // For non-representative demos with code props, generate a fallback
-      // that reads the real workflow source and highlights it
-      const primary = findPrimaryCodeHtmlPair(demo.componentProps);
+      // For non-representative demos with code props, generate a multi-pane
+      // fallback that reads the real workflow source, splits it into primary
+      // (exported) and secondary (non-exported) blocks, and highlights both.
+      const strategy = inferGenericFallbackStrategy(demo.componentProps);
       const workflowPath = demo.workflows[0]?.filePath ?? null;
 
-      if (primary && workflowPath) {
+      if (strategy && workflowPath) {
         needsGenericImports = true;
 
-        // Build entries: code prop gets raw source, html prop gets highlighted,
-        // map props get {}, other props get type-appropriate defaults
         const entries = demo.componentProps.map((prop) => {
-          if (prop.name === primary.codeProp) {
-            return `        ${prop.name}: workflowCode,`;
+          const pane = strategy.panes.find(
+            (candidate) =>
+              candidate.codeProp === prop.name ||
+              candidate.htmlProp === prop.name,
+          );
+
+          if (pane?.source === "workflow") {
+            if (prop.name === pane.codeProp) {
+              return `        ${prop.name}: workflowCode,`;
+            }
+            if (prop.name === pane.htmlProp) {
+              return `        ${prop.name}: workflowHtmlLines,`;
+            }
           }
-          if (prop.name === primary.htmlProp) {
-            return `        ${prop.name}: workflowHtmlLines,`;
+
+          if (pane?.source === "secondary") {
+            if (prop.name === pane.codeProp) {
+              return `        ${prop.name}: secondaryCode,`;
+            }
+            if (prop.name === pane.htmlProp) {
+              return `        ${prop.name}: secondaryHtmlLines,`;
+            }
           }
+
           const cls = classifyCodeProp(prop);
           if (cls === "code") return `        ${prop.name}: "",`;
           if (cls === "html") return `        ${prop.name}: [],`;
@@ -1558,10 +1646,23 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
           return `        ${prop.name}: ${value},`;
         });
 
+        // Determine if any pane uses secondary source
+        const needsSecondary = strategy.panes.some((p) => p.source === "secondary");
+
+        const secondaryLines = needsSecondary
+          ? [
+              `      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);`,
+              `      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;`,
+              `      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);`,
+            ]
+          : [];
+
         return [
           `    case ${JSON.stringify(demo.slug)}: {`,
-          `      const workflowCode = readWorkflowSource(${JSON.stringify(workflowPath)});`,
+          `      const workflowSource = readWorkflowSource(${JSON.stringify(workflowPath)});`,
+          `      const workflowCode = extractExportedWorkflowBlock(workflowSource);`,
           `      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);`,
+          ...secondaryLines,
           `      return {`,
           ...entries,
           `      };`,
@@ -1596,7 +1697,11 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
     ? [
         `import { readFileSync } from "node:fs";`,
         `import { join } from "node:path";`,
-        `import { highlightCodeToHtmlLines } from "@/lib/code-workbench.server";`,
+        `import {`,
+        `  extractExportedWorkflowBlock,`,
+        `  extractSecondaryFunctionBlocks,`,
+        `  highlightCodeToHtmlLines,`,
+        `} from "@/lib/code-workbench.server";`,
       ]
     : [];
 
@@ -1774,7 +1879,7 @@ function main(): void {
     if (demo.mode === "template") {
       write(
         `lib/generated/demo-code-props/${demo.slug}.ts`,
-        generateFanOutCodePropsModule(),
+        renderTemplateCodePropsModule(demo.slug),
       );
     } else {
       // preserve-file: restore from cached pre-clean content (validated above)

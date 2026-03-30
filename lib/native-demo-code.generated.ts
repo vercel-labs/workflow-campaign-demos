@@ -1,7 +1,11 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { highlightCodeToHtmlLines } from "@/lib/code-workbench.server";
+import {
+  extractExportedWorkflowBlock,
+  extractSecondaryFunctionBlocks,
+  highlightCodeToHtmlLines,
+} from "@/lib/code-workbench.server";
 import { getFanOutCodeProps } from "@/lib/generated/demo-code-props/fan-out";
 import { getSagaCodeProps } from "@/lib/generated/demo-code-props/saga";
 import { getCircuitBreakerCodeProps } from "@/lib/generated/demo-code-props/circuit-breaker";
@@ -21,145 +25,196 @@ export async function getNativeDemoCodeProps(
 ): Promise<Record<string, unknown>> {
   switch (slug) {
     case "aggregator": {
-      const workflowCode = readWorkflowSource("aggregator/workflows/aggregator.ts");
+      const workflowSource = readWorkflowSource("aggregator/workflows/aggregator.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "approval-chain": {
-      const workflowCode = readWorkflowSource("approval-chain/workflows/approval-chain.ts");
+      const workflowSource = readWorkflowSource("approval-chain/workflows/approval-chain.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "approval-gate":
       return {};
-    case "async-request-reply":
+    case "async-request-reply": {
+      const workflowSource = readWorkflowSource("async-request-reply/workflows/async-request-reply.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
+      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
-        orchestratorHtmlLines: [],
+        orchestratorHtmlLines: workflowHtmlLines,
         orchestratorLineMap: {},
-        callbackHtmlLines: [],
+        callbackHtmlLines: secondaryHtmlLines,
         callbackLineMap: {},
       };
+    }
     case "batch-processor": {
-      const workflowCode = readWorkflowSource("batch-processor/workflows/batch-processor.ts");
+      const workflowSource = readWorkflowSource("batch-processor/workflows/batch-processor.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "bulkhead": {
-      const workflowCode = readWorkflowSource("bulkhead/workflows/bulkhead.ts");
+      const workflowSource = readWorkflowSource("bulkhead/workflows/bulkhead.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "cancellable-export": {
-      const workflowCode = readWorkflowSource("cancellable-export/workflows/report-generator.ts");
+      const workflowSource = readWorkflowSource("cancellable-export/workflows/report-generator.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
         stepCodes: [],
-        stepLinesHtml: [],
+        stepLinesHtml: secondaryHtmlLines,
         highlightLineMap: {},
         sectionNames: [],
         sectionContent: [],
       };
     }
     case "choreography": {
-      const workflowCode = readWorkflowSource("choreography/workflows/choreography.ts");
+      const workflowSource = readWorkflowSource("choreography/workflows/choreography.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         flowCode: workflowCode,
         flowHtmlLines: workflowHtmlLines,
         flowLineMap: {},
-        participantCode: "",
-        participantHtmlLines: [],
+        participantCode: secondaryCode,
+        participantHtmlLines: secondaryHtmlLines,
         participantLineMap: {},
       };
     }
     case "circuit-breaker":
       return getCircuitBreakerCodeProps();
     case "claim-check": {
-      const workflowCode = readWorkflowSource("claim-check/workflows/claim-check.ts");
+      const workflowSource = readWorkflowSource("claim-check/workflows/claim-check.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "competing-consumers": {
-      const workflowCode = readWorkflowSource("competing-consumers/workflows/competing-consumers.ts");
+      const workflowSource = readWorkflowSource("competing-consumers/workflows/competing-consumers.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "content-based-router": {
-      const workflowCode = readWorkflowSource("content-based-router/workflows/content-based-router.ts");
+      const workflowSource = readWorkflowSource("content-based-router/workflows/content-based-router.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "content-enricher": {
-      const workflowCode = readWorkflowSource("content-enricher/workflows/content-enricher.ts");
+      const workflowSource = readWorkflowSource("content-enricher/workflows/content-enricher.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "correlation-identifier": {
-      const workflowCode = readWorkflowSource("correlation-identifier/workflows/correlation-identifier.ts");
+      const workflowSource = readWorkflowSource("correlation-identifier/workflows/correlation-identifier.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
@@ -167,37 +222,49 @@ export async function getNativeDemoCodeProps(
     case "dead-letter-queue":
       return getDeadLetterQueueCodeProps();
     case "detour": {
-      const workflowCode = readWorkflowSource("detour/workflows/detour.ts");
+      const workflowSource = readWorkflowSource("detour/workflows/detour.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "event-gateway": {
-      const workflowCode = readWorkflowSource("event-gateway/workflows/event-gateway.ts");
+      const workflowSource = readWorkflowSource("event-gateway/workflows/event-gateway.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "event-sourcing": {
-      const workflowCode = readWorkflowSource("event-sourcing/workflows/event-sourcing.ts");
+      const workflowSource = readWorkflowSource("event-sourcing/workflows/event-sourcing.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
@@ -205,177 +272,240 @@ export async function getNativeDemoCodeProps(
     case "fan-out":
       return getFanOutCodeProps();
     case "guaranteed-delivery": {
-      const workflowCode = readWorkflowSource("guaranteed-delivery/workflows/guaranteed-delivery.ts");
+      const workflowSource = readWorkflowSource("guaranteed-delivery/workflows/guaranteed-delivery.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "hedge-request": {
-      const workflowCode = readWorkflowSource("hedge-request/workflows/hedge-request.ts");
+      const workflowSource = readWorkflowSource("hedge-request/workflows/hedge-request.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
-    case "idempotent-receiver":
+    case "idempotent-receiver": {
+      const workflowSource = readWorkflowSource("idempotent-receiver/workflows/idempotent-receiver.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
+      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
-        orchestratorHtmlLines: [],
+        orchestratorHtmlLines: workflowHtmlLines,
         orchestratorLineMap: {},
-        stepHtmlLines: [],
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
+    }
     case "map-reduce": {
-      const workflowCode = readWorkflowSource("map-reduce/workflows/map-reduce.ts");
+      const workflowSource = readWorkflowSource("map-reduce/workflows/map-reduce.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "message-filter": {
-      const workflowCode = readWorkflowSource("message-filter/workflows/order-filter.ts");
+      const workflowSource = readWorkflowSource("message-filter/workflows/order-filter.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "message-history": {
-      const workflowCode = readWorkflowSource("message-history/workflows/message-history.ts");
+      const workflowSource = readWorkflowSource("message-history/workflows/message-history.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         orchestratorCode: workflowCode,
         orchestratorHtmlLines: workflowHtmlLines,
         orchestratorLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "message-translator": {
-      const workflowCode = readWorkflowSource("message-translator/workflows/message-translator.ts");
+      const workflowSource = readWorkflowSource("message-translator/workflows/message-translator.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "namespaced-streams": {
-      const workflowCode = readWorkflowSource("namespaced-streams/workflows/namespaced-streams.ts");
+      const workflowSource = readWorkflowSource("namespaced-streams/workflows/namespaced-streams.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "normalizer": {
-      const workflowCode = readWorkflowSource("normalizer/workflows/normalizer.ts");
+      const workflowSource = readWorkflowSource("normalizer/workflows/normalizer.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "onboarding-drip": {
-      const workflowCode = readWorkflowSource("onboarding-drip/workflows/onboarding-drip.ts");
+      const workflowSource = readWorkflowSource("onboarding-drip/workflows/onboarding-drip.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
         stepCodes: [],
-        stepLinesHtml: [],
+        stepLinesHtml: secondaryHtmlLines,
         stepSendLines: {},
         stepSleepLines: {},
       };
     }
     case "pipeline": {
-      const workflowCode = readWorkflowSource("pipeline/workflows/pipeline.ts");
+      const workflowSource = readWorkflowSource("pipeline/workflows/pipeline.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         lineMap: {},
         workflowDirective: "",
         stepDirective: "",
       };
     }
     case "priority-queue": {
-      const workflowCode = readWorkflowSource("priority-queue/workflows/priority-queue.ts");
+      const workflowSource = readWorkflowSource("priority-queue/workflows/priority-queue.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "process-manager": {
-      const workflowCode = readWorkflowSource("process-manager/workflows/process-manager.ts");
+      const workflowSource = readWorkflowSource("process-manager/workflows/process-manager.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         orchestratorCode: workflowCode,
         orchestratorHtmlLines: workflowHtmlLines,
         orchestratorLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "publish-subscribe": {
-      const workflowCode = readWorkflowSource("publish-subscribe/workflows/publish-subscribe.ts");
+      const workflowSource = readWorkflowSource("publish-subscribe/workflows/publish-subscribe.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "recipient-list": {
-      const workflowCode = readWorkflowSource("recipient-list/workflows/recipient-list.ts");
+      const workflowSource = readWorkflowSource("recipient-list/workflows/recipient-list.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
         stepErrorLineMap: {},
@@ -384,74 +514,98 @@ export async function getNativeDemoCodeProps(
       };
     }
     case "request-reply": {
-      const workflowCode = readWorkflowSource("request-reply/workflows/request-reply.ts");
+      const workflowSource = readWorkflowSource("request-reply/workflows/request-reply.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "resequencer": {
-      const workflowCode = readWorkflowSource("resequencer/workflows/resequencer.ts");
+      const workflowSource = readWorkflowSource("resequencer/workflows/resequencer.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "retry-backoff": {
-      const workflowCode = readWorkflowSource("retry-backoff/workflows/retry-backoff.ts");
+      const workflowSource = readWorkflowSource("retry-backoff/workflows/retry-backoff.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "retryable-rate-limit": {
-      const workflowCode = readWorkflowSource("retryable-rate-limit/workflows/retryable-rate-limit.ts");
+      const workflowSource = readWorkflowSource("retryable-rate-limit/workflows/retryable-rate-limit.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "routing-slip": {
-      const workflowCode = readWorkflowSource("routing-slip/workflows/routing-slip.ts");
+      const workflowSource = readWorkflowSource("routing-slip/workflows/routing-slip.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         lineMap: {},
       };
     }
     case "saga":
       return getSagaCodeProps();
     case "scatter-gather": {
-      const workflowCode = readWorkflowSource("scatter-gather/workflows/scatter-gather.ts");
+      const workflowSource = readWorkflowSource("scatter-gather/workflows/scatter-gather.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
         stepErrorLineMap: {},
@@ -459,94 +613,129 @@ export async function getNativeDemoCodeProps(
       };
     }
     case "scheduled-digest": {
-      const workflowCode = readWorkflowSource("scheduled-digest/workflows/scheduled-digest.ts");
+      const workflowSource = readWorkflowSource("scheduled-digest/workflows/scheduled-digest.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "scheduler-agent-supervisor": {
-      const workflowCode = readWorkflowSource("scheduler-agent-supervisor/workflows/scheduler-agent-supervisor.ts");
+      const workflowSource = readWorkflowSource("scheduler-agent-supervisor/workflows/scheduler-agent-supervisor.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "splitter":
       return getSplitterCodeProps();
     case "status-poller": {
-      const workflowCode = readWorkflowSource("status-poller/workflows/status-poller.ts");
+      const workflowSource = readWorkflowSource("status-poller/workflows/status-poller.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
     case "throttle": {
-      const workflowCode = readWorkflowSource("throttle/workflows/throttle.ts");
+      const workflowSource = readWorkflowSource("throttle/workflows/throttle.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "transactional-outbox": {
-      const workflowCode = readWorkflowSource("transactional-outbox/workflows/transactional-outbox.ts");
+      const workflowSource = readWorkflowSource("transactional-outbox/workflows/transactional-outbox.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         workflowLineMap: {},
         stepLineMap: {},
       };
     }
     case "wakeable-reminder": {
-      const workflowCode = readWorkflowSource("wakeable-reminder/workflows/wakeable-reminder.ts");
+      const workflowSource = readWorkflowSource("wakeable-reminder/workflows/wakeable-reminder.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowHtmlLines: workflowHtmlLines,
         workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
     }
-    case "webhook-basics":
+    case "webhook-basics": {
+      const workflowSource = readWorkflowSource("webhook-basics/workflows/payment-webhook.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
+      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
-        orchestratorHtmlLines: [],
+        orchestratorHtmlLines: workflowHtmlLines,
         orchestratorLineMap: {},
-        stepHtmlLines: [],
+        stepHtmlLines: secondaryHtmlLines,
         stepLineMap: {},
       };
+    }
     case "wire-tap": {
-      const workflowCode = readWorkflowSource("wire-tap/workflows/wire-tap.ts");
+      const workflowSource = readWorkflowSource("wire-tap/workflows/wire-tap.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
       const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
       return {
         workflowCode: workflowCode,
         workflowLinesHtml: workflowHtmlLines,
-        stepCode: "",
-        stepLinesHtml: [],
+        stepCode: secondaryCode,
+        stepLinesHtml: secondaryHtmlLines,
         lineMap: {},
       };
     }

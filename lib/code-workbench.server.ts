@@ -73,6 +73,81 @@ export function extractFunctionBlock(source: string, marker: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Top-level function block splitting
+// ---------------------------------------------------------------------------
+
+const TOP_LEVEL_FUNCTION_RE =
+  /^(export\s+)?(?:async\s+)?function\s+[A-Za-z0-9_]+\s*\(/;
+
+/**
+ * Splits source code into an array of top-level function blocks.
+ * Each block is the full text of one `function` declaration (including
+ * `export` / `async` prefixes), delimited by brace-depth tracking.
+ */
+export function extractTopLevelFunctionBlocks(source: string): string[] {
+  const lines = source.split("\n");
+  const blocks: string[] = [];
+  let topLevelDepth = 0;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const trimmed = line.trimStart();
+    const isFunctionStart =
+      topLevelDepth === 0 && TOP_LEVEL_FUNCTION_RE.test(trimmed);
+
+    if (isFunctionStart) {
+      const output: string[] = [];
+      let blockDepth = 0;
+      let sawBrace = false;
+
+      for (let j = i; j < lines.length; j += 1) {
+        const blockLine = lines[j];
+        output.push(blockLine);
+
+        const opens = (blockLine.match(/{/g) ?? []).length;
+        const closes = (blockLine.match(/}/g) ?? []).length;
+        blockDepth += opens - closes;
+        if (opens > 0) sawBrace = true;
+        if (sawBrace && blockDepth === 0) {
+          i = j;
+          break;
+        }
+      }
+
+      blocks.push(output.join("\n"));
+      continue;
+    }
+
+    const opens = (line.match(/{/g) ?? []).length;
+    const closes = (line.match(/}/g) ?? []).length;
+    topLevelDepth += opens - closes;
+  }
+
+  return blocks;
+}
+
+/**
+ * Returns the first exported top-level function block from the source.
+ * Falls back to the entire source if no exported function is found.
+ */
+export function extractExportedWorkflowBlock(source: string): string {
+  const blocks = extractTopLevelFunctionBlocks(source);
+  return (
+    blocks.find((block) => block.split("\n")[0]?.includes("export ")) ?? source
+  );
+}
+
+/**
+ * Returns all non-exported top-level function blocks joined by a blank line.
+ * Returns `""` when no secondary (non-exported) blocks exist.
+ */
+export function extractSecondaryFunctionBlocks(source: string): string {
+  return extractTopLevelFunctionBlocks(source)
+    .filter((block) => !block.split("\n")[0]?.includes("export "))
+    .join("\n\n");
+}
+
+// ---------------------------------------------------------------------------
 // Line-number collection primitives
 // ---------------------------------------------------------------------------
 

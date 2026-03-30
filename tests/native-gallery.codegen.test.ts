@@ -279,7 +279,8 @@ test("non-representative demos use real workflow source fallback instead of blan
 
   // The dispatcher should import readFileSync and highlightCodeToHtmlLines for generic fallback
   expect(dispatcher).toContain('import { readFileSync } from "node:fs"');
-  expect(dispatcher).toContain('import { highlightCodeToHtmlLines } from "@/lib/code-workbench.server"');
+  expect(dispatcher).toContain('highlightCodeToHtmlLines,');
+  expect(dispatcher).toContain('from "@/lib/code-workbench.server"');
   expect(dispatcher).toContain("function readWorkflowSource(");
 
   // Non-representative demos with code props should use readWorkflowSource, not blank strings
@@ -302,6 +303,62 @@ test("non-representative demos use real workflow source fallback instead of blan
   );
   expect(gateCase).toContain("return {}");
 });
+
+// ---------------------------------------------------------------------------
+// Multi-pane fallback tests
+// ---------------------------------------------------------------------------
+
+test("html-only demos receive workflow and secondary HTML fallbacks", () => {
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  expect(dispatcher).toContain("extractExportedWorkflowBlock");
+  expect(dispatcher).toContain("extractSecondaryFunctionBlocks");
+
+  const asyncCase = dispatcher.slice(
+    dispatcher.indexOf('case "async-request-reply"'),
+    dispatcher.indexOf('case "batch-processor"'),
+  );
+  expect(asyncCase).toContain("readWorkflowSource(");
+  expect(asyncCase).toContain("orchestratorHtmlLines: workflowHtmlLines");
+  expect(asyncCase).toContain("callbackHtmlLines: secondaryHtmlLines");
+  expect(asyncCase).not.toContain("orchestratorHtmlLines: []");
+  expect(asyncCase).not.toContain("callbackHtmlLines: []");
+
+  const idempotentCase = dispatcher.slice(
+    dispatcher.indexOf('case "idempotent-receiver"'),
+    dispatcher.indexOf('case "map-reduce"'),
+  );
+  expect(idempotentCase).toContain("orchestratorHtmlLines: workflowHtmlLines");
+  expect(idempotentCase).toContain("stepHtmlLines: secondaryHtmlLines");
+});
+
+test("secondary string-pane demos receive secondary code fallbacks", () => {
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+
+  const choreographyCase = dispatcher.slice(
+    dispatcher.indexOf('case "choreography"'),
+    dispatcher.indexOf('case "circuit-breaker"'),
+  );
+  expect(choreographyCase).toContain("participantCode: secondaryCode");
+  expect(choreographyCase).toContain("participantHtmlLines: secondaryHtmlLines");
+
+  const historyCase = dispatcher.slice(
+    dispatcher.indexOf('case "message-history"'),
+    dispatcher.indexOf('case "message-translator"'),
+  );
+  expect(historyCase).toContain("stepCode: secondaryCode");
+  expect(historyCase).toContain("stepHtmlLines: secondaryHtmlLines");
+
+  const managerCase = dispatcher.slice(
+    dispatcher.indexOf('case "process-manager"'),
+    dispatcher.indexOf('case "publish-subscribe"'),
+  );
+  expect(managerCase).toContain("stepCode: secondaryCode");
+  expect(managerCase).toContain("stepHtmlLines: secondaryHtmlLines");
+});
+
+// ---------------------------------------------------------------------------
+// Preserved module fail-fast tests
+// ---------------------------------------------------------------------------
 
 test("generator fails fast with machine-parseable error when a preserved module is missing", () => {
   // Ensure clean state first
