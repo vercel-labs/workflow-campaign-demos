@@ -929,3 +929,29 @@ test("demo detail route has loading, error, and not-found segments", () => {
   expect(notFound).toContain("404");
   expect(notFound).toContain('href="/"');
 });
+
+// ---------------------------------------------------------------------------
+// OG image and metadata tests
+// ---------------------------------------------------------------------------
+
+test("detail page metadata uses a per-demo OG image route", () => {
+  const source = readFileSync("app/demos/[slug]/page.tsx", "utf8");
+  expect(source).toContain("generateStaticParams()");
+  expect(source).toContain("alternates: { canonical: canonicalPath }");
+  expect(source).toContain('const ogImage = `${canonicalPath}/opengraph-image`');
+  expect(source).toContain('robots: { index: false, follow: false }');
+});
+
+test("detail route has a generated per-demo OG image file", () => {
+  expect(existsSync("app/demos/[slug]/opengraph-image.tsx")).toBe(true);
+  const source = readFileSync("app/demos/[slug]/opengraph-image.tsx", "utf8");
+  expect(source).toContain('import { ImageResponse } from "next/og"');
+  expect(source).toContain("getDemo(slug)");
+  expect(source).toContain('runtime = "edge"');
+});
+
+test("root layout uses the file-based root OG route", () => {
+  const source = readFileSync("app/layout.tsx", "utf8");
+  expect(source).toContain('url: "/opengraph-image"');
+  expect(source).toContain('images: ["/opengraph-image"]');
+});

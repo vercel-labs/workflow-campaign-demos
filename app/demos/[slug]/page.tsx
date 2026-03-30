@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `${demo.title} — Workflow DevKit Gallery`;
   const description = demo.description;
   const canonicalPath = `/demos/${slug}`;
-  const ogImage = `/og/default.png`;
+  const ogImage = `${canonicalPath}/opengraph-image`;
   return {
     title,
     description,
