@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { demos } from "@/lib/demos";
 import type { DemoCatalogEntry } from "@/lib/demos";
@@ -18,11 +18,7 @@ function getRequestedTags(tagParams: string[]): Set<string> {
   );
 }
 
-/**
- * Client component that owns search + filter state and renders the
- * filtered demo grid. All filtering is client-side over the static catalog.
- */
-export function ScenarioMatcher() {
+function ScenarioMatcherContent() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -120,5 +116,17 @@ export function ScenarioMatcher() {
       </div>
       <DemoGrid demos={filtered} />
     </div>
+  );
+}
+
+/**
+ * Client component that owns search + filter state and renders the
+ * filtered demo grid. All filtering is client-side over the static catalog.
+ */
+export function ScenarioMatcher() {
+  return (
+    <Suspense fallback={null}>
+      <ScenarioMatcherContent />
+    </Suspense>
   );
 }
