@@ -1575,9 +1575,19 @@ function extractLineMapKeysFromComponent(
 }
 
 /**
+ * Extracts keys whose values are `number[]` from a type/interface object body.
+ */
+function extractNumericArrayKeysFromObjectBody(body: string): string[] {
+  return [...body.matchAll(/(\w+)\s*:\s*number\[\]/g)].map(
+    (match) => match[1],
+  );
+}
+
+/**
  * Extracts keys from a TypeScript type definition that corresponds to a prop name.
  * Handles patterns like:
  *   type WorkflowLineMap = { key1: number[]; key2: number[]; }
+ *   interface WorkflowLineMap { key1: number[]; key2: number[]; }
  *   type StepLineMap = Record<StepId, number[]>  (then finds the StepId union)
  */
 function extractKeysFromTypeDefinition(
@@ -1590,37 +1600,30 @@ function extractKeysFromTypeDefinition(
   // Also try common variations: FooLineMap, FooMap, etc.
   const typeNameCandidates = [baseName];
 
-  // Search for common type aliases in the source
-  // Pattern: type <TypeName> = { ... } where keys have number[] values
+  // Search for type aliases and interface definitions in the source
+  // Pattern: type/interface <TypeName> [=] { ... } where keys have number[] values
   for (const candidate of typeNameCandidates) {
-    // Look for type Foo = { key: number[]; ... }
-    const typeDefRegex = new RegExp(
-      `type\\s+\\w*${candidate.replace(/([A-Z])/g, "[A-Za-z]*$1")}\\w*\\s*=\\s*\\{([^}]+)\\}`,
+    const objectDefRegex = new RegExp(
+      `(?:type|interface)\\s+\\w*${candidate.replace(/([A-Z])/g, "[A-Za-z]*$1")}\\w*\\s*(?:=\\s*)?\\{([^}]+)\\}`,
       "s",
     );
-    const typeMatch = source.match(typeDefRegex);
-    if (typeMatch) {
-      const body = typeMatch[1];
-      const keyMatches = body.matchAll(/(\w+)\s*:\s*number\[\]/g);
-      const keys: string[] = [];
-      for (const m of keyMatches) keys.push(m[1]);
+    const objectMatch = source.match(objectDefRegex);
+    if (objectMatch) {
+      const keys = extractNumericArrayKeysFromObjectBody(objectMatch[1]);
       if (keys.length > 0) return keys;
     }
   }
 
-  // Try broader search: any type definition containing the prop name
-  // e.g., type FooLineMap = { ... } or type BatchWorkflowLineMap = { ... }
+  // Try broader search: any type/interface definition containing the prop name
+  // e.g., type FooLineMap = { ... } or interface BatchWorkflowLineMap { ... }
   const propSuffix = propName.replace(/^(workflow|orchestrator|step|flow|participant|callback)/, "");
-  const broadRegex = new RegExp(
-    `type\\s+\\w*${propSuffix.charAt(0).toUpperCase()}${propSuffix.slice(1)}\\s*=\\s*\\{([^}]+)\\}`,
+  const broadObjectRegex = new RegExp(
+    `(?:type|interface)\\s+\\w*${propSuffix.charAt(0).toUpperCase()}${propSuffix.slice(1)}\\s*(?:=\\s*)?\\{([^}]+)\\}`,
     "s",
   );
-  const broadMatch = source.match(broadRegex);
-  if (broadMatch) {
-    const body = broadMatch[1];
-    const keyMatches = body.matchAll(/(\w+)\s*:\s*number\[\]/g);
-    const keys: string[] = [];
-    for (const m of keyMatches) keys.push(m[1]);
+  const broadObjectMatch = source.match(broadObjectRegex);
+  if (broadObjectMatch) {
+    const keys = extractNumericArrayKeysFromObjectBody(broadObjectMatch[1]);
     if (keys.length > 0) return keys;
   }
 
@@ -1726,6 +1729,20 @@ function renderStandardGeneratedCodePropsModule(
   const fnName = slugToCodePropsFnName(demo.slug);
   const lineMapSpecs = inferStandardLineMapSpecs(demo.slug, demo.componentProps);
 
+  // Fail fast: every map prop must have inferred keys — no silent {} fallback
+  const missingMapProps = demo.componentProps
+    .filter((prop) => classifyCodeProp(prop) === "map")
+    .filter(
+      (prop) => !lineMapSpecs.some((candidate) => candidate.propName === prop.name),
+    )
+    .map((prop) => prop.name);
+
+  if (missingMapProps.length > 0) {
+    throw new Error(
+      `Could not infer line-map keys for ${demo.slug}: ${missingMapProps.join(", ")}`,
+    );
+  }
+
   // Determine which panes are needed
   const strategy = inferGenericFallbackStrategy(demo.componentProps);
   const needsSecondary = strategy?.panes.some((p) => p.source === "secondary") ?? false;
@@ -1764,9 +1781,11 @@ function renderStandardGeneratedCodePropsModule(
         .join("\n");
       return `    ${prop.name}: {\n${mapValue}\n    },`;
     }
-    // Fallback for unrecognised map props
+    // No silent fallback — map props must have inferred specs (guarded above)
     if (classifyCodeProp(prop) === "map") {
-      return `    ${prop.name}: {},`;
+      throw new Error(
+        `Missing generated line-map spec for ${demo.slug}:${prop.name}`,
+      );
     }
     if (classifyCodeProp(prop) === "html") {
       return `    ${prop.name}: [],`;

@@ -985,3 +985,71 @@ test("per-demo OG route renders a fallback image for an unknown slug", async () 
   expect(response).toBeInstanceOf(Response);
   expect(response.headers.get("content-type")).toContain("image/png");
 });
+
+// ---------------------------------------------------------------------------
+// Runtime code-props coverage tests
+// ---------------------------------------------------------------------------
+
+function countNonEmptyLineMapEntries(
+  props: Record<string, unknown>,
+): number {
+  return Object.entries(props)
+    .filter(([key]) => key.toLowerCase().includes("linemap"))
+    .flatMap(([, value]) =>
+      Object.values((value ?? {}) as Record<string, number[]>),
+    )
+    .filter((lines) => Array.isArray(lines) && lines.length > 0).length;
+}
+
+test("standard-generated modules return runtime HTML and at least one non-empty line-map entry", async () => {
+  for (const slug of STANDARD_GENERATED_SLUGS) {
+    const mod = await import(`../lib/generated/demo-code-props/${slug}`);
+    const fnName = toStandardFnName(slug);
+    const getter = (mod as Record<string, () => Record<string, unknown>>)[
+      fnName
+    ];
+    expect(typeof getter).toBe("function");
+
+    const props = getter();
+
+    // Must have at least one *LinesHtml or *HtmlLines array with content
+    const htmlProps = Object.entries(props)
+      .filter(
+        ([key]) => key.endsWith("LinesHtml") || key.endsWith("HtmlLines"),
+      )
+      .map(([, value]) => value);
+    expect(htmlProps.length).toBeGreaterThan(0);
+    for (const value of htmlProps) {
+      expect(Array.isArray(value)).toBe(true);
+      expect((value as unknown[]).length).toBeGreaterThan(0);
+    }
+
+    // Must have at least one non-empty line-map entry
+    expect(countNonEmptyLineMapEntries(props)).toBeGreaterThan(0);
+  }
+});
+
+test("only approval-gate resolves to an empty code-props object among catalog slugs", () => {
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+  const catalog = JSON.parse(
+    readFileSync("lib/demos.generated.json", "utf8"),
+  ) as Array<{ slug: string }>;
+
+  for (const { slug } of catalog) {
+    const caseStart = dispatcher.indexOf(`case "${slug}"`);
+    expect(caseStart).toBeGreaterThan(-1);
+    // Find the end of this case's return statement (next "case" or "default:")
+    const nextCase = dispatcher.indexOf("\n    case ", caseStart + 1);
+    const nextDefault = dispatcher.indexOf("\n    default:", caseStart + 1);
+    const caseEnd = Math.min(
+      nextCase > -1 ? nextCase : Infinity,
+      nextDefault > -1 ? nextDefault : Infinity,
+    );
+    const caseSource = dispatcher.slice(caseStart, caseEnd);
+    if (slug === "approval-gate") {
+      expect(caseSource).toContain("return {};");
+    } else {
+      expect(caseSource).not.toContain("return {};");
+    }
+  }
+});
