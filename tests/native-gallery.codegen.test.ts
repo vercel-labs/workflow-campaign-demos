@@ -304,12 +304,13 @@ test("dispatcher contains dispatch branches for all five representative demos af
   }
 });
 
-test("all demos dispatch through modules except approval-gate", () => {
+test("all demos dispatch through modules except approval-gate and multi-workflow demos", () => {
   const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
 
-  // No inline readWorkflowSource fallback should remain in the dispatcher
-  expect(dispatcher).not.toContain("readWorkflowSource(");
-  expect(dispatcher).not.toContain("function readWorkflowSource(");
+  // readWorkflowSource may appear for multi-workflow demos (e.g. message-history)
+  // but the helper function definition should not be duplicated
+  const readWorkflowSourceMatches = dispatcher.match(/function readWorkflowSource\(/g);
+  expect(readWorkflowSourceMatches?.length ?? 0).toBeLessThanOrEqual(1);
 
   // Standard-shape demos dispatch through modules
   for (const slug of ["aggregator", "bulkhead", "competing-consumers", "throttle"]) {
@@ -372,12 +373,12 @@ test("bespoke and standard demos dispatch through module imports", () => {
   expect(bulkheadCase).toContain("return getBulkheadCodeProps()");
   expect(bulkheadCase).not.toContain("readWorkflowSource(");
 
+  // message-history has multiple workflow files, so it uses inline fallback (not module import)
   const historyCase = dispatcher.slice(
     dispatcher.indexOf('case "message-history"'),
     dispatcher.indexOf('case "message-history"') + 200,
   );
-  expect(historyCase).toContain("return getMessageHistoryCodeProps()");
-  expect(historyCase).not.toContain("readWorkflowSource(");
+  expect(historyCase).toContain("readWorkflowSource(");
 
   const managerCase = dispatcher.slice(
     dispatcher.indexOf('case "process-manager"'),
@@ -693,7 +694,7 @@ const STANDARD_GENERATED_SLUGS = [
   "hedge-request",
   "map-reduce",
   "message-filter",
-  "message-history",
+  // "message-history" excluded: has multiple workflow files, needs bespoke selection
   "message-translator",
   "namespaced-streams",
   "normalizer",
@@ -808,4 +809,66 @@ test("generator fails fast with machine-parseable error when a preserved module 
   expect(stderr).toContain("missing_preserved_code_props_module");
   expect(stderr).toContain("saga");
   expect(stderr).toContain("lib/generated/demo-code-props/saga.ts");
+});
+
+// ---------------------------------------------------------------------------
+// Line-map fidelity tests
+// ---------------------------------------------------------------------------
+
+test("standard-generated modules do not use whole-pane secondary fallbacks", () => {
+  for (const slug of STANDARD_GENERATED_SLUGS) {
+    const source = readFileSync(`lib/generated/demo-code-props/${slug}.ts`, "utf8");
+    expect(source).not.toContain("secondaryAllLines");
+    expect(source).not.toContain("workflowAllLines");
+  }
+});
+
+test("standard-generated modules use findBestGeneratedRange for line maps", () => {
+  for (const slug of STANDARD_GENERATED_SLUGS) {
+    const source = readFileSync(`lib/generated/demo-code-props/${slug}.ts`, "utf8");
+    // If the module has any line map entries, they should use findBestGeneratedRange
+    if (source.includes("LineMap:")) {
+      expect(source).toContain("findBestGeneratedRange");
+      expect(source).toContain("findBlockLineNumbers");
+      expect(source).toContain("findLineNumbers");
+    }
+  }
+});
+
+test("aggregator standard module returns step maps narrower than the full step pane", async () => {
+  const { getAggregatorCodeProps } = await import(
+    "../lib/generated/demo-code-props/aggregator"
+  );
+  const props = getAggregatorCodeProps() as {
+    stepHtmlLines: string[];
+    stepLineMap: Record<string, number[]>;
+  };
+  expect(Object.keys(props.stepLineMap).length).toBeGreaterThan(0);
+  expect(
+    Object.values(props.stepLineMap).every((lines) => lines.length > 0),
+  ).toBe(true);
+  // At least one key should resolve narrower than the full pane
+  expect(
+    Object.values(props.stepLineMap).some(
+      (lines) => lines.length < props.stepHtmlLines.length,
+    ),
+  ).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// App Router route segment tests
+// ---------------------------------------------------------------------------
+
+test("demo detail route has loading, error, and not-found segments", () => {
+  expect(existsSync("app/demos/[slug]/loading.tsx")).toBe(true);
+  expect(existsSync("app/demos/[slug]/error.tsx")).toBe(true);
+  expect(existsSync("app/demos/[slug]/not-found.tsx")).toBe(true);
+
+  const error = readFileSync("app/demos/[slug]/error.tsx", "utf8");
+  expect(error).toContain('"use client"');
+  expect(error).toContain("reset");
+
+  const notFound = readFileSync("app/demos/[slug]/not-found.tsx", "utf8");
+  expect(notFound).toContain("404");
+  expect(notFound).toContain('href="/"');
 });

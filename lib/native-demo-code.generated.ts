@@ -1,4 +1,11 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  extractExportedWorkflowBlock,
+  extractSecondaryFunctionBlocks,
+  highlightCodeToHtmlLines,
+} from "@/lib/code-workbench.server";
 import { getFanOutCodeProps } from "@/lib/generated/demo-code-props/fan-out";
 import { getSagaCodeProps } from "@/lib/generated/demo-code-props/saga";
 import { getCircuitBreakerCodeProps } from "@/lib/generated/demo-code-props/circuit-breaker";
@@ -31,7 +38,6 @@ import { getGuaranteedDeliveryCodeProps } from "@/lib/generated/demo-code-props/
 import { getHedgeRequestCodeProps } from "@/lib/generated/demo-code-props/hedge-request";
 import { getMapReduceCodeProps } from "@/lib/generated/demo-code-props/map-reduce";
 import { getMessageFilterCodeProps } from "@/lib/generated/demo-code-props/message-filter";
-import { getMessageHistoryCodeProps } from "@/lib/generated/demo-code-props/message-history";
 import { getMessageTranslatorCodeProps } from "@/lib/generated/demo-code-props/message-translator";
 import { getNamespacedStreamsCodeProps } from "@/lib/generated/demo-code-props/namespaced-streams";
 import { getNormalizerCodeProps } from "@/lib/generated/demo-code-props/normalizer";
@@ -48,6 +54,14 @@ import { getStatusPollerCodeProps } from "@/lib/generated/demo-code-props/status
 import { getThrottleCodeProps } from "@/lib/generated/demo-code-props/throttle";
 import { getTransactionalOutboxCodeProps } from "@/lib/generated/demo-code-props/transactional-outbox";
 import { getWakeableReminderCodeProps } from "@/lib/generated/demo-code-props/wakeable-reminder";
+
+function readWorkflowSource(relPath: string): string {
+  try {
+    return readFileSync(join(process.cwd(), relPath), "utf-8");
+  } catch {
+    return "// Source not available";
+  }
+}
 
 export async function getNativeDemoCodeProps(
   slug: string,
@@ -101,8 +115,22 @@ export async function getNativeDemoCodeProps(
       return getMapReduceCodeProps();
     case "message-filter":
       return getMessageFilterCodeProps();
-    case "message-history":
-      return getMessageHistoryCodeProps();
+    case "message-history": {
+      const workflowSource = readWorkflowSource("message-history/workflows/message-history.ts");
+      const workflowCode = extractExportedWorkflowBlock(workflowSource);
+      const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
+      const extractedSecondaryCode = extractSecondaryFunctionBlocks(workflowSource);
+      const secondaryCode = extractedSecondaryCode.length > 0 ? extractedSecondaryCode : workflowSource;
+      const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
+      return {
+        orchestratorCode: workflowCode,
+        orchestratorHtmlLines: workflowHtmlLines,
+        orchestratorLineMap: {},
+        stepCode: secondaryCode,
+        stepHtmlLines: secondaryHtmlLines,
+        stepLineMap: {},
+      };
+    }
     case "message-translator":
       return getMessageTranslatorCodeProps();
     case "namespaced-streams":

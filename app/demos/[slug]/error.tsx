@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function DemoDetailError({
   error,
   reset,
@@ -7,6 +9,18 @@ export default function DemoDetailError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error(
+      JSON.stringify({
+        page: "demo-detail",
+        level: "error",
+        errorName: error.name,
+        errorMessage: error.message,
+        digest: error.digest ?? null,
+      }),
+    );
+  }, [error]);
+
   return (
     <main
       id="main-content"

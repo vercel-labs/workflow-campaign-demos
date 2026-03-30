@@ -5,34 +5,54 @@ import {
   extractExportedWorkflowBlock,
   extractSecondaryFunctionBlocks,
   highlightCodeToHtmlLines,
+  findBlockLineNumbers,
+  findLineNumbers,
 } from "@/lib/code-workbench.server";
+
+function findBestGeneratedRange(code: string, key: string, fallback: number[]): number[] {
+  const blockMarkers = [
+    `async function ${key}(`,
+    `function ${key}(`,
+    `const ${key} = async (`,
+    `const ${key} = (`,
+  ];
+  for (const marker of blockMarkers) {
+    const lines = findBlockLineNumbers(code, marker);
+    if (lines.length > 0) return lines;
+  }
+  const callLines = findLineNumbers(code, `${key}(`);
+  if (callLines.length > 0) return callLines;
+  const identifierLines = findLineNumbers(code, key);
+  if (identifierLines.length > 0) return identifierLines;
+  return fallback;
+}
 
 export function getCorrelationIdentifierCodeProps(): Record<string, unknown> {
   const source = readFileSync(join(process.cwd(), "correlation-identifier/workflows/correlation-identifier.ts"), "utf-8");
   const workflowCode = extractExportedWorkflowBlock(source);
   const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);
-  const workflowAllLines = workflowCode.split("\n").map((_: string, i: number) => i + 1);
+  const workflowFallbackLines = workflowCode.split("\n").map((_: string, i: number) => i + 1);
   const extractedSecondary = extractSecondaryFunctionBlocks(source);
   const secondaryCode = extractedSecondary.length > 0 ? extractedSecondary : source;
   const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);
-  const secondaryAllLines = secondaryCode.split("\n").map((_: string, i: number) => i + 1);
+  const secondaryFallbackLines = secondaryCode.split("\n").map((_: string, i: number) => i + 1);
   return {
     workflowCode: workflowCode,
     workflowLinesHtml: workflowHtmlLines,
     stepCode: secondaryCode,
     stepLinesHtml: secondaryHtmlLines,
     workflowLineMap: {
-      "awaitResponse": workflowAllLines,
-      "done": workflowAllLines,
-      "generateId": workflowAllLines,
-      "matchAndDeliver": workflowAllLines,
-      "sendRequest": workflowAllLines,
+      "awaitResponse": findBestGeneratedRange(workflowCode, "awaitResponse", workflowFallbackLines),
+      "done": findBestGeneratedRange(workflowCode, "done", workflowFallbackLines),
+      "generateId": findBestGeneratedRange(workflowCode, "generateId", workflowFallbackLines),
+      "matchAndDeliver": findBestGeneratedRange(workflowCode, "matchAndDeliver", workflowFallbackLines),
+      "sendRequest": findBestGeneratedRange(workflowCode, "sendRequest", workflowFallbackLines),
     },
     stepLineMap: {
-      "awaitResponse": secondaryAllLines,
-      "generateCorrelationId": secondaryAllLines,
-      "matchAndDeliver": secondaryAllLines,
-      "sendRequest": secondaryAllLines,
+      "awaitResponse": findBestGeneratedRange(secondaryCode, "awaitResponse", secondaryFallbackLines),
+      "generateCorrelationId": findBestGeneratedRange(secondaryCode, "generateCorrelationId", secondaryFallbackLines),
+      "matchAndDeliver": findBestGeneratedRange(secondaryCode, "matchAndDeliver", secondaryFallbackLines),
+      "sendRequest": findBestGeneratedRange(secondaryCode, "sendRequest", secondaryFallbackLines),
     },
   };
 }

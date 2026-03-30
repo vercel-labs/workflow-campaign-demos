@@ -1508,7 +1508,7 @@ const STANDARD_GENERATED_CODE_PROPS_SLUGS = [
   "hedge-request",
   "map-reduce",
   "message-filter",
-  "message-history",
+  // "message-history" excluded: has multiple workflow files, needs explicit bespoke selection
   "message-translator",
   "namespaced-streams",
   "normalizer",
@@ -1671,10 +1671,11 @@ function extractKeysFromTypeDefinition(
 }
 
 function readStandaloneDemoComponentSource(slug: string): string {
-  // Try standard demo.tsx first, then slug-specific variants
+  // Try standard demo.tsx first, then slug-specific variants, then page.tsx
   const candidates = [
     join(ROOT, slug, "app/components/demo.tsx"),
     join(ROOT, slug, `app/components/${slug}-demo.tsx`),
+    join(ROOT, slug, "app/page.tsx"),
   ];
   for (const filePath of candidates) {
     if (existsSync(filePath)) {
@@ -1702,13 +1703,24 @@ function inferStandardLineMapSpecs(
     .filter((spec) => spec.keys.length > 0);
 }
 
+function pickWorkflowPathForGeneratedModule(demo: SupportedDemo): string {
+  if (demo.workflows.length === 0) {
+    throw new Error(`No workflow file found for ${demo.slug}`);
+  }
+  if (demo.workflows.length === 1) {
+    return demo.workflows[0].filePath;
+  }
+  throw new Error(
+    `Standard-generated code-props need an explicit workflow selection for ${demo.slug}: ${demo.workflows
+      .map((w) => w.filePath)
+      .join(", ")}`,
+  );
+}
+
 function renderStandardGeneratedCodePropsModule(
   demo: SupportedDemo,
 ): string {
-  const workflowPath = demo.workflows[0]?.filePath;
-  if (!workflowPath) {
-    throw new Error(`No workflow file found for ${demo.slug}`);
-  }
+  const workflowPath = pickWorkflowPathForGeneratedModule(demo);
 
   const fnName = slugToCodePropsFnName(demo.slug);
   const lineMapSpecs = inferStandardLineMapSpecs(demo.slug, demo.componentProps);
@@ -1744,11 +1756,10 @@ function renderStandardGeneratedCodePropsModule(
       (candidate) => candidate.propName === prop.name,
     );
     if (lineMapSpec) {
-      const linesVar = lineMapSpec.pane === "workflow"
-        ? "workflowAllLines"
-        : "secondaryAllLines";
+      const codeVar = lineMapSpec.pane === "workflow" ? "workflowCode" : "secondaryCode";
+      const fallbackVar = lineMapSpec.pane === "workflow" ? "workflowFallbackLines" : "secondaryFallbackLines";
       const mapValue = lineMapSpec.keys
-        .map((key) => `      ${JSON.stringify(key)}: ${linesVar},`)
+        .map((key) => `      ${JSON.stringify(key)}: findBestGeneratedRange(${codeVar}, ${JSON.stringify(key)}, ${fallbackVar}),`)
         .join("\n");
       return `    ${prop.name}: {\n${mapValue}\n    },`;
     }
@@ -1767,7 +1778,43 @@ function renderStandardGeneratedCodePropsModule(
         `  const extractedSecondary = extractSecondaryFunctionBlocks(source);`,
         `  const secondaryCode = extractedSecondary.length > 0 ? extractedSecondary : source;`,
         `  const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);`,
-        `  const secondaryAllLines = secondaryCode.split("\\n").map((_: string, i: number) => i + 1);`,
+        `  const secondaryFallbackLines = secondaryCode.split("\\n").map((_: string, i: number) => i + 1);`,
+      ]
+    : [];
+
+  // Determine if we need the function-level matching helpers
+  const needsFunctionMatching = lineMapSpecs.length > 0;
+
+  const imports = [
+    `  extractExportedWorkflowBlock,`,
+    `  extractSecondaryFunctionBlocks,`,
+    `  highlightCodeToHtmlLines,`,
+  ];
+  if (needsFunctionMatching) {
+    imports.push(`  findBlockLineNumbers,`);
+    imports.push(`  findLineNumbers,`);
+  }
+
+  const helperLines = needsFunctionMatching
+    ? [
+        ``,
+        `function findBestGeneratedRange(code: string, key: string, fallback: number[]): number[] {`,
+        `  const blockMarkers = [`,
+        `    \`async function \${key}(\`,`,
+        `    \`function \${key}(\`,`,
+        `    \`const \${key} = async (\`,`,
+        `    \`const \${key} = (\`,`,
+        `  ];`,
+        `  for (const marker of blockMarkers) {`,
+        `    const lines = findBlockLineNumbers(code, marker);`,
+        `    if (lines.length > 0) return lines;`,
+        `  }`,
+        `  const callLines = findLineNumbers(code, \`\${key}(\`);`,
+        `  if (callLines.length > 0) return callLines;`,
+        `  const identifierLines = findLineNumbers(code, key);`,
+        `  if (identifierLines.length > 0) return identifierLines;`,
+        `  return fallback;`,
+        `}`,
       ]
     : [];
 
@@ -1776,16 +1823,15 @@ function renderStandardGeneratedCodePropsModule(
     `import { readFileSync } from "node:fs";`,
     `import { join } from "node:path";`,
     `import {`,
-    `  extractExportedWorkflowBlock,`,
-    `  extractSecondaryFunctionBlocks,`,
-    `  highlightCodeToHtmlLines,`,
+    ...imports,
     `} from "@/lib/code-workbench.server";`,
+    ...helperLines,
     ``,
     `export function ${fnName}(): Record<string, unknown> {`,
     `  const source = readFileSync(join(process.cwd(), ${JSON.stringify(workflowPath)}), "utf-8");`,
     `  const workflowCode = extractExportedWorkflowBlock(source);`,
     `  const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);`,
-    `  const workflowAllLines = workflowCode.split("\\n").map((_: string, i: number) => i + 1);`,
+    `  const workflowFallbackLines = workflowCode.split("\\n").map((_: string, i: number) => i + 1);`,
     ...secondaryLines,
     `  return {`,
     ...propEntries,
