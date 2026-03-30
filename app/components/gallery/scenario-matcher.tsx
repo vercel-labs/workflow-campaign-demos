@@ -58,14 +58,19 @@ export function ScenarioMatcher() {
   }, [query, activeTags]);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-4">
         <SearchPanel value={query} onChange={setQuery} />
         <FilterBar activeTags={activeTags} onToggle={toggleTag} />
       </div>
-      <div className="flex items-center justify-between border-b border-gray-300 pb-3">
+      <div className="flex items-center justify-between pt-2 pb-3">
         <p className="text-xs text-gray-500 font-mono tabular-nums">
           {filtered.length} pattern{filtered.length !== 1 ? "s" : ""}
+          {activeTags.size > 0 && (
+            <span className="text-gray-400">
+              {" "}· filtered
+            </span>
+          )}
         </p>
         {activeTags.size > 0 && (
           <button

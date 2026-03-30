@@ -26,6 +26,12 @@ export const metadata: Metadata = {
     siteName: "Workflow DevKit Gallery",
     type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Workflow DevKit Gallery — 30 Days of Patterns",
+    description:
+      "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
+  },
   metadataBase: new URL(
     process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
