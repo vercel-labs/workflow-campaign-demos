@@ -144,12 +144,29 @@ test("detail page loads code props before rendering the native component", () =>
   expect(source).toContain("<DemoComponent {...codeProps} />");
 });
 
-test("generated code-props dispatcher routes fan-out to real props and preserves dummy fallbacks", () => {
+test("generated code-props dispatcher routes representative demos to real props", () => {
   const source = readFileSync("lib/native-demo-code.generated.ts", "utf8");
   expect(source).toContain('case "fan-out"');
   expect(source).toContain("return getFanOutCodeProps()");
   expect(source).toContain('case "saga"');
-  expect(source).toContain('orchestratorCode: ""');
+  expect(source).toContain("return getSagaCodeProps()");
+  expect(source).toContain('case "circuit-breaker"');
+  expect(source).toContain("return getCircuitBreakerCodeProps()");
+  expect(source).toContain('case "splitter"');
+  expect(source).toContain("return getSplitterCodeProps()");
+  expect(source).toContain('case "dead-letter-queue"');
+  expect(source).toContain("return getDeadLetterQueueCodeProps()");
+});
+
+test("representative generated code-props modules contain real server-side workbench logic", () => {
+  expect(readFileSync("lib/generated/demo-code-props/saga.ts", "utf8"))
+    .toContain("highlightCodeToHtmlLines(orchestratorCode)");
+  expect(readFileSync("lib/generated/demo-code-props/circuit-breaker.ts", "utf8"))
+    .toContain("buildWorkflowLineMap(workflowCode)");
+  expect(readFileSync("lib/generated/demo-code-props/splitter.ts", "utf8"))
+    .toContain('join(process.cwd(), "splitter/workflows/order-splitter.ts")');
+  expect(readFileSync("lib/generated/demo-code-props/dead-letter-queue.ts", "utf8"))
+    .toContain('join(process.cwd(), "dead-letter-queue/workflows/dead-letter-queue.ts")');
 });
 
 // ---------------------------------------------------------------------------

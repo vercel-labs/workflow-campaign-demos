@@ -1,5 +1,9 @@
 // GENERATED — do not edit. Regenerate with: bun .scripts/generate-native-gallery.ts
 import { getFanOutCodeProps } from "@/lib/generated/demo-code-props/fan-out";
+import { getSagaCodeProps } from "@/lib/generated/demo-code-props/saga";
+import { getCircuitBreakerCodeProps } from "@/lib/generated/demo-code-props/circuit-breaker";
+import { getSplitterCodeProps } from "@/lib/generated/demo-code-props/splitter";
+import { getDeadLetterQueueCodeProps } from "@/lib/generated/demo-code-props/dead-letter-queue";
 
 export async function getNativeDemoCodeProps(
   slug: string,
@@ -70,14 +74,7 @@ export async function getNativeDemoCodeProps(
         participantLineMap: {},
       };
     case "circuit-breaker":
-      return {
-        workflowCode: "",
-        workflowHtmlLines: [],
-        workflowLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
-        stepLineMap: {},
-      };
+      return getCircuitBreakerCodeProps();
     case "claim-check":
       return {
         workflowCode: "",
@@ -124,14 +121,7 @@ export async function getNativeDemoCodeProps(
         stepLineMap: {},
       };
     case "dead-letter-queue":
-      return {
-        workflowCode: "",
-        workflowLinesHtml: [],
-        stepCode: "",
-        stepLinesHtml: [],
-        workflowLineMap: {},
-        stepLineMap: {},
-      };
+      return getDeadLetterQueueCodeProps();
     case "detour":
       return {
         workflowCode: "",
@@ -343,14 +333,7 @@ export async function getNativeDemoCodeProps(
         lineMap: {},
       };
     case "saga":
-      return {
-        orchestratorCode: "",
-        orchestratorHtmlLines: [],
-        orchestratorLineMap: {},
-        stepCode: "",
-        stepHtmlLines: [],
-        stepLineMap: {},
-      };
+      return getSagaCodeProps();
     case "scatter-gather":
       return {
         workflowCode: "",
@@ -381,14 +364,7 @@ export async function getNativeDemoCodeProps(
         stepLineMap: {},
       };
     case "splitter":
-      return {
-        workflowCode: "",
-        workflowLinesHtml: [],
-        stepCode: "",
-        stepLinesHtml: [],
-        workflowLineMap: {},
-        stepLineMap: {},
-      };
+      return getSplitterCodeProps();
     case "status-poller":
       return {
         workflowCode: "",

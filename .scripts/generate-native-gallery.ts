@@ -166,10 +166,16 @@ function cleanGeneratedFiles(): void {
     rmSync(registryPath, { force: true });
   }
 
-  // Clean generated code-props modules
+  // Clean generated code-props modules (only remove GENERATED files, not the directory)
   const codePropsDir = join(ROOT, "lib/generated/demo-code-props");
   if (existsSync(codePropsDir)) {
-    rmSync(codePropsDir, { recursive: true, force: true });
+    for (const file of readdirSync(codePropsDir)) {
+      const filePath = join(codePropsDir, file);
+      const content = readFileSync(filePath, "utf8");
+      if (content.startsWith("// GENERATED")) {
+        rmSync(filePath, { force: true });
+      }
+    }
   }
 
   // Clean generated code-props dispatcher
@@ -1426,17 +1432,51 @@ function generateFanOutCodePropsModule(): string {
 }
 
 /**
- * Generates the code-props dispatcher that routes each slug to its
- * code-props module.  Fan-out gets real props; everything else gets
- * dummy fallbacks matching the wrapper's expected prop shapes.
+ * Reads a code-props module from the lib/generated/demo-code-props/ directory.
+ * Used for demos whose code-props modules are hand-authored rather than
+ * generated from string templates (inline-code demos like saga, circuit-breaker,
+ * and file-backed demos like splitter, dead-letter-queue).
+ *
+ * If the file doesn't exist yet, returns null so the generator can skip it.
  */
+function readCodePropsModule(slug: string): string | null {
+  const filePath = join(ROOT, `lib/generated/demo-code-props/${slug}.ts`);
+  if (!existsSync(filePath)) return null;
+  return readFileSync(filePath, "utf8");
+}
+
+/**
+ * Generates the code-props dispatcher that routes each slug to its
+ * code-props module.  Representative demos get real props; everything else
+ * gets dummy fallbacks matching the wrapper's expected prop shapes.
+ */
+function slugToCodePropsFnName(slug: string): string {
+  const map: Record<string, string> = {
+    "fan-out": "getFanOutCodeProps",
+    saga: "getSagaCodeProps",
+    "circuit-breaker": "getCircuitBreakerCodeProps",
+    splitter: "getSplitterCodeProps",
+    "dead-letter-queue": "getDeadLetterQueueCodeProps",
+  };
+  return map[slug] ?? `get${slug.replace(/-./g, (m) => m[1].toUpperCase())}CodeProps`;
+}
+
+const REAL_CODE_PROPS_SLUGS = new Set([
+  "fan-out",
+  "saga",
+  "circuit-breaker",
+  "splitter",
+  "dead-letter-queue",
+]);
+
 function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
   const cases = demos
     .map((demo) => {
-      if (demo.slug === "fan-out") {
+      if (REAL_CODE_PROPS_SLUGS.has(demo.slug)) {
+        const fnName = slugToCodePropsFnName(demo.slug);
         return [
-          `    case "fan-out":`,
-          `      return getFanOutCodeProps();`,
+          `    case ${JSON.stringify(demo.slug)}:`,
+          `      return ${fnName}();`,
         ].join("\n");
       }
       if (demo.componentProps.length === 0) {
@@ -1466,6 +1506,10 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
   return [
     HEADER.trimEnd(),
     `import { getFanOutCodeProps } from "@/lib/generated/demo-code-props/fan-out";`,
+    `import { getSagaCodeProps } from "@/lib/generated/demo-code-props/saga";`,
+    `import { getCircuitBreakerCodeProps } from "@/lib/generated/demo-code-props/circuit-breaker";`,
+    `import { getSplitterCodeProps } from "@/lib/generated/demo-code-props/splitter";`,
+    `import { getDeadLetterQueueCodeProps } from "@/lib/generated/demo-code-props/dead-letter-queue";`,
     ``,
     `export async function getNativeDemoCodeProps(`,
     `  slug: string,`,
@@ -1485,6 +1529,15 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
 // ---------------------------------------------------------------------------
 
 function main(): void {
+  // Cache code-props module contents before cleaning (cleanup deletes the directory)
+  const cachedCodePropsModules = new Map<string, string>();
+  for (const slug of ["saga", "circuit-breaker", "splitter", "dead-letter-queue"]) {
+    const filePath = join(ROOT, `lib/generated/demo-code-props/${slug}.ts`);
+    if (existsSync(filePath)) {
+      cachedCodePropsModules.set(slug, readFileSync(filePath, "utf8"));
+    }
+  }
+
   // Clean stale generated files before writing new ones
   cleanGeneratedFiles();
 
@@ -1585,14 +1638,25 @@ function main(): void {
   write("lib/native-demos.generated.ts", generateRegistry(supported, extraRoutesBySlug));
   filesWritten++;
 
-  // Generate fan-out code-props module (real server-side code extraction)
+  // Generate code-props modules (real server-side code extraction)
   write(
     "lib/generated/demo-code-props/fan-out.ts",
     generateFanOutCodePropsModule(),
   );
   filesWritten++;
 
+  // Write code-props modules for representative demos (from cached pre-clean content)
+  for (const slug of ["saga", "circuit-breaker", "splitter", "dead-letter-queue"]) {
+    const content = cachedCodePropsModules.get(slug);
+    if (content) {
+      write(`lib/generated/demo-code-props/${slug}.ts`, content);
+      filesWritten++;
+    }
+  }
+
   // Generate code-props dispatcher (routes slug → real or dummy code props)
+  // Representative demos (fan-out, saga, circuit-breaker, splitter, dead-letter-queue)
+  // get real server-side code extraction; the rest get dummy fallbacks.
   write(
     "lib/native-demo-code.generated.ts",
     generateCodePropsDispatcher(supported),
