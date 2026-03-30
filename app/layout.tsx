@@ -13,9 +13,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Workflow DevKit Gallery — 30 Days of Patterns",
+  title: {
+    default: "Workflow DevKit Gallery — 30 Days of Patterns",
+    template: "%s",
+  },
   description:
     "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
+  openGraph: {
+    title: "Workflow DevKit Gallery — 30 Days of Patterns",
+    description:
+      "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
+    siteName: "Workflow DevKit Gallery",
+    type: "website",
+  },
+  metadataBase: new URL(
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000",
+  ),
 };
 
 export default function RootLayout({

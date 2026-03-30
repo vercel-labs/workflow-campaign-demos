@@ -1472,10 +1472,328 @@ const REAL_CODE_PROPS_DEMOS: readonly RealCodePropsDemo[] = [
   { slug: "idempotent-receiver", fn: "getIdempotentReceiverCodeProps", mode: "preserve-file" },
   { slug: "choreography", fn: "getChoreographyCodeProps", mode: "preserve-file" },
   { slug: "cancellable-export", fn: "getCancellableExportCodeProps", mode: "preserve-file" },
+  { slug: "onboarding-drip", fn: "getOnboardingDripCodeProps", mode: "preserve-file" },
+  { slug: "pipeline", fn: "getPipelineCodeProps", mode: "preserve-file" },
+  { slug: "recipient-list", fn: "getRecipientListCodeProps", mode: "preserve-file" },
+  { slug: "routing-slip", fn: "getRoutingSlipCodeProps", mode: "preserve-file" },
+  { slug: "scatter-gather", fn: "getScatterGatherCodeProps", mode: "preserve-file" },
+  { slug: "webhook-basics", fn: "getWebhookBasicsCodeProps", mode: "preserve-file" },
+  { slug: "wire-tap", fn: "getWireTapCodeProps", mode: "preserve-file" },
 ] as const;
 
 /** Set of slugs that have real code-props modules (derived from REAL_CODE_PROPS_DEMOS). */
 const REAL_CODE_PROPS_SLUGS = new Set(REAL_CODE_PROPS_DEMOS.map((d) => d.slug));
+
+// ---------------------------------------------------------------------------
+// Standard-generated code-props: 33 demos that follow the common dual-pane
+// pattern (workflowCode/stepCode or orchestratorCode/stepCode). These get
+// auto-generated modules with real line-map keys extracted from each demo's
+// standalone component source.
+// ---------------------------------------------------------------------------
+
+const STANDARD_GENERATED_CODE_PROPS_SLUGS = [
+  "aggregator",
+  "approval-chain",
+  "batch-processor",
+  "bulkhead",
+  "claim-check",
+  "competing-consumers",
+  "content-based-router",
+  "content-enricher",
+  "correlation-identifier",
+  "detour",
+  "event-gateway",
+  "event-sourcing",
+  "guaranteed-delivery",
+  "hedge-request",
+  "map-reduce",
+  "message-filter",
+  "message-history",
+  "message-translator",
+  "namespaced-streams",
+  "normalizer",
+  "priority-queue",
+  "process-manager",
+  "publish-subscribe",
+  "request-reply",
+  "resequencer",
+  "retry-backoff",
+  "retryable-rate-limit",
+  "scheduled-digest",
+  "scheduler-agent-supervisor",
+  "status-poller",
+  "throttle",
+  "transactional-outbox",
+  "wakeable-reminder",
+] as const;
+
+const STANDARD_GENERATED_SET = new Set<string>(STANDARD_GENERATED_CODE_PROPS_SLUGS);
+
+function isStandardGeneratedCodePropsSlug(slug: string): boolean {
+  return STANDARD_GENERATED_SET.has(slug);
+}
+
+type LineMapSpec = {
+  propName: string;
+  pane: "workflow" | "secondary";
+  keys: string[];
+};
+
+/**
+ * Reads the standalone demo component source and extracts line-map keys
+ * by scanning for `propName.keyName`, `propName["keyName"]`, and type
+ * definition patterns like `type FooLineMap = { key1: number[]; ... }`.
+ */
+function extractLineMapKeysFromComponent(
+  source: string,
+  propName: string,
+): string[] {
+  const keys = new Set<string>();
+  // dot access: propName.keyName
+  for (const match of source.matchAll(
+    new RegExp(`${propName}\\.([A-Za-z0-9_]+)`, "g"),
+  )) {
+    keys.add(match[1]);
+  }
+  // bracket access: propName["keyName"] or propName['keyName']
+  for (const match of source.matchAll(
+    new RegExp(`${propName}\\[(?:'([^']+)'|"([^"]+)")\\]`, "g"),
+  )) {
+    keys.add(match[1] ?? match[2]);
+  }
+
+  // If direct access didn't find keys, try extracting from type definitions.
+  // Look for type aliases like `type WorkflowLineMap = { key1: number[]; ... }`
+  // that correspond to this prop name.
+  if (keys.size === 0) {
+    const typeKeys = extractKeysFromTypeDefinition(source, propName);
+    for (const key of typeKeys) keys.add(key);
+  }
+
+  return [...keys].sort();
+}
+
+/**
+ * Extracts keys from a TypeScript type definition that corresponds to a prop name.
+ * Handles patterns like:
+ *   type WorkflowLineMap = { key1: number[]; key2: number[]; }
+ *   type StepLineMap = Record<StepId, number[]>  (then finds the StepId union)
+ */
+function extractKeysFromTypeDefinition(
+  source: string,
+  propName: string,
+): string[] {
+  // Derive likely type name from prop name: e.g. "stepLineMap" → "StepLineMap"
+  const baseName = propName.charAt(0).toUpperCase() + propName.slice(1);
+
+  // Also try common variations: FooLineMap, FooMap, etc.
+  const typeNameCandidates = [baseName];
+
+  // Search for common type aliases in the source
+  // Pattern: type <TypeName> = { ... } where keys have number[] values
+  for (const candidate of typeNameCandidates) {
+    // Look for type Foo = { key: number[]; ... }
+    const typeDefRegex = new RegExp(
+      `type\\s+\\w*${candidate.replace(/([A-Z])/g, "[A-Za-z]*$1")}\\w*\\s*=\\s*\\{([^}]+)\\}`,
+      "s",
+    );
+    const typeMatch = source.match(typeDefRegex);
+    if (typeMatch) {
+      const body = typeMatch[1];
+      const keyMatches = body.matchAll(/(\w+)\s*:\s*number\[\]/g);
+      const keys: string[] = [];
+      for (const m of keyMatches) keys.push(m[1]);
+      if (keys.length > 0) return keys;
+    }
+  }
+
+  // Try broader search: any type definition containing the prop name
+  // e.g., type FooLineMap = { ... } or type BatchWorkflowLineMap = { ... }
+  const propSuffix = propName.replace(/^(workflow|orchestrator|step|flow|participant|callback)/, "");
+  const broadRegex = new RegExp(
+    `type\\s+\\w*${propSuffix.charAt(0).toUpperCase()}${propSuffix.slice(1)}\\s*=\\s*\\{([^}]+)\\}`,
+    "s",
+  );
+  const broadMatch = source.match(broadRegex);
+  if (broadMatch) {
+    const body = broadMatch[1];
+    const keyMatches = body.matchAll(/(\w+)\s*:\s*number\[\]/g);
+    const keys: string[] = [];
+    for (const m of keyMatches) keys.push(m[1]);
+    if (keys.length > 0) return keys;
+  }
+
+  // Try Record<UnionType, number[]> pattern
+  // e.g., type StepLineMap = Record<OutboxStepId, number[]>
+  // Then find: type OutboxStepId = "persist" | "relay" | ...
+  const recordRegex = new RegExp(
+    `type\\s+\\w*${propSuffix.charAt(0).toUpperCase()}${propSuffix.slice(1)}\\s*=\\s*Record<(\\w+),\\s*number\\[\\]>`,
+  );
+  const recordMatch = source.match(recordRegex);
+  if (recordMatch) {
+    const unionTypeName = recordMatch[1];
+    // Find the union type definition
+    const unionRegex = new RegExp(
+      `type\\s+${unionTypeName}\\s*=\\s*([^;]+)`,
+    );
+    const unionMatch = source.match(unionRegex);
+    if (unionMatch) {
+      const unionBody = unionMatch[1];
+      const literalMatches = unionBody.matchAll(/["']([^"']+)["']/g);
+      const keys: string[] = [];
+      for (const m of literalMatches) keys.push(m[1]);
+      if (keys.length > 0) return keys;
+    }
+  }
+
+  // Last resort: look for string literal union types whose members could be
+  // map keys. Try Step*, Highlight*, and any other union types with camelCase members.
+  const unionPatterns = [
+    /type\s+Step\w*\s*=\s*([^;]+)/,
+    /type\s+Highlight\w*\s*=\s*([^;]+)/,
+    /type\s+\w*Phase\w*\s*=\s*([^;]+)/,
+  ];
+  for (const regex of unionPatterns) {
+    const unionMatch = source.match(regex);
+    if (unionMatch) {
+      const unionBody = unionMatch[1];
+      const literalMatches = unionBody.matchAll(/["']([^"']+)["']/g);
+      const keys: string[] = [];
+      for (const m of literalMatches) {
+        // Skip "none", "idle", and other non-step values
+        if (m[1] !== "none" && m[1] !== "idle") keys.push(m[1]);
+      }
+      if (keys.length > 0) return keys;
+    }
+  }
+
+  return [];
+}
+
+function readStandaloneDemoComponentSource(slug: string): string {
+  // Try standard demo.tsx first, then slug-specific variants
+  const candidates = [
+    join(ROOT, slug, "app/components/demo.tsx"),
+    join(ROOT, slug, `app/components/${slug}-demo.tsx`),
+  ];
+  for (const filePath of candidates) {
+    if (existsSync(filePath)) {
+      return readFileSync(filePath, "utf8");
+    }
+  }
+  return "";
+}
+
+function inferStandardLineMapSpecs(
+  slug: string,
+  props: DemoComponentProp[],
+): LineMapSpec[] {
+  const componentSource = readStandaloneDemoComponentSource(slug);
+  if (!componentSource) return [];
+  return props
+    .filter((prop) => classifyCodeProp(prop) === "map")
+    .map((prop) => ({
+      propName: prop.name,
+      pane: (prop.name.startsWith("step") || prop.name.startsWith("callback") || prop.name.startsWith("participant"))
+        ? "secondary" as const
+        : "workflow" as const,
+      keys: extractLineMapKeysFromComponent(componentSource, prop.name),
+    }))
+    .filter((spec) => spec.keys.length > 0);
+}
+
+function renderStandardGeneratedCodePropsModule(
+  demo: SupportedDemo,
+): string {
+  const workflowPath = demo.workflows[0]?.filePath;
+  if (!workflowPath) {
+    throw new Error(`No workflow file found for ${demo.slug}`);
+  }
+
+  const fnName = slugToCodePropsFnName(demo.slug);
+  const lineMapSpecs = inferStandardLineMapSpecs(demo.slug, demo.componentProps);
+
+  // Determine which panes are needed
+  const strategy = inferGenericFallbackStrategy(demo.componentProps);
+  const needsSecondary = strategy?.panes.some((p) => p.source === "secondary") ?? false;
+
+  const propEntries = demo.componentProps.map((prop) => {
+    // Code string props
+    if (prop.name === "workflowCode" || prop.name === "orchestratorCode") {
+      return `    ${prop.name}: workflowCode,`;
+    }
+    if (prop.name === "stepCode") {
+      return `    ${prop.name}: secondaryCode,`;
+    }
+    // HTML lines props
+    if (
+      prop.name === "workflowLinesHtml" ||
+      prop.name === "workflowHtmlLines" ||
+      prop.name === "orchestratorHtmlLines"
+    ) {
+      return `    ${prop.name}: workflowHtmlLines,`;
+    }
+    if (
+      prop.name === "stepLinesHtml" ||
+      prop.name === "stepHtmlLines"
+    ) {
+      return `    ${prop.name}: secondaryHtmlLines,`;
+    }
+    // Line map props — check if we found real keys
+    const lineMapSpec = lineMapSpecs.find(
+      (candidate) => candidate.propName === prop.name,
+    );
+    if (lineMapSpec) {
+      const linesVar = lineMapSpec.pane === "workflow"
+        ? "workflowAllLines"
+        : "secondaryAllLines";
+      const mapValue = lineMapSpec.keys
+        .map((key) => `      ${JSON.stringify(key)}: ${linesVar},`)
+        .join("\n");
+      return `    ${prop.name}: {\n${mapValue}\n    },`;
+    }
+    // Fallback for unrecognised map props
+    if (classifyCodeProp(prop) === "map") {
+      return `    ${prop.name}: {},`;
+    }
+    if (classifyCodeProp(prop) === "html") {
+      return `    ${prop.name}: [],`;
+    }
+    return `    ${prop.name}: "",`;
+  });
+
+  const secondaryLines = needsSecondary
+    ? [
+        `  const extractedSecondary = extractSecondaryFunctionBlocks(source);`,
+        `  const secondaryCode = extractedSecondary.length > 0 ? extractedSecondary : source;`,
+        `  const secondaryHtmlLines = highlightCodeToHtmlLines(secondaryCode);`,
+        `  const secondaryAllLines = secondaryCode.split("\\n").map((_: string, i: number) => i + 1);`,
+      ]
+    : [];
+
+  return [
+    HEADER.trimEnd(),
+    `import { readFileSync } from "node:fs";`,
+    `import { join } from "node:path";`,
+    `import {`,
+    `  extractExportedWorkflowBlock,`,
+    `  extractSecondaryFunctionBlocks,`,
+    `  highlightCodeToHtmlLines,`,
+    `} from "@/lib/code-workbench.server";`,
+    ``,
+    `export function ${fnName}(): Record<string, unknown> {`,
+    `  const source = readFileSync(join(process.cwd(), ${JSON.stringify(workflowPath)}), "utf-8");`,
+    `  const workflowCode = extractExportedWorkflowBlock(source);`,
+    `  const workflowHtmlLines = highlightCodeToHtmlLines(workflowCode);`,
+    `  const workflowAllLines = workflowCode.split("\\n").map((_: string, i: number) => i + 1);`,
+    ...secondaryLines,
+    `  return {`,
+    ...propEntries,
+    `  };`,
+    `}`,
+    ``,
+  ].join("\n");
+}
 
 /** Map slug → exported function name (derived from REAL_CODE_PROPS_DEMOS). */
 function slugToCodePropsFnName(slug: string): string {
@@ -1586,12 +1904,21 @@ function inferGenericFallbackStrategy(
 }
 
 function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
-  // Track whether any non-representative demo needs the generic fallback
+  // Track whether any non-module demo needs the generic inline fallback
   let needsGenericImports = false;
 
   const cases = demos
     .map((demo) => {
+      // Bespoke preserved/template modules
       if (REAL_CODE_PROPS_SLUGS.has(demo.slug)) {
+        const fnName = slugToCodePropsFnName(demo.slug);
+        return [
+          `    case ${JSON.stringify(demo.slug)}:`,
+          `      return ${fnName}();`,
+        ].join("\n");
+      }
+      // Standard-generated modules
+      if (isStandardGeneratedCodePropsSlug(demo.slug)) {
         const fnName = slugToCodePropsFnName(demo.slug);
         return [
           `    case ${JSON.stringify(demo.slug)}:`,
@@ -1605,9 +1932,7 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
         ].join("\n");
       }
 
-      // For non-representative demos with code props, generate a multi-pane
-      // fallback that reads the real workflow source, splits it into primary
-      // (exported) and secondary (non-exported) blocks, and highlights both.
+      // For remaining special-shape demos, generate inline multi-pane fallback
       const strategy = inferGenericFallbackStrategy(demo.componentProps);
       const workflowPath = demo.workflows[0]?.filePath ?? null;
 
@@ -1693,8 +2018,14 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
     })
     .join("\n");
 
-  const imports = REAL_CODE_PROPS_DEMOS.map(
+  // Imports for bespoke modules
+  const bespokeImports = REAL_CODE_PROPS_DEMOS.map(
     (d) => `import { ${d.fn} } from "@/lib/generated/demo-code-props/${d.slug}";`,
+  );
+
+  // Imports for standard-generated modules
+  const standardImports = STANDARD_GENERATED_CODE_PROPS_SLUGS.map(
+    (slug) => `import { ${slugToCodePropsFnName(slug)} } from "@/lib/generated/demo-code-props/${slug}";`,
   );
 
   const genericImports = needsGenericImports
@@ -1725,7 +2056,8 @@ function generateCodePropsDispatcher(demos: SupportedDemo[]): string {
   return [
     HEADER.trimEnd(),
     ...genericImports,
-    ...imports,
+    ...bespokeImports,
+    ...standardImports,
     ...helperFn,
     ``,
     `export async function getNativeDemoCodeProps(`,
@@ -1895,9 +2227,30 @@ function main(): void {
     filesWritten++;
   }
 
-  // Generate code-props dispatcher (routes slug → real or dummy code props)
-  // Representative demos (fan-out, saga, circuit-breaker, splitter, dead-letter-queue)
-  // get real server-side code extraction; the rest get dummy fallbacks.
+  // Generate standard code-props modules for the 33 dual-pane demos.
+  // These read real workflow source, extract primary + secondary blocks,
+  // highlight both, and populate line maps with keys from each demo's component.
+  const supportedBySlug = new Map(supported.map((d) => [d.slug, d]));
+  for (const slug of STANDARD_GENERATED_CODE_PROPS_SLUGS) {
+    const demo = supportedBySlug.get(slug);
+    if (!demo) {
+      console.log(
+        JSON.stringify({
+          level: "warn",
+          action: "standard_code_props_slug_not_in_supported",
+          slug,
+        }),
+      );
+      continue;
+    }
+    write(
+      `lib/generated/demo-code-props/${slug}.ts`,
+      renderStandardGeneratedCodePropsModule(demo),
+    );
+    filesWritten++;
+  }
+
+  // Generate code-props dispatcher (routes slug → module function or inline fallback)
   write(
     "lib/native-demo-code.generated.ts",
     generateCodePropsDispatcher(supported),

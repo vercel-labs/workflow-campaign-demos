@@ -4,15 +4,18 @@ export default function GalleryPage() {
   return (
     <main
       id="main-content"
-      className="min-h-screen px-6 py-16 mx-auto max-w-6xl"
+      className="min-h-screen px-6 py-20 mx-auto max-w-6xl"
     >
-      <header className="mb-12 text-center">
-        <h1 className="text-4xl font-semibold tracking-tight text-gray-1000">
-          Workflow DevKit Gallery
+      <header className="mb-16 text-center">
+        <p className="text-xs font-mono tracking-widest uppercase text-blue-700 mb-4">
+          30 Days of Workflow DevKit
+        </p>
+        <h1 className="text-5xl font-semibold tracking-tight text-gray-1000 leading-[1.1]">
+          Pattern Gallery
         </h1>
-        <p className="mt-3 text-lg text-gray-900 max-w-2xl mx-auto">
-          50 workflow pattern demos — describe a scenario or browse by category
-          to find the right pattern.
+        <p className="mt-4 text-base text-gray-900 max-w-xl mx-auto leading-relaxed">
+          50 production workflow patterns — each one a standalone, runnable
+          Next.js app with real-time execution visualization.
         </p>
       </header>
       <ScenarioMatcher />

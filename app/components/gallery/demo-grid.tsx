@@ -4,16 +4,19 @@ import { DemoCard } from "./demo-card";
 export function DemoGrid({ demos }: { demos: DemoCatalogEntry[] }) {
   if (demos.length === 0) {
     return (
-      <div className="py-16 text-center">
-        <p className="text-gray-500 text-sm">
-          No demos match your current filters.
+      <div className="py-20 text-center">
+        <p className="text-sm text-gray-500">
+          No patterns match your filters.
+        </p>
+        <p className="mt-1 text-xs text-gray-500 font-mono">
+          Try a broader search or clear your tag filters.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {demos.map((demo) => (
         <DemoCard key={demo.slug} demo={demo} />
       ))}

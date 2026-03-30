@@ -16,6 +16,7 @@
   --color-gray-1000: #ededed;
 
   --color-blue-700: #0070F3;
+  --color-blue-600: #2383f5;
   --color-red-700: #E5484D;
   --color-amber-700: #FFB224;
   --color-green-700: #46A758;
@@ -30,4 +31,13 @@ body {
   background: #0a0a0a;
   color: #ededed;
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Skeleton pulse for loading states */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.15; }
+}
+.skeleton-pulse {
+  animation: skeleton-pulse 1.8s ease-in-out infinite;
 }

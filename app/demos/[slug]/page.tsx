@@ -1,5 +1,6 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getDemo } from "@/lib/demos";
+import { demos, getDemo } from "@/lib/demos";
 import { nativeDemos } from "@/lib/native-demos.generated";
 import { getNativeDemoCodeProps } from "@/lib/native-demo-code.generated";
 import { DemoDetailShell } from "@/app/components/demos/demo-detail-shell";
@@ -7,6 +8,26 @@ import { DemoDetailShell } from "@/app/components/demos/demo-detail-shell";
 type Props = {
   params: Promise<{ slug: string }>;
 };
+
+export function generateStaticParams() {
+  return demos.map((d) => ({ slug: d.slug }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const demo = getDemo(slug);
+  if (!demo) {
+    return { title: "Demo Not Found" };
+  }
+  return {
+    title: `${demo.title} — Workflow DevKit Gallery`,
+    description: demo.description,
+    openGraph: {
+      title: `${demo.title} — Workflow DevKit Gallery`,
+      description: demo.description,
+    },
+  };
+}
 
 export default async function DemoDetailPage({ params }: Props) {
   const { slug } = await params;

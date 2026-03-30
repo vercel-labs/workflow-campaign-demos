@@ -224,6 +224,13 @@ const REPRESENTATIVE_SLUGS = [
   "idempotent-receiver",
   "choreography",
   "cancellable-export",
+  "onboarding-drip",
+  "pipeline",
+  "recipient-list",
+  "routing-slip",
+  "scatter-gather",
+  "webhook-basics",
+  "wire-tap",
 ] as const;
 
 const SLUG_TO_FN: Record<string, string> = {
@@ -236,6 +243,13 @@ const SLUG_TO_FN: Record<string, string> = {
   "idempotent-receiver": "getIdempotentReceiverCodeProps",
   choreography: "getChoreographyCodeProps",
   "cancellable-export": "getCancellableExportCodeProps",
+  "onboarding-drip": "getOnboardingDripCodeProps",
+  pipeline: "getPipelineCodeProps",
+  "recipient-list": "getRecipientListCodeProps",
+  "routing-slip": "getRoutingSlipCodeProps",
+  "scatter-gather": "getScatterGatherCodeProps",
+  "webhook-basics": "getWebhookBasicsCodeProps",
+  "wire-tap": "getWireTapCodeProps",
 };
 
 function runGenerator() {
@@ -290,26 +304,30 @@ test("dispatcher contains dispatch branches for all five representative demos af
   }
 });
 
-test("non-representative demos use real workflow source fallback instead of blank props", () => {
+test("all demos dispatch through modules except approval-gate", () => {
   const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
 
-  // The dispatcher should import readFileSync and highlightCodeToHtmlLines for generic fallback
-  expect(dispatcher).toContain('import { readFileSync } from "node:fs"');
-  expect(dispatcher).toContain('highlightCodeToHtmlLines,');
-  expect(dispatcher).toContain('from "@/lib/code-workbench.server"');
-  expect(dispatcher).toContain("function readWorkflowSource(");
+  // No inline readWorkflowSource fallback should remain in the dispatcher
+  expect(dispatcher).not.toContain("readWorkflowSource(");
+  expect(dispatcher).not.toContain("function readWorkflowSource(");
 
-  // Non-representative demos with code props should use readWorkflowSource, not blank strings
-  // Check a sample of demos that previously returned workflowCode: ""
+  // Standard-shape demos dispatch through modules
   for (const slug of ["aggregator", "bulkhead", "competing-consumers", "throttle"]) {
     const caseStart = dispatcher.indexOf(`case "${slug}"`);
     expect(caseStart).toBeGreaterThan(-1);
-    // Find the next case or default to delimit this case block
-    const caseBlock = dispatcher.slice(caseStart, caseStart + 500);
-    expect(caseBlock).toContain("readWorkflowSource(");
-    expect(caseBlock).toContain("highlightCodeToHtmlLines(workflowCode)");
-    // Should NOT contain blank workflowCode
-    expect(caseBlock).not.toContain('workflowCode: ""');
+    const caseBlock = dispatcher.slice(caseStart, caseStart + 200);
+    expect(caseBlock).toContain(`return get`);
+    expect(caseBlock).toContain(`CodeProps()`);
+  }
+
+  // Former special-shape demos now also dispatch through modules
+  for (const slug of ["onboarding-drip", "pipeline", "wire-tap", "recipient-list", "scatter-gather", "routing-slip", "webhook-basics"]) {
+    const caseStart = dispatcher.indexOf(`case "${slug}"`);
+    expect(caseStart).toBeGreaterThan(-1);
+    const caseBlock = dispatcher.slice(caseStart, caseStart + 200);
+    expect(caseBlock).not.toContain("readWorkflowSource(");
+    expect(caseBlock).toContain(`return get`);
+    expect(caseBlock).toContain(`CodeProps()`);
   }
 
   // Demos with no code props (approval-gate) should still return {}
@@ -324,56 +342,49 @@ test("non-representative demos use real workflow source fallback instead of blan
 // Multi-pane fallback tests
 // ---------------------------------------------------------------------------
 
-test("html-only demos receive workflow and secondary HTML fallbacks", () => {
+test("bespoke and standard demos dispatch through module imports", () => {
   const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
-  expect(dispatcher).toContain("extractExportedWorkflowBlock");
-  expect(dispatcher).toContain("extractSecondaryFunctionBlocks");
 
-  // async-request-reply and idempotent-receiver now use real preserved modules
+  // Bespoke preserved modules
   const asyncCase = dispatcher.slice(
     dispatcher.indexOf('case "async-request-reply"'),
-    dispatcher.indexOf('case "batch-processor"'),
+    dispatcher.indexOf('case "async-request-reply"') + 200,
   );
   expect(asyncCase).toContain("return getAsyncRequestReplyCodeProps()");
 
   const idempotentCase = dispatcher.slice(
     dispatcher.indexOf('case "idempotent-receiver"'),
-    dispatcher.indexOf('case "map-reduce"'),
+    dispatcher.indexOf('case "idempotent-receiver"') + 200,
   );
   expect(idempotentCase).toContain("return getIdempotentReceiverCodeProps()");
 
-  // Verify that other non-representative demos still use the generic fallback
-  const bulkheadCase = dispatcher.slice(
-    dispatcher.indexOf('case "bulkhead"'),
-    dispatcher.indexOf('case "bulkhead"') + 500,
-  );
-  expect(bulkheadCase).toContain("readWorkflowSource(");
-});
-
-test("secondary string-pane demos receive secondary code fallbacks", () => {
-  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
-
-  // choreography now uses a real preserved module
   const choreographyCase = dispatcher.slice(
     dispatcher.indexOf('case "choreography"'),
-    dispatcher.indexOf('case "circuit-breaker"'),
+    dispatcher.indexOf('case "choreography"') + 200,
   );
   expect(choreographyCase).toContain("return getChoreographyCodeProps()");
 
-  // Other secondary-pane demos still use the generic fallback
+  // Standard-generated modules now dispatch through imports too
+  const bulkheadCase = dispatcher.slice(
+    dispatcher.indexOf('case "bulkhead"'),
+    dispatcher.indexOf('case "bulkhead"') + 200,
+  );
+  expect(bulkheadCase).toContain("return getBulkheadCodeProps()");
+  expect(bulkheadCase).not.toContain("readWorkflowSource(");
+
   const historyCase = dispatcher.slice(
     dispatcher.indexOf('case "message-history"'),
-    dispatcher.indexOf('case "message-translator"'),
+    dispatcher.indexOf('case "message-history"') + 200,
   );
-  expect(historyCase).toContain("stepCode: secondaryCode");
-  expect(historyCase).toContain("stepHtmlLines: secondaryHtmlLines");
+  expect(historyCase).toContain("return getMessageHistoryCodeProps()");
+  expect(historyCase).not.toContain("readWorkflowSource(");
 
   const managerCase = dispatcher.slice(
     dispatcher.indexOf('case "process-manager"'),
-    dispatcher.indexOf('case "publish-subscribe"'),
+    dispatcher.indexOf('case "process-manager"') + 200,
   );
-  expect(managerCase).toContain("stepCode: secondaryCode");
-  expect(managerCase).toContain("stepHtmlLines: secondaryHtmlLines");
+  expect(managerCase).toContain("return getProcessManagerCodeProps()");
+  expect(managerCase).not.toContain("readWorkflowSource(");
 });
 
 // ---------------------------------------------------------------------------
@@ -530,6 +541,237 @@ test("cancellable-export is a real preserved module with sections and workbench 
   // sectionContent has real content
   expect(source).toContain("European market");
   expect(source).toContain("GDPR");
+});
+
+// ---------------------------------------------------------------------------
+// Per-demo semantic coverage: special-shape outlier demos
+// ---------------------------------------------------------------------------
+
+test("onboarding-drip is a real preserved module with step-indexed send/sleep line maps", () => {
+  const generator = readFileSync(".scripts/generate-native-gallery.ts", "utf8");
+  expect(generator).toContain(
+    '{ slug: "onboarding-drip", fn: "getOnboardingDripCodeProps", mode: "preserve-file" }',
+  );
+
+  const source = readFileSync(
+    "lib/generated/demo-code-props/onboarding-drip.ts",
+    "utf8",
+  );
+  expect(source).toContain("highlightCodeToHtmlLines");
+  expect(source).toContain("buildStepHighlightPhases");
+  expect(source).toContain("sendWelcomeEmail");
+  expect(source).toContain("sendFollowUpEmail");
+  expect(source).toContain("stepSendLines");
+  expect(source).toContain("stepSleepLines");
+  expect(source).toContain("stepCodes");
+  expect(source).toContain("stepLinesHtml");
+});
+
+test("pipeline is a real preserved module with typed lineMap", () => {
+  const source = readFileSync(
+    "lib/generated/demo-code-props/pipeline.ts",
+    "utf8",
+  );
+  expect(source).toContain("highlightCodeToHtmlLines");
+  expect(source).toContain("workflowLoopLine");
+  expect(source).toContain("workflowStepLines");
+  expect(source).toContain("workflowDoneLine");
+  expect(source).toContain("stepStartLine");
+  expect(source).toContain("stepProgressLine");
+  expect(source).toContain("stepDoneLine");
+  expect(source).toContain("stepPipelineDoneLine");
+  expect(source).toContain("workflowDirective");
+  expect(source).toContain("stepDirective");
+});
+
+test("recipient-list is a real preserved module with full 5-map coverage", () => {
+  const source = readFileSync(
+    "lib/generated/demo-code-props/recipient-list.ts",
+    "utf8",
+  );
+  expect(source).toContain("buildWorkflowLineMap(workflowCode)");
+  expect(source).toContain("buildStepLineMap(stepCode)");
+  expect(source).toContain("buildStepErrorLineMap(stepCode)");
+  expect(source).toContain("buildStepRetryLineMap(stepCode)");
+  expect(source).toContain("buildStepSuccessLineMap(stepCode)");
+  expect(source).toContain("rulesEvaluated: number[]");
+  expect(source).toContain("allSettled: number[]");
+  expect(source).toContain("deliveries: number[]");
+  expect(source).toContain('join(process.cwd(), "recipient-list/workflows/recipient-list.ts")');
+});
+
+test("routing-slip is a real preserved module with stage message line maps", () => {
+  const source = readFileSync(
+    "lib/generated/demo-code-props/routing-slip.ts",
+    "utf8",
+  );
+  expect(source).toContain("highlightCodeToHtmlLines");
+  expect(source).toContain("workflowLoopLine");
+  expect(source).toContain("workflowProcessLine");
+  expect(source).toContain("workflowReturnLine");
+  expect(source).toContain("stepDelayLine");
+  expect(source).toContain("stepReturnLine");
+  expect(source).toContain("stepMessageLines");
+  expect(source).toContain("inventory:");
+  expect(source).toContain("shipping:");
+  expect(source).toContain("notification:");
+});
+
+test("scatter-gather is a real preserved module with provider-keyed maps", () => {
+  const source = readFileSync(
+    "lib/generated/demo-code-props/scatter-gather.ts",
+    "utf8",
+  );
+  expect(source).toContain("buildWorkflowLineMap(workflowCode)");
+  expect(source).toContain("buildStepLineMap(stepCode)");
+  expect(source).toContain("buildStepErrorLineMap(stepCode)");
+  expect(source).toContain("buildStepSuccessLineMap(stepCode)");
+  expect(source).toContain("allSettled: number[]");
+  expect(source).toContain("results: number[]");
+  expect(source).toContain("returnGather: number[]");
+  expect(source).toContain('join(process.cwd(), "scatter-gather/workflows/scatter-gather.ts")');
+  expect(source).toContain("fedex:");
+  expect(source).toContain("ups:");
+  expect(source).toContain("dhl:");
+  expect(source).toContain("usps:");
+});
+
+test("webhook-basics is a real preserved module with orchestrator and step maps", () => {
+  const source = readFileSync(
+    "lib/generated/demo-code-props/webhook-basics.ts",
+    "utf8",
+  );
+  expect(source).toContain("highlightCodeToHtmlLines");
+  expect(source).toContain("buildOrchestratorMap");
+  expect(source).toContain("orchestratorHtmlLines");
+  expect(source).toContain("orchestratorLineMap");
+  expect(source).toContain("stepHtmlLines");
+  expect(source).toContain("stepLineMap");
+  expect(source).toContain("createWebhook(");
+  expect(source).toContain('"payment.created"');
+  expect(source).toContain('"refund.created"');
+  expect(source).toContain("map.connect");
+  expect(source).toContain("map.loop");
+  expect(source).toContain("map.breakLine");
+});
+
+test("wire-tap is a real preserved module with pipeline and tap line maps", () => {
+  const source = readFileSync(
+    "lib/generated/demo-code-props/wire-tap.ts",
+    "utf8",
+  );
+  expect(source).toContain('join(process.cwd(), "wire-tap/workflows/wire-tap.ts")');
+  expect(source).toContain("extractFunctionBlock");
+  expect(source).toContain("highlightCodeToHtmlLines");
+  expect(source).toContain("workflowPipelineLine");
+  expect(source).toContain("workflowDoneLine");
+  expect(source).toContain("stepStageStartLine");
+  expect(source).toContain("stepTapLine");
+  expect(source).toContain("stepStageDoneLine");
+  expect(source).toContain('async function validateOrder(');
+  expect(source).toContain('async function emitDone(');
+});
+
+// ---------------------------------------------------------------------------
+// Standard-generated code-props module tests
+// ---------------------------------------------------------------------------
+
+const STANDARD_GENERATED_SLUGS = [
+  "aggregator",
+  "approval-chain",
+  "batch-processor",
+  "bulkhead",
+  "claim-check",
+  "competing-consumers",
+  "content-based-router",
+  "content-enricher",
+  "correlation-identifier",
+  "detour",
+  "event-gateway",
+  "event-sourcing",
+  "guaranteed-delivery",
+  "hedge-request",
+  "map-reduce",
+  "message-filter",
+  "message-history",
+  "message-translator",
+  "namespaced-streams",
+  "normalizer",
+  "priority-queue",
+  "process-manager",
+  "publish-subscribe",
+  "request-reply",
+  "resequencer",
+  "retry-backoff",
+  "retryable-rate-limit",
+  "scheduled-digest",
+  "scheduler-agent-supervisor",
+  "status-poller",
+  "throttle",
+  "transactional-outbox",
+  "wakeable-reminder",
+] as const;
+
+function toStandardFnName(slug: string): string {
+  return `get${slug
+    .split("-")
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join("")}CodeProps`;
+}
+
+test("standard-shape demos are emitted as per-demo code-props modules", () => {
+  const dispatcher = readFileSync("lib/native-demo-code.generated.ts", "utf8");
+
+  for (const slug of STANDARD_GENERATED_SLUGS) {
+    const fnName = toStandardFnName(slug);
+    const modulePath = `lib/generated/demo-code-props/${slug}.ts`;
+
+    // Module file exists
+    expect(existsSync(modulePath)).toBe(true);
+
+    const moduleSource = readFileSync(modulePath, "utf8");
+    // Uses real server-side code extraction
+    expect(moduleSource).toContain('import { readFileSync } from "node:fs"');
+    expect(moduleSource).toContain("extractExportedWorkflowBlock");
+    expect(moduleSource).toContain("extractSecondaryFunctionBlocks");
+    expect(moduleSource).toContain("highlightCodeToHtmlLines");
+
+    // No empty line maps
+    expect(moduleSource).not.toContain("workflowLineMap: {}");
+    expect(moduleSource).not.toContain("stepLineMap: {}");
+    expect(moduleSource).not.toContain("orchestratorLineMap: {}");
+
+    // Dispatcher imports and dispatches this module
+    expect(dispatcher).toContain(
+      `import { ${fnName} } from "@/lib/generated/demo-code-props/${slug}"`,
+    );
+
+    // The case for this slug dispatches to the module function (not inline fallback)
+    const caseStart = dispatcher.indexOf(`case "${slug}"`);
+    expect(caseStart).toBeGreaterThan(-1);
+    // Extract just the two lines of the case (case + return)
+    const nextCase = dispatcher.indexOf("\n    case ", caseStart + 1);
+    const nextDefault = dispatcher.indexOf("\n    default:", caseStart + 1);
+    const caseEnd = Math.min(
+      nextCase > -1 ? nextCase : Infinity,
+      nextDefault > -1 ? nextDefault : Infinity,
+    );
+    const caseBlock = dispatcher.slice(caseStart, caseEnd);
+    expect(caseBlock).toContain(`return ${fnName}()`);
+    expect(caseBlock).not.toContain("readWorkflowSource(");
+  }
+});
+
+test("standard-generated modules survive a clean regen cycle", () => {
+  runGenerator();
+
+  for (const slug of STANDARD_GENERATED_SLUGS) {
+    const path = `lib/generated/demo-code-props/${slug}.ts`;
+    expect(existsSync(path)).toBe(true);
+    const content = readFileSync(path, "utf8");
+    expect(content.length).toBeGreaterThan(100);
+    expect(content).toContain("// GENERATED");
+  }
 });
 
 // ---------------------------------------------------------------------------
