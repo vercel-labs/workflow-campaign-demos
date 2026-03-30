@@ -33,6 +33,49 @@ body {
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* sugar-high syntax tokens */
+:root,
+.dark {
+  --sh-class: #52a8ff;
+  --sh-identifier: #ededed;
+  --sh-sign: #a1a1a1;
+  --sh-property: #ff6166;
+  --sh-entity: #62c073;
+  --sh-jsxliterals: #ededed;
+  --sh-string: #62c073;
+  --sh-keyword: #f75f8f;
+  --sh-comment: #a1a1a1;
+}
+
+/* Prism token colors - Geist dark-mode palette
+   Wrapped in @layer base so Tailwind v4 does not purge them
+   (these classes only appear in dangerouslySetInnerHTML output). */
+@layer base {
+  .token.keyword,
+  .token.keyword.control-flow { color: #f75f8f; }
+  .token.plain,
+  .token.parameter,
+  .token.punctuation,
+  .token.plain-text,
+  .token.property-access,
+  .token.operator,
+  .token.tag.punctuation { color: #ededed; }
+  .token.function,
+  .token.function.maybe-class-name { color: #bf7af0; }
+  .token.tag { color: #62c073; }
+  .token.literal-property.property { color: #ff6166; }
+  .token.string,
+  .token.boolean { color: #62c073; }
+  .token.comment { color: #a1a1a1; }
+  .token.class-name { color: #52a8ff; }
+  .token.number { color: #62c073; }
+  .token.attr-name { color: #ff6166; }
+  .token.attr-value { color: #62c073; }
+  .token.builtin { color: #52a8ff; }
+  .token.template-string { color: #62c073; }
+  .token.interpolation { color: #ededed; }
+}
+
 /* Skeleton pulse for loading states */
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 0.4; }
