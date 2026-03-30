@@ -14,36 +14,36 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Workflow DevKit Gallery — 30 Days of Patterns",
+    default: "Workflow API Explorer",
     template: "%s",
   },
   description:
-    "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
+    "Explore 50 workflow API demos. Find the right pattern, run it live, and read the source.",
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Workflow DevKit Gallery — 30 Days of Patterns",
+    title: "Workflow API Explorer",
     description:
-      "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
-    siteName: "Workflow DevKit Gallery",
+      "Explore 50 workflow API demos. Find the right pattern, run it live, and read the source.",
+    siteName: "Workflow API Explorer",
     type: "website",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Workflow DevKit Gallery",
+        alt: "Workflow API Explorer",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Workflow DevKit Gallery — 30 Days of Patterns",
+    title: "Workflow API Explorer",
     description:
-      "Explore 50 workflow pattern demos. Search by scenario, browse by category, and run each demo live.",
+      "Explore 50 workflow API demos. Find the right pattern, run it live, and read the source.",
     images: ["/opengraph-image"],
   },
   metadataBase: new URL(

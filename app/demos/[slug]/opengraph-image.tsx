@@ -6,7 +6,7 @@ import { getDemo } from "@/lib/demos";
 export const runtime = "edge";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Workflow DevKit Gallery demo";
+export const alt = "Workflow API Explorer demo";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -15,7 +15,7 @@ type Props = {
 export default async function Image({ params }: Props) {
   const { slug } = await params;
   const demo = getDemo(slug);
-  const title = demo?.title ?? "Workflow DevKit Gallery";
+  const title = demo?.title ?? "Workflow API Explorer";
   const description =
     demo?.whenToUse ?? demo?.description ?? "Production workflow pattern demo";
   const tags = demo?.tags.slice(0, 3) ?? [];

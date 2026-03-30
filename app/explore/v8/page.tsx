@@ -7,18 +7,19 @@ import { getDemoApis, getApiColorClasses } from "@/lib/api-taxonomy";
 import { useState, useMemo, useCallback } from "react";
 
 /**
- * Home page — Workflow API Finder
+ * V8 — Visual Branching Paths
  *
- * Decision tree that guides users through branching questions
- * to find the right workflow pattern. Result cards lead with
- * the real-world scenario, with technical details as subtext.
+ * Instead of sequential questions, show a tree of branching cards.
+ * Each node shows a question with 2-3 paths. Clicking a path reveals
+ * the next level. The tree stays visible so you can see your path
+ * and explore alternate branches.
  */
 
 type Branch = {
   label: string;
   icon: string;
-  slugs?: string[];
-  next?: TreeNode;
+  slugs?: string[]; // leaf node — these are the results
+  next?: TreeNode; // branch node — continue the tree
 };
 
 type TreeNode = {
@@ -53,7 +54,7 @@ const tree: TreeNode = {
                 {
                   label: "Each result is independent",
                   icon: "⊙",
-                  slugs: ["fan-out", "publish-subscribe", "recipient-list", "competing-consumers", "priority-queue"],
+                  slugs: ["fan-out", "publish-subscribe", "recipient-list"],
                 },
               ],
             },
@@ -101,11 +102,7 @@ const tree: TreeNode = {
           {
             label: "Retry with backoff",
             icon: "↻",
-            slugs: [
-              "retry-backoff",
-              "retryable-rate-limit",
-              "guaranteed-delivery",
-            ],
+            slugs: ["retry-backoff", "retryable-rate-limit", "guaranteed-delivery"],
           },
           {
             label: "Stop calling a broken service",
@@ -115,11 +112,7 @@ const tree: TreeNode = {
           {
             label: "Quarantine bad messages",
             icon: "☐",
-            slugs: [
-              "dead-letter-queue",
-              "idempotent-receiver",
-              "transactional-outbox",
-            ],
+            slugs: ["dead-letter-queue", "idempotent-receiver", "transactional-outbox"],
           },
         ],
       },
@@ -200,11 +193,7 @@ const tree: TreeNode = {
           {
             label: "Route to the right destination",
             icon: "⑂",
-            slugs: [
-              "content-based-router",
-              "routing-slip",
-              "recipient-list",
-            ],
+            slugs: ["content-based-router", "routing-slip", "recipient-list"],
           },
           {
             label: "Observe or audit the flow",
@@ -228,7 +217,7 @@ function getDemo(slug: string) {
 
 type PathEntry = { nodeId: string; branchIndex: number };
 
-export default function HomePage() {
+export default function V8Page() {
   const [path, setPath] = useState<PathEntry[]>([]);
 
   const { currentNode, resultSlugs } = useMemo(() => {
@@ -266,6 +255,7 @@ export default function HomePage() {
 
   const restart = useCallback(() => setPath([]), []);
 
+  // Build the visible path for breadcrumbs
   const breadcrumbs = useMemo(() => {
     const crumbs: { label: string; icon: string }[] = [];
     let node: TreeNode | undefined = tree;
@@ -286,18 +276,21 @@ export default function HomePage() {
   }, [resultSlugs]);
 
   return (
-    <main
-      id="main-content"
-      className="min-h-screen px-6 pt-20 pb-20 mx-auto max-w-3xl"
-    >
-      <header className="mb-12 text-center">
-        <h1 className="text-5xl font-semibold leading-[1.02] tracking-tight text-gray-1000 sm:text-6xl">
+    <main className="min-h-screen px-6 pt-20 pb-20 mx-auto max-w-3xl">
+      <Link
+        href="/explore"
+        className="text-sm text-gray-400 hover:text-gray-1000 font-mono transition-colors"
+      >
+        ← explorations
+      </Link>
+
+      <header className="mb-12 mt-6 text-center">
+        <h1 className="text-5xl font-semibold tracking-tight text-gray-1000 sm:text-6xl">
           Workflow API Explorer
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-gray-1000/70">
-          Answer a few questions to find the right pattern from{" "}
-          {demos.length} Workflow DevKit demos. Each result includes a live
-          interactive demo and full source code.
+          Follow the branches to find the right workflow pattern. Each choice
+          narrows the options.
         </p>
       </header>
 
@@ -365,38 +358,38 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Results — scenario-first cards */}
+      {/* Results */}
       {resultSlugs && (
         <div>
           <h2 className="text-xl font-semibold text-gray-1000 mb-1">
-            Here&apos;s what fits
+            Recommended patterns
           </h2>
           <p className="text-sm text-gray-1000/60 mb-6">
             {resultDemos.length} demo{resultDemos.length !== 1 ? "s" : ""}{" "}
             match your path.
           </p>
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {resultDemos.map((demo) => {
               const apis = getDemoApis(demo.slug);
               return (
                 <Link
                   key={demo.slug}
                   href={`/demos/${demo.slug}`}
-                  className="group flex flex-col rounded-xl border border-gray-300 bg-background-200 p-6 transition-all hover:border-gray-400 hover:bg-gray-100"
+                  className="group flex flex-col rounded-xl border border-gray-300 bg-background-200 p-5 transition-all hover:border-gray-400 hover:bg-gray-100"
                 >
-                  {/* Scenario is the headline */}
-                  <p className="text-base leading-relaxed text-gray-1000">
-                    {demo.whenToUse}
-                  </p>
-
-                  {/* Technical details as subtext */}
-                  <div className="mt-4 flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-mono font-medium text-gray-1000/50 group-hover:text-blue-700 transition-colors">
+                      <h3 className="text-base font-semibold text-gray-1000 group-hover:text-blue-700 transition-colors">
                         {demo.title}
                       </h3>
-                      <p className="mt-1 text-xs text-gray-1000/40 line-clamp-2">
+                      <p className="mt-1 text-sm text-gray-1000/70">
                         {demo.description}
+                      </p>
+                      <p className="mt-2 text-xs text-gray-1000/50">
+                        <span className="font-mono text-cyan-700">
+                          scenario
+                        </span>{" "}
+                        {demo.whenToUse}
                       </p>
                     </div>
                     <svg
@@ -408,47 +401,35 @@ export default function HomePage() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="shrink-0 mt-0.5 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
+                      className="shrink-0 mt-1 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
                     >
                       <path d="M9 18l6-6-6-6" />
                     </svg>
                   </div>
-
-                  {/* API pills */}
-                  {apis.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {apis.map((api) => {
-                        const colors = getApiColorClasses(api);
-                        return (
-                          <span
-                            key={api.id}
-                            className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${colors.badge}`}
-                          >
-                            {api.label}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {apis.map((api) => {
+                      const colors = getApiColorClasses(api);
+                      return (
+                        <span
+                          key={api.id}
+                          className={`rounded-full border px-2 py-0.5 text-[11px] font-mono ${colors.badge}`}
+                        >
+                          {api.label}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </Link>
               );
             })}
           </div>
 
-          <div className="mt-8 flex items-center gap-4">
-            <button
-              onClick={restart}
-              className="text-sm font-mono text-gray-400 hover:text-gray-1000 transition-colors"
-            >
-              ← Start over
-            </button>
-            <Link
-              href="/explore"
-              className="text-sm font-mono text-gray-400 hover:text-gray-1000 transition-colors"
-            >
-              Browse Gallery →
-            </Link>
-          </div>
+          <button
+            onClick={restart}
+            className="mt-8 text-sm font-mono text-gray-400 hover:text-gray-1000 transition-colors"
+          >
+            ← Start over
+          </button>
         </div>
       )}
     </main>

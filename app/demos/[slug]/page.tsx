@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       robots: { index: false, follow: false },
     };
   }
-  const title = `${demo.title} — Workflow DevKit Gallery`;
+  const title = `${demo.title} — Workflow API Explorer`;
   const description = demo.description;
   const canonicalPath = `/demos/${slug}`;
   const ogImage = `${canonicalPath}/opengraph-image`;
@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: ogImage,
           width: 1200,
           height: 630,
-          alt: `${demo.title} — Workflow DevKit Gallery`,
+          alt: `${demo.title} — Workflow API Explorer`,
         },
       ],
     },

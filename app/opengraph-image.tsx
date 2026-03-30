@@ -2,7 +2,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Workflow DevKit Gallery — 30 Days of Patterns";
+export const alt = "Workflow API Explorer";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -39,7 +39,7 @@ export default function OGImage() {
               lineHeight: 1.1,
             }}
           >
-            Workflow DevKit Gallery
+            Workflow API Explorer
           </div>
           <div
             style={{
@@ -49,8 +49,8 @@ export default function OGImage() {
               maxWidth: "800px",
             }}
           >
-            50 workflow pattern demos — search by scenario, browse by category,
-            run live
+            50 workflow API demos — find the right pattern, run it live, read
+            the source
           </div>
           <div
             style={{
